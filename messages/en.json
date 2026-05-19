@@ -1,0 +1,95 @@
+{
+  "Common": {
+    "loading": "Loading…",
+    "readMore": "Learn more",
+    "backHome": "Back to home",
+    "allRightsReserved": "All rights reserved",
+    "menu": "Menu",
+    "close": "Close"
+  },
+  "Nav": {
+    "home": "Home",
+    "services": "Services",
+    "allServices": "All our services",
+    "realisations": "Projects",
+    "promotions": "Promotions",
+    "blog": "Blog",
+    "about": "About",
+    "contact": "Contact",
+    "quote": "Free quote",
+    "appointment": "Book an appointment"
+  },
+  "LanguageSwitcher": {
+    "label": "Language",
+    "fr": "French",
+    "en": "English"
+  },
+  "Footer": {
+    "company": "Company",
+    "services": "Our services",
+    "usefulLinks": "Useful links",
+    "contact": "Contact",
+    "newsletterTitle": "Newsletter",
+    "newsletterText": "Get our news and promotions.",
+    "newsletterPlaceholder": "Your email",
+    "newsletterButton": "Subscribe",
+    "newsletterSuccess": "Thank you, your subscription is registered.",
+    "followUs": "Follow us",
+    "legalNotice": "Legal notice",
+    "privacy": "Privacy policy",
+    "terms": "Terms and conditions"
+  },
+  "Whatsapp": {
+    "label": "Chat on WhatsApp",
+    "defaultMessage": "Hello, I would like to get some information."
+  },
+  "Cookies": {
+    "message": "We use cookies to improve your experience and measure site traffic.",
+    "accept": "Accept all",
+    "reject": "Reject",
+    "learnMore": "Learn more"
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "description": "The page you are looking for does not exist or has been moved."
+  },
+  "ComingSoon": {
+    "badge": "Coming soon",
+    "title": "This page is coming soon",
+    "description": "We are finalizing this section. It will be available very soon. Thank you for your patience.",
+    "contactCta": "Contact us",
+    "homeCta": "Back to home"
+  },
+  "Forms": {
+    "name": "Full name",
+    "email": "Email",
+    "phone": "Phone",
+    "service": "Related service",
+    "selectService": "Choose a service",
+    "description": "Describe your needs",
+    "subject": "Subject",
+    "message": "Message",
+    "date": "Preferred date",
+    "time": "Preferred time",
+    "optional": "(optional)",
+    "submit": "Send",
+    "sending": "Sending…",
+    "next": "Next",
+    "back": "Back",
+    "step": "Step {current} of {total}",
+    "required": "This field is required",
+    "devisTitle": "Free quote request",
+    "devisIntro": "Describe your project, we'll get back to you within 48h.",
+    "rdvTitle": "Book an appointment",
+    "rdvIntro": "Pick a slot, we'll confirm by email.",
+    "contactTitle": "Write to us",
+    "successDevis": "Your quote request has been sent. Thank you!",
+    "successRdv": "Your appointment request has been sent. Thank you!",
+    "successContact": "Your message has been sent. Thank you!",
+    "error": "An error occurred. Please try again.",
+    "rateLimited": "Too many attempts. Please try again later.",
+    "captchaRequired": "Please complete the captcha.",
+    "closedDay": "This day is not available. Please choose another day.",
+    "outsideHours": "The selected time is outside opening hours."
+  }
+}

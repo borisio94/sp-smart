@@ -1,0 +1,95 @@
+{
+  "Common": {
+    "loading": "Chargement…",
+    "readMore": "En savoir plus",
+    "backHome": "Retour à l'accueil",
+    "allRightsReserved": "Tous droits réservés",
+    "menu": "Menu",
+    "close": "Fermer"
+  },
+  "Nav": {
+    "home": "Accueil",
+    "services": "Services",
+    "allServices": "Tous nos services",
+    "realisations": "Réalisations",
+    "promotions": "Promotions",
+    "blog": "Blog",
+    "about": "À propos",
+    "contact": "Contact",
+    "quote": "Devis gratuit",
+    "appointment": "Prendre rendez-vous"
+  },
+  "LanguageSwitcher": {
+    "label": "Langue",
+    "fr": "Français",
+    "en": "Anglais"
+  },
+  "Footer": {
+    "company": "Entreprise",
+    "services": "Nos services",
+    "usefulLinks": "Liens utiles",
+    "contact": "Contact",
+    "newsletterTitle": "Newsletter",
+    "newsletterText": "Recevez nos actualités et promotions.",
+    "newsletterPlaceholder": "Votre email",
+    "newsletterButton": "S'inscrire",
+    "newsletterSuccess": "Merci, votre inscription est enregistrée.",
+    "followUs": "Suivez-nous",
+    "legalNotice": "Mentions légales",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions générales"
+  },
+  "Whatsapp": {
+    "label": "Discuter sur WhatsApp",
+    "defaultMessage": "Bonjour, je souhaite obtenir des informations."
+  },
+  "Cookies": {
+    "message": "Nous utilisons des cookies pour améliorer votre expérience et mesurer l'audience du site.",
+    "accept": "Tout accepter",
+    "reject": "Refuser",
+    "learnMore": "En savoir plus"
+  },
+  "NotFound": {
+    "title": "Page introuvable",
+    "description": "La page que vous recherchez n'existe pas ou a été déplacée."
+  },
+  "ComingSoon": {
+    "badge": "Bientôt disponible",
+    "title": "Cette page arrive bientôt",
+    "description": "Nous finalisons cette section. Elle sera disponible très prochainement. Merci de votre patience.",
+    "contactCta": "Nous contacter",
+    "homeCta": "Retour à l'accueil"
+  },
+  "Forms": {
+    "name": "Nom complet",
+    "email": "Email",
+    "phone": "Téléphone",
+    "service": "Service concerné",
+    "selectService": "Choisissez un service",
+    "description": "Décrivez votre besoin",
+    "subject": "Sujet",
+    "message": "Message",
+    "date": "Date souhaitée",
+    "time": "Heure souhaitée",
+    "optional": "(optionnel)",
+    "submit": "Envoyer",
+    "sending": "Envoi en cours…",
+    "next": "Suivant",
+    "back": "Précédent",
+    "step": "Étape {current} sur {total}",
+    "required": "Ce champ est requis",
+    "devisTitle": "Demande de devis gratuit",
+    "devisIntro": "Décrivez votre projet, nous revenons vers vous sous 48h.",
+    "rdvTitle": "Prendre rendez-vous",
+    "rdvIntro": "Choisissez un créneau, nous confirmons par email.",
+    "contactTitle": "Écrivez-nous",
+    "successDevis": "Votre demande de devis a bien été envoyée. Merci !",
+    "successRdv": "Votre demande de rendez-vous a bien été envoyée. Merci !",
+    "successContact": "Votre message a bien été envoyé. Merci !",
+    "error": "Une erreur est survenue. Veuillez réessayer.",
+    "rateLimited": "Trop de tentatives. Réessayez dans un moment.",
+    "captchaRequired": "Veuillez valider le captcha.",
+    "closedDay": "Ce jour n'est pas disponible. Choisissez un autre jour.",
+    "outsideHours": "L'heure choisie est en dehors des horaires d'ouverture."
+  }
+}
