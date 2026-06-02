@@ -312,6 +312,21 @@
       "energy": "Energy & Electrical",
       "other": "Other services"
     },
+    "serviceItems": {
+      "gateSwing": "Swing gates",
+      "gateSliding": "Sliding gates",
+      "shutters": "Shutters",
+      "grilles": "Grilles",
+      "barrierLifting": "Lifting barrier",
+      "barrierRetractable": "Retractable barrier",
+      "videosurveillance": "Video surveillance",
+      "fire": "Fire safety",
+      "intrusion": "Anti-intrusion system",
+      "electricFence": "Electric fence",
+      "accessControl": "Access control",
+      "electricity": "Home electrical",
+      "solar": "Solar systems"
+    },
     "realisations": "Projects",
     "promotions": "Promotions",
     "blog": "Blog",

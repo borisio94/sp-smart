@@ -5,21 +5,20 @@ import { ChevronDown } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { DynamicIcon } from "@/components/dynamic-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MAIN_LINKS, type ServiceLink } from "./nav-links";
-import { groupServices } from "./group-services";
+import { buildServiceMenu } from "./service-menu";
 
 /**
  * Navigation principale (écran large) avec méga-menu des services.
  */
 export function DesktopNav({ services }: { services: ServiceLink[] }) {
   const t = useTranslations("Nav");
-  const groups = groupServices(services);
+  const menu = buildServiceMenu(services.map((s) => s.slug));
 
   return (
     <nav className="hidden items-center gap-1 lg:flex">
@@ -37,25 +36,27 @@ export function DesktopNav({ services }: { services: ServiceLink[] }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[40rem] p-4">
           <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-            {groups.map((g) => (
-              <div key={g.key}>
+            {menu.map((fam) => (
+              <div key={fam.family}>
                 <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t(`serviceFamily.${g.key}`)}
+                  {t(`serviceFamily.${fam.family}`)}
                 </p>
                 <div className="space-y-0.5">
-                  {g.services.map((s) => (
-                    <Link
-                      key={s.id}
-                      href={`/services/${s.slug}`}
-                      className="flex items-start gap-2.5 rounded-md p-2 hover:bg-accent transition-colors"
-                    >
-                      <DynamicIcon
-                        name={s.icon}
-                        className="mt-0.5 size-4 shrink-0 text-brand"
-                      />
-                      <span className="text-sm font-medium">{s.title}</span>
-                    </Link>
-                  ))}
+                  {fam.items.map((item) => {
+                    const ItemIcon = item.icon;
+                    return (
+                      <Link
+                        key={item.labelKey}
+                        href={`/services/${item.slug}`}
+                        className="flex items-center gap-2.5 rounded-md p-2 hover:bg-accent transition-colors"
+                      >
+                        <ItemIcon className="size-4 shrink-0 text-brand" />
+                        <span className="text-sm font-medium">
+                          {t(`serviceItems.${item.labelKey}`)}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ))}

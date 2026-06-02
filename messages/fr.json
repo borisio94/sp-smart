@@ -312,6 +312,21 @@
       "energy": "Énergie & Électricité",
       "other": "Autres services"
     },
+    "serviceItems": {
+      "gateSwing": "Portails battants",
+      "gateSliding": "Portails coulissants",
+      "shutters": "Volets",
+      "grilles": "Grilles",
+      "barrierLifting": "Barrière levante",
+      "barrierRetractable": "Barrière escamotable",
+      "videosurveillance": "Vidéosurveillance",
+      "fire": "Sécurité incendie",
+      "intrusion": "Système anti-intrusion",
+      "electricFence": "Clôture électrique",
+      "accessControl": "Contrôle d'accès",
+      "electricity": "Électricité domestique",
+      "solar": "Systèmes solaires"
+    },
     "realisations": "Réalisations",
     "promotions": "Promotions",
     "blog": "Blog",

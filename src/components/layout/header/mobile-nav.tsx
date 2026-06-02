@@ -8,7 +8,6 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
-import { DynamicIcon } from "@/components/dynamic-icon";
 import { LanguageSwitcher } from "./language-switcher";
 import {
   Sheet,
@@ -18,7 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { MAIN_LINKS, SERVICES_ICON, type ServiceLink } from "./nav-links";
-import { groupServices } from "./group-services";
+import { buildServiceMenu } from "./service-menu";
 
 /**
  * Menu mobile (tiroir latéral) — visible sous l'écran large.
@@ -31,7 +30,7 @@ export function MobileNav({ services }: { services: ServiceLink[] }) {
   const [servicesOpen, setServicesOpen] = useState(false);
 
   const close = () => setOpen(false);
-  const groups = groupServices(services);
+  const menu = buildServiceMenu(services.map((s) => s.slug));
 
   // Style commun d'un lien de navigation (icône en pastille + libellé).
   const linkClass =
@@ -91,23 +90,26 @@ export function MobileNav({ services }: { services: ServiceLink[] }) {
           </button>
 
           {servicesOpen ? (
-            <div className="mb-1 ml-4 space-y-2 border-l border-border pl-3">
-              {groups.map((g) => (
-                <div key={g.key}>
-                  <p className="px-3 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t(`serviceFamily.${g.key}`)}
+            <div className="mb-1 ml-4 space-y-3 border-l border-border pl-3">
+              {menu.map((fam) => (
+                <div key={fam.family}>
+                  <p className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t(`serviceFamily.${fam.family}`)}
                   </p>
-                  {g.services.map((s) => (
-                    <Link
-                      key={s.id}
-                      href={`/services/${s.slug}`}
-                      onClick={close}
-                      className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      <DynamicIcon name={s.icon} className="size-4 text-brand" />
-                      {s.title}
-                    </Link>
-                  ))}
+                  {fam.items.map((item) => {
+                    const ItemIcon = item.icon;
+                    return (
+                      <Link
+                        key={item.labelKey}
+                        href={`/services/${item.slug}`}
+                        onClick={close}
+                        className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        <ItemIcon className="size-4 shrink-0 text-brand" />
+                        {t(`serviceItems.${item.labelKey}`)}
+                      </Link>
+                    );
+                  })}
                 </div>
               ))}
               <Link
