@@ -87,6 +87,41 @@ Résumé :
 
 ---
 
+## 5 bis. Import du contenu (services & FAQ)
+
+Pour pré-remplir Sanity avec **9 services** et **51 FAQ** déjà rédigés
+(fichier `services-content.json` à la racine), utilisez le script d'import :
+
+1. **Générer un token d'écriture Sanity**
+   Rendez-vous sur **https://manage.sanity.io** → sélectionnez votre projet
+   → onglet **API** → **Tokens** → **Add API token**.
+   - Nom : `Import script` (libre)
+   - Permissions : **Editor**
+   - Copiez le token affiché (il ne sera plus visible après).
+
+2. **Coller le token dans `.env.local`**
+   Ouvrez `.env.local` et collez le token sur la ligne :
+   ```env
+   SANITY_API_WRITE_TOKEN="sk..."
+   ```
+
+3. **Lancer l'import**
+   ```bash
+   npm run import-content
+   ```
+
+Le script :
+- supprime les anciennes FAQ (préfixe `faq-`) puis les recrée ;
+- pour chaque service : écrase la version précédente (même slug) et la recrée
+  avec ses descriptions Portable Text, ses avantages, ses caractéristiques et
+  ses références aux FAQ.
+
+> ♻️ **Idempotent** : on peut le relancer autant de fois que nécessaire sans
+> créer de doublons. Les FAQ créées à la main dans Studio (sans le préfixe
+> `faq-`) ne sont pas touchées.
+
+---
+
 ## 6. Mettre le site en ligne (déploiement)
 
 Le guide détaillé pas-à-pas pour Vercel + Sanity sera fourni en **Phase 8**.

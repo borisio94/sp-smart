@@ -1,0 +1,21 @@
+-- ============================================================================
+--  Module Billing — 0005 : Rattachement du PREMIER profil admin
+-- ----------------------------------------------------------------------------
+--  ⚠️ À exécuter MANUELLEMENT après avoir créé l'utilisateur dans
+--     Supabase → Authentication → Users (cf. ACTIONS_PHASE_1.md section 4).
+--  Remplace l'email ci-dessous par celui du compte admin créé.
+--  Ce fichier porte l'extension .template pour NE PAS être appliqué
+--  automatiquement par `supabase db push` (il dépend d'un user existant).
+-- ============================================================================
+
+insert into public.profiles (id, organization_id, full_name, role)
+select
+  u.id,
+  (select id from public.organizations order by created_at asc limit 1),
+  'Administrateur SP Smart',
+  'admin'
+from auth.users u
+where u.email = 'spsmartsarl@gmail.com'   -- ⚠️ adapte l'email si besoin
+on conflict (id) do update
+  set role = 'admin',
+      organization_id = excluded.organization_id;

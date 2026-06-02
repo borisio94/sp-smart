@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import NextLink from "next/link";
 
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/lib/locale";
@@ -102,6 +103,13 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 >
                   {t("privacy")}
                 </Link>
+              </li>
+              <li>
+                {/* Accès espace de gestion (admin billing, hors i18n) :
+                    NextLink et non le Link i18n qui préfixerait /fr|/en. */}
+                <NextLink href="/admin/billing" className="text-white/50 hover:text-white">
+                  {t("adminAccess")}
+                </NextLink>
               </li>
             </ul>
           </nav>

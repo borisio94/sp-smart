@@ -44,3 +44,6 @@ next-env.d.ts
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Fichier SQL de travail (les migrations sources suffisent)
+supabase/_PHASE1_COMPLET.sql

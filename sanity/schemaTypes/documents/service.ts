@@ -99,7 +99,38 @@ export const service = defineType({
       title: "Avantages (FR / EN)",
       type: "array",
       group: "details",
-      of: [{ type: "localeString" }],
+      of: [
+        defineArrayMember({
+          name: "advantageItem",
+          type: "object",
+          title: "Avantage",
+          fields: [
+            defineField({
+              name: "title",
+              title: "Titre (FR / EN)",
+              type: "localeString",
+              validation: (rule) => rule.required(),
+            }),
+            defineField({
+              name: "description",
+              title: "Description (FR / EN)",
+              type: "localeText",
+              validation: (rule) => rule.required(),
+            }),
+            defineField({
+              name: "icon",
+              title: "Icône (nom Lucide, optionnel — ex : shield, zap)",
+              type: "string",
+            }),
+          ],
+          preview: {
+            select: { title: "title.fr", subtitle: "description.fr" },
+            prepare({ title, subtitle }) {
+              return { title: title ?? "(sans titre)", subtitle };
+            },
+          },
+        }),
+      ],
     }),
     defineField({
       name: "faq",

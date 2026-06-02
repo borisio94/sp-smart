@@ -98,7 +98,12 @@ export type ServiceDetail = ServiceCardData & {
   gallery?: (SanityImageRef & { alt?: string })[];
   videoUrl?: string;
   features?: LocaleStr[];
-  advantages?: LocaleStr[];
+  advantages?: {
+    _key?: string;
+    title?: LocaleStr;
+    description?: { fr?: string; en?: string } | null;
+    icon?: string;
+  }[];
   faq?: { _id: string; question?: LocaleStr; answer?: { fr?: string; en?: string } | null }[];
   seo?: SeoData;
 };

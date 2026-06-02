@@ -12,6 +12,7 @@ import type {
   SiteSettings,
   ServiceNavItem,
 } from "../../../../sanity/lib/types";
+import { HeaderShell } from "./header-shell";
 import { Logo } from "./logo";
 import { DesktopNav } from "./desktop-nav";
 import { MobileNav } from "./mobile-nav";
@@ -38,9 +39,12 @@ export async function SiteHeader({ locale }: { locale: string }) {
   }));
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <Container className="flex h-16 items-center justify-between gap-4">
-        <Logo settings={settings} />
+    <HeaderShell>
+      <Container className="flex h-16 items-center justify-between gap-4 md:h-20">
+        {/* Logo : marge gauche supplémentaire pour qu'il respire (non collé au bord). */}
+        <div className="flex items-center pl-1 md:pl-2">
+          <Logo settings={settings} />
+        </div>
 
         <DesktopNav services={serviceLinks} />
 
@@ -52,6 +56,6 @@ export async function SiteHeader({ locale }: { locale: string }) {
           <MobileNav services={serviceLinks} />
         </div>
       </Container>
-    </header>
+    </HeaderShell>
   );
 }

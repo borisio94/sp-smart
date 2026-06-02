@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Check } from "lucide-react";
 
 import { pickLocale, pickLocaleBlock } from "@/lib/locale";
 import { youtubeEmbedUrl } from "@/lib/video";
@@ -11,6 +10,8 @@ import { Heading } from "@/components/layout/typography";
 import { ButtonLink } from "@/components/ui/button-link";
 import { SanityImage } from "@/components/sanity-image";
 import { PortableText } from "@/components/portable-text";
+import { DynamicIcon } from "@/components/dynamic-icon";
+import { ServiceRealizationsCount } from "@/components/public/service-realizations-count";
 import { sanityFetch } from "../../../../../../sanity/lib/fetch";
 import {
   serviceBySlugQuery,
@@ -57,6 +58,7 @@ export default async function ServiceDetailPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("Nav");
+  const tDetail = await getTranslations("ServiceDetail");
   const service = await sanityFetch<ServiceDetail | null>(
     serviceBySlugQuery,
     { slug },
@@ -92,6 +94,9 @@ export default async function ServiceDetailPage({
           <p className="mt-4 max-w-2xl text-lg text-white/85">
             {pickLocale(service.shortDescription, locale)}
           </p>
+          <div>
+            <ServiceRealizationsCount serviceSlug={service.slug ?? slug} />
+          </div>
           <ButtonLink
             size="lg"
             variant="secondary"
@@ -140,21 +145,35 @@ export default async function ServiceDetailPage({
           <aside className="space-y-8">
             {service.advantages && service.advantages.length > 0 && (
               <div className="rounded-lg border bg-muted/30 p-6">
-                <h2 className="font-semibold">Avantages</h2>
-                <ul className="mt-4 space-y-2 text-sm">
-                  {service.advantages.map((a, i) => (
-                    <li key={i} className="flex gap-2">
-                      <Check className="mt-0.5 size-4 shrink-0 text-brand" />
-                      {pickLocale(a, locale)}
-                    </li>
-                  ))}
+                <h2 className="font-semibold">{tDetail("advantages")}</h2>
+                <ul className="mt-4 space-y-4">
+                  {service.advantages.map((a, i) => {
+                    const advTitle = pickLocale(a.title, locale);
+                    const advDesc = pickLocale(a.description, locale);
+                    return (
+                      <li key={i} className="flex gap-3">
+                        <DynamicIcon
+                          name={a.icon ?? "check"}
+                          className="mt-0.5 size-5 shrink-0 text-brand"
+                        />
+                        <div>
+                          <h3 className="text-sm font-semibold">{advTitle}</h3>
+                          {advDesc && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {advDesc}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
 
             {service.features && service.features.length > 0 && (
               <div className="rounded-lg border bg-muted/30 p-6">
-                <h2 className="font-semibold">Caractéristiques techniques</h2>
+                <h2 className="font-semibold">{tDetail("features")}</h2>
                 <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                   {service.features.map((f, i) => (
                     <li key={i}>{pickLocale(f, locale)}</li>
@@ -169,7 +188,7 @@ export default async function ServiceDetailPage({
         {service.faq && service.faq.length > 0 && (
           <div className="mt-16 mx-auto max-w-3xl">
             <Heading level={2} className="mb-6 text-center">
-              FAQ
+              {tDetail("faq")}
             </Heading>
             <div className="space-y-3">
               {service.faq.map((item) => (

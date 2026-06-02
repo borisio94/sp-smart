@@ -46,7 +46,9 @@ avant de passer à la phase suivante.** Ne générer aucun code sans validation.
 5. ✅ **Phase 5** — Réalisations, promotions, blog *(terminée)*
 6. ✅ **Phase 6** — Formulaires devis + rendez-vous + contact *(terminée)*
 7. ✅ **Phase 7** — SEO, performances, pages légales *(terminée)*
-8. **Phase 8** — Documentation & déploiement
+8. ✅ **Phase 8** — Documentation & déploiement *(terminée)*
+
+**🎉 PROJET TERMINÉ — les 8 phases sont livrées.**
 
 Schémas Sanity : `siteSettings`, `service`, `realisation`, `temoignage`,
 `promotion`, `article`, `categorieBlog`, `membreEquipe`, `partenaire`,

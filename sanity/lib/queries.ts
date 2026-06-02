@@ -57,7 +57,8 @@ export const serviceBySlugQuery = groq`
     shortDescription, heroImage{asset, alt},
     longDescription,
     gallery[]{asset, alt},
-    videoUrl, features, advantages,
+    videoUrl, features,
+    advantages[]{title, description, icon},
     faq[]->{_id, question, answer},
     seo
   }

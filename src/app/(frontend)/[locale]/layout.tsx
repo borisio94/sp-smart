@@ -100,7 +100,10 @@ export default async function LocaleLayout({
       className={`${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body
+        className="min-h-full flex flex-col bg-background text-foreground"
+        suppressHydrationWarning
+      >
         <JsonLd />
         <NextIntlClientProvider>
           <SiteHeader locale={locale} />

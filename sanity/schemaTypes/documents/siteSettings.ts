@@ -34,7 +34,9 @@ export const siteSettings = defineType({
     }),
     defineField({
       name: "logoDark",
-      title: "Logo (version fond sombre)",
+      title: "Logo blanc (fonds sombres : footer, hero foncé)",
+      description:
+        "Version blanche/claire du logo, utilisée sur les fonds sombres. Le logo principal (couleur) reste pour l'en-tête blanc.",
       type: "image",
       group: "identite",
       options: { hotspot: true },

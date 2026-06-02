@@ -14,6 +14,7 @@ import { WhyUs } from "@/components/home/why-us";
 import { TestimonialsCarousel } from "@/components/home/testimonials-carousel";
 import { PartnersStrip } from "@/components/home/partners-strip";
 import { CtaSection } from "@/components/home/cta-section";
+import { RealizationsCounter } from "@/components/public/realizations-counter";
 import { sanityFetch } from "../../../../sanity/lib/fetch";
 import {
   homePageQuery,
@@ -58,6 +59,7 @@ export default async function HomePage({
       <PromoBanner promotions={promotions} locale={locale} />
       <Hero data={home} locale={locale} />
       <Stats stats={home?.stats ?? []} locale={locale} />
+      <RealizationsCounter locale={locale} />
 
       {/* Services */}
       <Section>

@@ -1,0 +1,492 @@
+"use client";
+
+import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
+
+import { documentSchema, type DocumentInput } from "@/lib/billing/validation";
+import { computeTotals, lineTotal } from "@/lib/billing/compute";
+import {
+  DOCUMENT_TYPES,
+  DOCUMENT_TYPE_LABELS,
+  formatMoney,
+} from "@/lib/billing/format";
+import {
+  createDocument,
+  updateDocument,
+} from "@/app/(admin)/admin/billing/(protected)/documents/actions";
+import type { Client, Category } from "@/lib/billing/types";
+import type { DocumentWithLines } from "@/lib/billing/queries";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+interface Props {
+  clients: Client[];
+  categories: Category[];
+  defaultIssueDate: string;
+  defaultPaymentTerms?: string | null;
+  defaultDeliveryTerms?: string | null;
+  defaultTaxRate?: number;
+  defaultClientId?: string;
+  document?: DocumentWithLines;
+}
+
+/** Construit les valeurs initiales du formulaire (création ou édition). */
+function buildDefaults(props: Props): DocumentInput {
+  const d = props.document;
+  if (d) {
+    return {
+      type: d.type,
+      client_id: d.client_id ?? "",
+      category_id: d.category_id ?? "",
+      issue_date: d.issue_date,
+      validity_date: d.validity_date ?? "",
+      title: d.title ?? "",
+      subject: d.subject ?? "",
+      client_ref: d.client_ref ?? "",
+      body_mode: d.body_mode,
+      body_text: d.body_text ?? "",
+      lines:
+        d.lines.length > 0
+          ? d.lines.map((l) => ({
+              designation: l.designation,
+              unit: l.unit ?? "",
+              quantity: l.quantity,
+              unit_price: l.unit_price,
+            }))
+          : [{ designation: "", unit: "", quantity: 1, unit_price: 0 }],
+      labor_amount: d.labor_amount,
+      discount_amount: d.discount_amount,
+      tax_rate: d.tax_rate ?? 0,
+      payment_terms: d.payment_terms ?? "",
+      delivery_terms: d.delivery_terms ?? "",
+      notes_internes: d.notes_internes ?? "",
+    };
+  }
+  return {
+    type: "devis",
+    client_id: props.defaultClientId ?? "",
+    category_id: "",
+    issue_date: props.defaultIssueDate,
+    validity_date: "",
+    title: "",
+    subject: "",
+    client_ref: "",
+    body_mode: "table",
+    body_text: "",
+    lines: [{ designation: "", unit: "", quantity: 1, unit_price: 0 }],
+    labor_amount: 0,
+    discount_amount: 0,
+    tax_rate: props.defaultTaxRate ?? 0,
+    payment_terms: props.defaultPaymentTerms ?? "",
+    delivery_terms: props.defaultDeliveryTerms ?? "",
+    notes_internes: "",
+  };
+}
+
+const STEPS = ["infos", "client", "body", "totals", "conditions"] as const;
+
+/** Formulaire de création / édition d'un document (parcours multi-étapes). */
+export function DocumentForm(props: Props) {
+  const t = useTranslations("Admin");
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [step, setStep] = useState(0);
+  const isEdit = Boolean(props.document);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm<DocumentInput>({
+    resolver: zodResolver(documentSchema),
+    defaultValues: buildDefaults(props),
+    mode: "onTouched",
+  });
+
+  const { fields, append, remove } = useFieldArray({ control, name: "lines" });
+
+  // Report automatique de la réf client : à la sélection d'un client, on
+  // pré-remplit la « Réf client » avec son code (CLI-2026-0001) si le champ
+  // est encore vide (reste librement modifiable ensuite).
+  const selectedClientId = watch("client_id");
+  useEffect(() => {
+    if (!selectedClientId) return;
+    const current = getValues("client_ref");
+    if (current && current.trim() !== "") return; // ne pas écraser une saisie
+    const ref = props.clients.find((c) => c.id === selectedClientId)?.ref;
+    if (ref) setValue("client_ref", ref);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClientId]);
+
+  // Recalcul live des totaux
+  const watched = watch();
+  const totals = useMemo(
+    () =>
+      computeTotals({
+        body_mode: watched.body_mode,
+        lines: watched.lines ?? [],
+        labor_amount: watched.labor_amount ?? 0,
+        discount_amount: watched.discount_amount ?? 0,
+        tax_rate: watched.tax_rate ?? 0,
+      }),
+    [
+      watched.body_mode,
+      watched.lines,
+      watched.labor_amount,
+      watched.discount_amount,
+      watched.tax_rate,
+    ],
+  );
+
+  function onSubmit(values: DocumentInput) {
+    startTransition(async () => {
+      const res = props.document
+        ? await updateDocument(props.document.id, values)
+        : await createDocument(values);
+      if (res.ok) {
+        toast.success(isEdit ? t("documents.updated") : t("documents.created"));
+        router.push(
+          res.id ? `/admin/billing/documents/${res.id}` : "/admin/billing/documents",
+        );
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  // Affiche la première erreur si la validation échoue.
+  function onInvalid() {
+    toast.error(t("documents.formInvalid"));
+  }
+
+  // Enregistrement EXPLICITE : déclenché UNIQUEMENT par le clic sur le bouton
+  // « Enregistrer » (jamais par la soumission native du <form>). L'utilisateur
+  // garde le contrôle total : aucune sauvegarde automatique.
+  function onSaveClick() {
+    handleSubmit(onSubmit, onInvalid)();
+  }
+
+  const err = (m?: string) =>
+    m ? <p className="mt-1 text-sm text-destructive">{m}</p> : null;
+
+  const bodyMode = watched.body_mode;
+
+  // Le <form> n'a PAS de onSubmit : il ne peut donc jamais se soumettre seul
+  // (ni via Entrée, ni via un bouton). On bloque aussi explicitement la
+  // soumission native par sécurité. Seul onSaveClick (bouton) enregistre.
+  function onFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+  }
+
+  return (
+    <form
+      onSubmit={onFormSubmit}
+      className="max-w-3xl space-y-6"
+      noValidate
+    >
+      {/* Indicateur d'étapes */}
+      <ol className="flex flex-wrap gap-2 text-xs">
+        {STEPS.map((s, i) => (
+          <li key={s}>
+            <button
+              type="button"
+              onClick={() => setStep(i)}
+              className={`rounded-full px-3 py-1 transition-colors ${
+                i === step
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              {i + 1}. {t(`documents.step_${s}`)}
+            </button>
+          </li>
+        ))}
+      </ol>
+
+      {/* Étape 1 — Infos */}
+      <section hidden={step !== 0} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="d-type">{t("documents.type")}</Label>
+            <Select id="d-type" className="mt-1" {...register("type")}>
+              {DOCUMENT_TYPES.map((ty) => (
+                <option key={ty} value={ty}>
+                  {DOCUMENT_TYPE_LABELS[ty]}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="d-category">{t("documents.category")}</Label>
+            <Select id="d-category" className="mt-1" {...register("category_id")}>
+              <option value="">{t("documents.noCategory")}</option>
+              {props.categories
+                .filter((c) => c.active)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name_fr}
+                  </option>
+                ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="d-issue">{t("documents.issueDate")}</Label>
+            <Input id="d-issue" type="date" className="mt-1" {...register("issue_date")} />
+            {err(errors.issue_date?.message)}
+          </div>
+          <div>
+            <Label htmlFor="d-validity">{t("documents.validityDate")}</Label>
+            <Input id="d-validity" type="date" className="mt-1" {...register("validity_date")} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="d-title">{t("documents.docTitle")}</Label>
+            <Input id="d-title" className="mt-1" placeholder={t("documents.titlePlaceholder")} {...register("title")} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="d-subject">{t("documents.subject")}</Label>
+            <Input id="d-subject" className="mt-1" placeholder={t("documents.subjectPlaceholder")} {...register("subject")} />
+          </div>
+        </div>
+      </section>
+
+      {/* Étape 2 — Client */}
+      <section hidden={step !== 1} className="space-y-4">
+        <div>
+          <Label htmlFor="d-client">{t("documents.client")}</Label>
+          <Select id="d-client" className="mt-1 max-w-md" {...register("client_id")}>
+            <option value="">{t("documents.chooseClient")}</option>
+            {props.clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.ref ? `${c.ref} — ${c.name}` : c.name}
+              </option>
+            ))}
+          </Select>
+          {err(errors.client_id?.message)}
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("documents.clientHint")}{" "}
+            <Link
+              href="/admin/billing/clients/nouveau"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              {t("documents.createClientLink")}
+            </Link>
+          </p>
+
+          <div className="mt-4 max-w-md">
+            <Label htmlFor="d-clientref">{t("documents.clientRef")}</Label>
+            <Input
+              id="d-clientref"
+              className="mt-1"
+              placeholder={t("documents.clientRefPlaceholder")}
+              {...register("client_ref")}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Étape 3 — Corps */}
+      <section hidden={step !== 2} className="space-y-4">
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" value="table" {...register("body_mode")} />
+            {t("documents.modeTable")}
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" value="text" {...register("body_mode")} />
+            {t("documents.modeText")}
+          </label>
+        </div>
+
+        {bodyMode === "table" ? (
+          <div className="space-y-3">
+            <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">{t("documents.designation")}</th>
+                    <th className="w-24 px-3 py-2 font-medium">{t("documents.unit")}</th>
+                    <th className="w-20 px-3 py-2 font-medium">{t("documents.quantity")}</th>
+                    <th className="w-32 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
+                    <th className="w-32 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
+                    <th className="w-10 px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map((field, i) => {
+                    const qty = Number(watched.lines?.[i]?.quantity) || 0;
+                    const pu = Number(watched.lines?.[i]?.unit_price) || 0;
+                    return (
+                      <tr key={field.id} className="border-t border-border align-top">
+                        <td className="px-3 py-2">
+                          <Input {...register(`lines.${i}.designation` as const)} />
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input
+                            placeholder={t("documents.unitPlaceholder")}
+                            {...register(`lines.${i}.unit` as const)}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0"
+                            {...register(`lines.${i}.quantity` as const, { valueAsNumber: true })}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            {...register(`lines.${i}.unit_price` as const, { valueAsNumber: true })}
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatMoney(lineTotal(qty, pu))}
+                        </td>
+                        <td className="px-3 py-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => remove(i)}
+                            disabled={fields.length <= 1}
+                            aria-label={t("documents.removeLine")}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {err(errors.lines?.message)}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => append({ designation: "", unit: "", quantity: 1, unit_price: 0 })}
+            >
+              <Plus className="size-4" />
+              {t("documents.addLine")}
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <Label htmlFor="d-body">{t("documents.bodyText")}</Label>
+            <Textarea
+              id="d-body"
+              className="mt-1 min-h-48"
+              placeholder={t("documents.bodyTextPlaceholder")}
+              {...register("body_text")}
+            />
+            {err(errors.body_text?.message)}
+          </div>
+        )}
+      </section>
+
+      {/* Étape 4 — Totaux */}
+      <section hidden={step !== 3} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <Label htmlFor="d-labor">{t("documents.laborAmount")}</Label>
+            <Input id="d-labor" type="number" min="0" className="mt-1" {...register("labor_amount", { valueAsNumber: true })} />
+          </div>
+          <div>
+            <Label htmlFor="d-discount">{t("documents.discountAmount")}</Label>
+            <Input id="d-discount" type="number" min="0" className="mt-1" {...register("discount_amount", { valueAsNumber: true })} />
+          </div>
+          <div>
+            <Label htmlFor="d-tax">{t("documents.taxRate")}</Label>
+            <Input id="d-tax" type="number" step="0.01" min="0" max="100" className="mt-1" {...register("tax_rate", { valueAsNumber: true })} />
+            <p className="mt-1 text-xs text-muted-foreground">{t("documents.taxHint")}</p>
+          </div>
+        </div>
+
+        <div className="ml-auto max-w-xs space-y-1.5 rounded-xl bg-muted/40 p-4 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{t("documents.materialsSubtotal")}</span>
+            <span className="tabular-nums">{formatMoney(totals.materialsSubtotal)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{t("documents.laborAmount")}</span>
+            <span className="tabular-nums">{formatMoney(totals.laborAmount)}</span>
+          </div>
+          {totals.discountAmount > 0 ? (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t("documents.discountAmount")}</span>
+              <span className="tabular-nums text-destructive">- {formatMoney(totals.discountAmount)}</span>
+            </div>
+          ) : null}
+          {totals.taxRate > 0 ? (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {t("documents.tax")} ({totals.taxRate} %)
+              </span>
+              <span className="tabular-nums">{formatMoney(totals.taxAmount)}</span>
+            </div>
+          ) : null}
+          <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
+            <span>{t("documents.totalAmount")}</span>
+            <span className="tabular-nums">{formatMoney(totals.totalAmount)}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Étape 5 — Conditions */}
+      <section hidden={step !== 4} className="space-y-4">
+        <div>
+          <Label htmlFor="d-payterms">{t("documents.paymentTerms")}</Label>
+          <Textarea id="d-payterms" className="mt-1" {...register("payment_terms")} />
+        </div>
+        <div>
+          <Label htmlFor="d-delterms">{t("documents.deliveryTerms")}</Label>
+          <Textarea id="d-delterms" className="mt-1" {...register("delivery_terms")} />
+        </div>
+        <div>
+          <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
+          <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />
+        </div>
+      </section>
+
+      {/* Navigation + soumission */}
+      <div className="flex items-center justify-between border-t border-border pt-4">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
+          disabled={step === 0}
+        >
+          {t("common.previous")}
+        </Button>
+
+        {step < STEPS.length - 1 ? (
+          <Button type="button" onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}>
+            {t("common.next")}
+          </Button>
+        ) : (
+          <Button type="button" onClick={onSaveClick} disabled={pending}>
+            {pending ? t("common.saving") : t("documents.saveDraft")}
+          </Button>
+        )}
+      </div>
+    </form>
+  );
+}

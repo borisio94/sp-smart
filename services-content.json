@@ -1,0 +1,642 @@
+{
+  "$schema": "Contenu d'import pour SP Smart Sarl - généré pour Sanity",
+  "_meta": {
+    "version": "1.0.0",
+    "generatedFor": "SP Smart Sarl - site web Next.js + Sanity",
+    "description": "9 services avec titres FR/EN, descriptions, caractéristiques, avantages (titre+description), FAQ. Les FAQ sont importées comme documents séparés puis référencées par les services.",
+    "importOrder": "1) FAQ d'abord (pour obtenir leurs IDs), 2) Services ensuite avec références aux FAQ créées"
+  },
+  "services": [
+    {
+      "_key": "portails-automatiques",
+      "slug": "portails-automatiques",
+      "icon": "door-open",
+      "order": 1,
+      "title": {
+        "fr": "Automatisation des portails battants et coulissants",
+        "en": "Automatic swing and sliding gates"
+      },
+      "shortDescription": {
+        "fr": "Motorisez vos portails battants et coulissants pour un accès confortable, sécurisé et automatisé à votre propriété.",
+        "en": "Motorise your swing and sliding gates for comfortable, secure and automated access to your property."
+      },
+      "longDescription": {
+        "fr": "Profitez d'un confort moderne au quotidien avec nos solutions d'automatisation de portails. SP Smart Sarl installe des motorisations fiables pour portails battants et coulissants, parfaitement adaptées au poids, à la taille et à la configuration de votre entrée. Que vous souhaitiez ouvrir votre portail depuis votre véhicule grâce à une télécommande, depuis votre smartphone via une application dédiée ou avec un digicode, nous concevons une solution sur-mesure. Nos installations intègrent des dispositifs de sécurité avancés : détection d'obstacles, photocellules anti-écrasement, clignotants de signalisation, déverrouillage manuel en cas de coupure. Toutes nos motorisations sont issues de marques reconnues (Nice, Came, FAAC, BFT) et bénéficient de notre garantie ainsi que de notre service après-vente partout au Cameroun.",
+        "en": "Enjoy modern daily comfort with our gate automation solutions. SP Smart Sarl installs reliable motorisation systems for swing and sliding gates, perfectly tailored to the weight, size and configuration of your entrance. Whether you want to open your gate from your vehicle with a remote control, from your smartphone via a dedicated app, or with a keypad, we design a custom solution. Our installations include advanced safety features: obstacle detection, anti-crushing photocells, signalling flashers, manual release in case of power failure. All our motorisation systems come from renowned brands (Nice, Came, FAAC, BFT) and are backed by our warranty and after-sales service throughout Cameroon."
+      },
+      "features": [
+        { "fr": "Motorisation pour portails battants à 1 ou 2 vantaux", "en": "Motorisation for single or double swing gates" },
+        { "fr": "Motorisation pour portails coulissants jusqu'à 1000 kg", "en": "Motorisation for sliding gates up to 1000 kg" },
+        { "fr": "Télécommandes multicanaux (jusqu'à 4 utilisateurs)", "en": "Multi-channel remote controls (up to 4 users)" },
+        { "fr": "Photocellules de sécurité anti-écrasement", "en": "Anti-crushing safety photocells" },
+        { "fr": "Clignotant de signalisation à LED", "en": "LED signalling flasher" },
+        { "fr": "Détection d'obstacles automatique", "en": "Automatic obstacle detection" },
+        { "fr": "Déverrouillage manuel d'urgence", "en": "Manual emergency release" },
+        { "fr": "Pilotage par smartphone (option)", "en": "Smartphone control (optional)" },
+        { "fr": "Digicode ou lecteur de badge (option)", "en": "Keypad or badge reader (optional)" },
+        { "fr": "Interphone vidéo intégrable", "en": "Compatible with video intercom systems" },
+        { "fr": "Batterie de secours en cas de coupure", "en": "Backup battery in case of power outage" },
+        { "fr": "Marques Nice, Came, FAAC, BFT", "en": "Nice, Came, FAAC, BFT brands" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Confort et fluidité", "en": "Comfort and convenience" },
+          "description": { "fr": "Ouvrez et fermez votre portail sans descendre de votre véhicule, par tous les temps.", "en": "Open and close your gate without leaving your vehicle, in any weather." }
+        },
+        {
+          "title": { "fr": "Sécurité renforcée", "en": "Enhanced security" },
+          "description": { "fr": "Portail toujours fermé après passage, dispositifs anti-intrusion et anti-écrasement intégrés.", "en": "Gate always closed after passage, with built-in anti-intrusion and anti-crushing devices." }
+        },
+        {
+          "title": { "fr": "Adapté aux coupures", "en": "Power outage ready" },
+          "description": { "fr": "Batterie de secours et déverrouillage manuel pour ne jamais être bloqué.", "en": "Backup battery and manual release so you are never locked out." }
+        },
+        {
+          "title": { "fr": "Marques de référence", "en": "Reference brands" },
+          "description": { "fr": "Nice, Came, FAAC, BFT — fiabilité éprouvée et pièces détachées disponibles localement.", "en": "Nice, Came, FAAC, BFT — proven reliability with spare parts available locally." }
+        },
+        {
+          "title": { "fr": "Installation soignée", "en": "Professional installation" },
+          "description": { "fr": "Pose par techniciens certifiés, intégration esthétique et travaux de maçonnerie propres.", "en": "Installation by certified technicians, aesthetic integration and clean masonry work." }
+        },
+        {
+          "title": { "fr": "SAV partout au Cameroun", "en": "Nationwide after-sales service" },
+          "description": { "fr": "Maintenance préventive et interventions rapides dans toutes les grandes villes.", "en": "Preventive maintenance and rapid interventions in all major cities." }
+        }
+      ],
+      "faqRefs": ["faq-portails-1", "faq-portails-2", "faq-portails-3", "faq-portails-4", "faq-portails-5", "faq-portails-6"],
+      "seo": {
+        "metaTitle": { "fr": "Automatisation portails Cameroun — SP Smart Sarl", "en": "Gate automation Cameroon — SP Smart Sarl" },
+        "metaDescription": { "fr": "Motorisation de portails battants et coulissants au Cameroun. Installation professionnelle, marques Nice, Came, FAAC. Devis gratuit.", "en": "Swing and sliding gate motorisation in Cameroon. Professional installation, Nice, Came, FAAC brands. Free quote." },
+        "keywords": ["automatisation portail Cameroun", "motorisation portail Yaoundé", "portail coulissant Douala", "Nice Came FAAC Cameroun"]
+      }
+    },
+    {
+      "_key": "volets-grilles",
+      "slug": "volets-et-grilles",
+      "icon": "blinds",
+      "order": 2,
+      "title": {
+        "fr": "Automatisation des volets et grilles",
+        "en": "Automatic shutters and rolling grilles"
+      },
+      "shortDescription": {
+        "fr": "Motorisez vos volets roulants et grilles métalliques pour un confort, une sécurité et une isolation optimisés.",
+        "en": "Motorise your rolling shutters and metal grilles for optimised comfort, security and insulation."
+      },
+      "longDescription": {
+        "fr": "Transformez vos volets et grilles en véritables alliés du confort et de la sécurité. SP Smart Sarl installe des motorisations pour volets roulants, volets battants, grilles métalliques de commerces et rideaux métalliques industriels. Pilotage individuel ou centralisé, programmation horaire, fermeture automatique au coucher du soleil, intégration à un système domotique : nous adaptons la solution à vos besoins. Nos motorisations silencieuses garantissent une utilisation discrète au quotidien, et nos dispositifs de sécurité (détection d'obstacles, blocage anti-soulèvement) protègent efficacement vos ouvertures contre les tentatives d'intrusion. Idéal pour résidences, villas, commerces, entrepôts et locaux industriels.",
+        "en": "Transform your shutters and grilles into true allies of comfort and security. SP Smart Sarl installs motorisation systems for rolling shutters, swing shutters, retail metal grilles and industrial rolling doors. Individual or centralised control, time scheduling, automatic closing at sunset, integration with home automation systems: we tailor the solution to your needs. Our silent motors ensure discreet daily use, and our safety features (obstacle detection, anti-lift locking) effectively protect your openings against intrusion attempts. Ideal for residences, villas, shops, warehouses and industrial premises."
+      },
+      "features": [
+        { "fr": "Motorisation de volets roulants neufs ou existants", "en": "Motorisation of new or existing rolling shutters" },
+        { "fr": "Motorisation de volets battants traditionnels", "en": "Motorisation of traditional swing shutters" },
+        { "fr": "Rideaux métalliques de commerces et entrepôts", "en": "Metal rolling doors for shops and warehouses" },
+        { "fr": "Pilotage individuel ou centralisé", "en": "Individual or centralised control" },
+        { "fr": "Programmation horaire automatique", "en": "Automatic time scheduling" },
+        { "fr": "Capteur crépusculaire (fermeture au coucher du soleil)", "en": "Twilight sensor (closes at sunset)" },
+        { "fr": "Détection d'obstacles", "en": "Obstacle detection" },
+        { "fr": "Blocage anti-soulèvement", "en": "Anti-lift locking" },
+        { "fr": "Pilotage smartphone et assistants vocaux", "en": "Smartphone and voice assistant control" },
+        { "fr": "Compatible domotique (Somfy, Nice, Home Assistant)", "en": "Home automation compatible (Somfy, Nice, Home Assistant)" },
+        { "fr": "Moteurs silencieux", "en": "Silent motors" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Confort quotidien", "en": "Daily comfort" },
+          "description": { "fr": "Plus besoin de manipuler manuellement vos volets, un simple appui suffit.", "en": "No more manual operation, a single press is enough." }
+        },
+        {
+          "title": { "fr": "Sécurité passive", "en": "Passive security" },
+          "description": { "fr": "Vos ouvertures restent verrouillées de manière mécanique, dissuadant les tentatives d'effraction.", "en": "Your openings stay mechanically locked, deterring break-in attempts." }
+        },
+        {
+          "title": { "fr": "Effet présence", "en": "Presence simulation" },
+          "description": { "fr": "Programmez l'ouverture et la fermeture aux heures habituelles, même en votre absence.", "en": "Schedule opening and closing at usual times, even when you're away." }
+        },
+        {
+          "title": { "fr": "Isolation thermique", "en": "Thermal insulation" },
+          "description": { "fr": "Fermeture optimisée selon l'ensoleillement pour limiter la chaleur intérieure et réduire la climatisation.", "en": "Optimised closing based on sunlight to limit indoor heat and reduce air conditioning use." }
+        },
+        {
+          "title": { "fr": "Pilotage centralisé", "en": "Centralised control" },
+          "description": { "fr": "Ouvrez ou fermez tous vos volets en un seul geste depuis votre smartphone ou un écran mural.", "en": "Open or close all your shutters in one tap from your smartphone or a wall panel." }
+        },
+        {
+          "title": { "fr": "Idéal commerces", "en": "Ideal for retail" },
+          "description": { "fr": "Ouverture et fermeture rapides de votre commerce, programmables aux horaires d'activité.", "en": "Fast opening and closing of your shop, programmable to business hours." }
+        }
+      ],
+      "faqRefs": ["faq-volets-1", "faq-volets-2", "faq-volets-3", "faq-volets-4", "faq-volets-5"],
+      "seo": {
+        "metaTitle": { "fr": "Automatisation volets et grilles Cameroun — SP Smart", "en": "Shutter and grille automation Cameroon — SP Smart" },
+        "metaDescription": { "fr": "Motorisation de volets roulants et rideaux métalliques au Cameroun. Confort, sécurité, programmation. Devis gratuit.", "en": "Rolling shutter and metal door motorisation in Cameroon. Comfort, security, scheduling. Free quote." },
+        "keywords": ["volets roulants Cameroun", "rideau métallique Yaoundé", "motorisation volets Douala", "Somfy Cameroun"]
+      }
+    },
+    {
+      "_key": "videosurveillance",
+      "slug": "videosurveillance",
+      "icon": "cctv",
+      "order": 3,
+      "title": {
+        "fr": "Installation de systèmes de vidéosurveillance",
+        "en": "CCTV and video surveillance installation"
+      },
+      "shortDescription": {
+        "fr": "Surveillez vos biens en temps réel grâce à des caméras haute définition, accessibles depuis votre smartphone partout dans le monde.",
+        "en": "Monitor your property in real time with high-definition cameras accessible from your smartphone anywhere in the world."
+      },
+      "longDescription": {
+        "fr": "Gardez un œil sur ce qui vous est cher, où que vous soyez. SP Smart Sarl conçoit et installe des systèmes de vidéosurveillance professionnels pour résidences, entreprises, commerces, écoles, hôtels et institutions au Cameroun. Nous installons des caméras haute définition (HD, 4MP, 4K) intérieures et extérieures, fixes ou motorisées (PTZ), avec vision nocturne infrarouge et résistance aux intempéries. Nos enregistreurs numériques (NVR/DVR) stockent vos images sur disque dur sécurisé, avec accès distant depuis votre smartphone via application dédiée. Détection de mouvement intelligente, alertes en temps réel, reconnaissance de visage et de plaques d'immatriculation, sauvegarde cloud optionnelle : nos solutions combinent puissance, simplicité d'usage et discrétion. Marques de confiance : Hikvision, Dahua, Uniview, Ezviz.",
+        "en": "Keep an eye on what matters to you, wherever you are. SP Smart Sarl designs and installs professional video surveillance systems for residences, businesses, shops, schools, hotels and institutions across Cameroon. We install high-definition cameras (HD, 4MP, 4K) indoor and outdoor, fixed or motorised (PTZ), with infrared night vision and weather resistance. Our network video recorders (NVR/DVR) store your footage on secure hard drives, with remote access from your smartphone via a dedicated app. Smart motion detection, real-time alerts, face and licence plate recognition, optional cloud backup: our solutions combine power, ease of use and discretion. Trusted brands: Hikvision, Dahua, Uniview, Ezviz."
+      },
+      "features": [
+        { "fr": "Caméras HD, 4MP, 4K intérieures et extérieures", "en": "HD, 4MP, 4K indoor and outdoor cameras" },
+        { "fr": "Caméras fixes, dôme et motorisées (PTZ)", "en": "Fixed, dome and motorised (PTZ) cameras" },
+        { "fr": "Vision nocturne infrarouge longue portée", "en": "Long-range infrared night vision" },
+        { "fr": "Boîtiers étanches IP66/IP67 (résistants aux intempéries)", "en": "IP66/IP67 weatherproof housings" },
+        { "fr": "Enregistreurs NVR/DVR avec disque dur sécurisé", "en": "NVR/DVR recorders with secure hard drive" },
+        { "fr": "Accès distant smartphone via application dédiée", "en": "Remote smartphone access via dedicated app" },
+        { "fr": "Détection de mouvement intelligente", "en": "Smart motion detection" },
+        { "fr": "Notifications push en temps réel", "en": "Real-time push notifications" },
+        { "fr": "Reconnaissance faciale et de plaques (option)", "en": "Face and licence plate recognition (optional)" },
+        { "fr": "Sauvegarde cloud optionnelle", "en": "Optional cloud backup" },
+        { "fr": "Câblage discret et installation soignée", "en": "Discreet wiring and professional installation" },
+        { "fr": "Onduleur intégré (continuité en cas de coupure)", "en": "Integrated UPS (continuity during power outages)" },
+        { "fr": "Marques Hikvision, Dahua, Uniview, Ezviz", "en": "Hikvision, Dahua, Uniview, Ezviz brands" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Surveillance 24h/24", "en": "24/7 monitoring" },
+          "description": { "fr": "Vos caméras enregistrent en continu, jour et nuit, par tous les temps.", "en": "Your cameras record continuously, day and night, in any weather." }
+        },
+        {
+          "title": { "fr": "Accès distant", "en": "Remote access" },
+          "description": { "fr": "Visualisez vos caméras en direct depuis votre smartphone, où que vous soyez dans le monde.", "en": "View your cameras live from your smartphone, anywhere in the world." }
+        },
+        {
+          "title": { "fr": "Qualité d'image professionnelle", "en": "Professional image quality" },
+          "description": { "fr": "Caméras HD à 4K avec vision nocturne nette, pour identifier visages et plaques sans ambiguïté.", "en": "HD to 4K cameras with sharp night vision, identifying faces and plates without ambiguity." }
+        },
+        {
+          "title": { "fr": "Alertes intelligentes", "en": "Smart alerts" },
+          "description": { "fr": "Recevez une notification dès qu'un mouvement est détecté dans une zone sensible.", "en": "Receive a notification as soon as movement is detected in a sensitive area." }
+        },
+        {
+          "title": { "fr": "Effet dissuasif", "en": "Strong deterrent effect" },
+          "description": { "fr": "La simple présence visible de caméras décourage la plupart des tentatives d'intrusion.", "en": "The visible presence of cameras alone discourages most intrusion attempts." }
+        },
+        {
+          "title": { "fr": "Stockage sécurisé", "en": "Secure storage" },
+          "description": { "fr": "Vos enregistrements sont conservés localement et, en option, sauvegardés dans le cloud.", "en": "Your recordings are stored locally and, optionally, backed up to the cloud." }
+        }
+      ],
+      "faqRefs": ["faq-cctv-1", "faq-cctv-2", "faq-cctv-3", "faq-cctv-4", "faq-cctv-5", "faq-cctv-6"],
+      "seo": {
+        "metaTitle": { "fr": "Vidéosurveillance Cameroun — Caméras HD 4K | SP Smart", "en": "Video surveillance Cameroon — HD 4K cameras | SP Smart" },
+        "metaDescription": { "fr": "Installation de caméras de vidéosurveillance HD/4K au Cameroun. Accès smartphone, vision nocturne, Hikvision Dahua. Devis gratuit.", "en": "HD/4K CCTV camera installation in Cameroon. Smartphone access, night vision, Hikvision Dahua. Free quote." },
+        "keywords": ["vidéosurveillance Yaoundé", "caméra surveillance Douala", "Hikvision Cameroun", "CCTV Cameroun"]
+      }
+    },
+    {
+      "_key": "securite-incendie",
+      "slug": "securite-incendie",
+      "icon": "flame",
+      "order": 4,
+      "title": {
+        "fr": "Sécurité incendie",
+        "en": "Fire safety systems"
+      },
+      "shortDescription": {
+        "fr": "Détectez et alertez instantanément en cas d'incendie pour protéger vies et biens, conformément aux normes en vigueur.",
+        "en": "Detect and alert instantly in case of fire to protect lives and property, in line with safety standards."
+      },
+      "longDescription": {
+        "fr": "Un incendie peut détruire en quelques minutes ce qui a été construit en plusieurs années. SP Smart Sarl installe des systèmes de sécurité incendie complets pour résidences, entreprises, hôtels, écoles et bâtiments industriels au Cameroun. Nos solutions intègrent détecteurs de fumée optiques, détecteurs de chaleur, détecteurs de monoxyde de carbone, déclencheurs manuels, sirènes d'évacuation puissantes et centrales d'alarme incendie conformes aux normes internationales. En cas de détection, le système alerte immédiatement les occupants, envoie une notification à votre smartphone et peut, en option, contacter automatiquement les pompiers ou un centre de télésurveillance. Nous fournissons aussi extincteurs, blocs autonomes d'éclairage de sécurité (BAES) et plans d'évacuation. Chaque installation est suivie d'une formation à l'évacuation et d'un contrat de maintenance préventive.",
+        "en": "A fire can destroy in minutes what took years to build. SP Smart Sarl installs complete fire safety systems for residences, businesses, hotels, schools and industrial buildings across Cameroon. Our solutions integrate optical smoke detectors, heat detectors, carbon monoxide detectors, manual call points, powerful evacuation sirens and fire alarm control panels compliant with international standards. When detection occurs, the system immediately alerts occupants, sends a notification to your smartphone, and can optionally auto-contact the fire brigade or a remote monitoring centre. We also supply fire extinguishers, emergency lighting units and evacuation plans. Each installation is followed by evacuation training and a preventive maintenance contract."
+      },
+      "features": [
+        { "fr": "Détecteurs de fumée optiques certifiés", "en": "Certified optical smoke detectors" },
+        { "fr": "Détecteurs de chaleur (cuisines, ateliers)", "en": "Heat detectors (kitchens, workshops)" },
+        { "fr": "Détecteurs de monoxyde de carbone", "en": "Carbon monoxide detectors" },
+        { "fr": "Déclencheurs manuels d'alarme (DM)", "en": "Manual call points (MCP)" },
+        { "fr": "Sirènes d'évacuation puissantes (120 dB)", "en": "Powerful evacuation sirens (120 dB)" },
+        { "fr": "Centrale d'alarme incendie conforme aux normes", "en": "Standards-compliant fire alarm control panel" },
+        { "fr": "Notifications smartphone en temps réel", "en": "Real-time smartphone notifications" },
+        { "fr": "Connexion télésurveillance (option)", "en": "Remote monitoring connection (optional)" },
+        { "fr": "Extincteurs (eau, poudre, CO2)", "en": "Fire extinguishers (water, powder, CO2)" },
+        { "fr": "Blocs autonomes d'éclairage de sécurité (BAES)", "en": "Emergency lighting units" },
+        { "fr": "Plans d'évacuation personnalisés", "en": "Customised evacuation plans" },
+        { "fr": "Formation à l'évacuation incluse", "en": "Evacuation training included" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Protection des vies", "en": "Lifesaving protection" },
+          "description": { "fr": "Quelques secondes d'avance peuvent sauver des vies — nos systèmes alertent dès les premières fumées.", "en": "A few seconds head start can save lives — our systems alert at the first signs of smoke." }
+        },
+        {
+          "title": { "fr": "Conformité réglementaire", "en": "Regulatory compliance" },
+          "description": { "fr": "Nos installations respectent les normes internationales exigées pour ERP, hôtels, bureaux et écoles.", "en": "Our installations comply with international standards required for public buildings, hotels, offices and schools." }
+        },
+        {
+          "title": { "fr": "Détection multi-types", "en": "Multi-type detection" },
+          "description": { "fr": "Fumée, chaleur, monoxyde de carbone : couverture complète des risques d'incendie domestiques et professionnels.", "en": "Smoke, heat, carbon monoxide: complete coverage of domestic and professional fire risks." }
+        },
+        {
+          "title": { "fr": "Alerte multicanal", "en": "Multi-channel alert" },
+          "description": { "fr": "Sirènes sur site, notifications smartphone, et alerte automatique aux pompiers en option.", "en": "On-site sirens, smartphone notifications and optional automatic fire brigade alert." }
+        },
+        {
+          "title": { "fr": "Formation incluse", "en": "Training included" },
+          "description": { "fr": "Vos équipes apprennent à utiliser le système et à évacuer rapidement et en sécurité.", "en": "Your teams learn to use the system and to evacuate quickly and safely." }
+        },
+        {
+          "title": { "fr": "Maintenance préventive", "en": "Preventive maintenance" },
+          "description": { "fr": "Contrôles annuels, tests des détecteurs, remplacement des piles — votre système reste opérationnel.", "en": "Annual checks, detector tests, battery replacements — your system stays operational." }
+        }
+      ],
+      "faqRefs": ["faq-incendie-1", "faq-incendie-2", "faq-incendie-3", "faq-incendie-4", "faq-incendie-5"],
+      "seo": {
+        "metaTitle": { "fr": "Sécurité incendie Cameroun — Détection et alarmes | SP Smart", "en": "Fire safety Cameroon — Detection and alarms | SP Smart" },
+        "metaDescription": { "fr": "Installation de systèmes d'alarme incendie au Cameroun. Détecteurs, sirènes, extincteurs, conformité normes. Devis gratuit.", "en": "Fire alarm system installation in Cameroon. Detectors, sirens, extinguishers, standards compliance. Free quote." },
+        "keywords": ["sécurité incendie Cameroun", "alarme incendie Yaoundé", "détecteur fumée Douala", "extincteur Cameroun"]
+      }
+    },
+    {
+      "_key": "anti-intrusion",
+      "slug": "anti-intrusion",
+      "icon": "siren",
+      "order": 5,
+      "title": {
+        "fr": "Systèmes anti-intrusion",
+        "en": "Intrusion alarm systems"
+      },
+      "shortDescription": {
+        "fr": "Protégez votre résidence ou votre entreprise avec un système d'alarme intelligent qui détecte les intrusions et alerte instantanément, 24h/24.",
+        "en": "Protect your home or business with a smart alarm system that detects intrusions and alerts you instantly, 24/7."
+      },
+      "longDescription": {
+        "fr": "Protégez ce qui vous est le plus précieux, 24 heures sur 24. Au Cameroun, la sécurité de votre résidence, de votre entreprise ou de vos biens ne peut plus être laissée au hasard. Chez SP Smart Sarl, nous concevons et installons des systèmes anti-intrusion intelligents, fiables et parfaitement adaptés à votre environnement, capables de détecter la moindre tentative d'effraction et d'alerter instantanément les bonnes personnes, où qu'elles se trouvent. Notre approche commence toujours par une étude approfondie de votre site. Nos experts se déplacent chez vous, identifient les zones sensibles, analysent les points d'accès, étudient vos habitudes de vie ou d'activité, et conçoivent une solution sur-mesure qui combine détecteurs intelligents, centrale de pilotage, sirènes dissuasives intérieures et extérieures, ainsi que notifications instantanées sur votre smartphone. Chaque installation que nous réalisons repose sur des équipements certifiés issus de marques internationalement reconnues — Ajax, Hikvision, Paradox, DSC — choisies pour leur fiabilité éprouvée et leur résistance dans les conditions climatiques camerounaises. Nos systèmes fonctionnent en filaire, en sans-fil ou en mode hybride selon la configuration de votre bâtiment, et continuent de protéger vos biens même en cas de coupure de courant ou de panne réseau grâce à des batteries de secours autonomes et à une transmission GSM 4G indépendante. Plus qu'une simple alarme, nous vous offrons un véritable écosystème de sécurité connecté. En cas d'intrusion, votre système peut déclencher simultanément les sirènes, allumer l'éclairage, activer vos caméras de surveillance pour enregistrer la scène, et vous transmettre une notification en temps réel avec les images de ce qui se passe chez vous. Vous gardez le contrôle total, à tout moment, depuis l'application mobile dédiée — armement à distance, consultation de l'historique, gestion des utilisateurs et des accès.",
+        "en": "Protect what matters most, 24 hours a day. In Cameroon, the security of your home, your business or your assets can no longer be left to chance. At SP Smart Sarl, we design and install smart, reliable anti-intrusion systems perfectly tailored to your environment — capable of detecting the slightest break-in attempt and instantly alerting the right people, wherever they may be. Our approach always begins with a thorough on-site assessment. Our experts visit your premises, identify sensitive areas, analyse entry points, study your daily routines or business activity, and design a custom solution combining intelligent detectors, a central control unit, powerful indoor and outdoor sirens, and real-time notifications sent directly to your smartphone. Every installation we deliver is built on certified equipment from world-renowned brands — Ajax, Hikvision, Paradox, DSC — selected for their proven reliability and their resilience in Cameroonian climatic conditions. Our systems operate in wired, wireless or hybrid mode depending on the layout of your building, and continue to protect your property even during power outages or network failures, thanks to autonomous backup batteries and an independent 4G GSM transmission module. More than just an alarm, we provide a fully connected security ecosystem. In the event of an intrusion, your system can simultaneously trigger the sirens, switch on lighting, activate your surveillance cameras to record the scene, and send you a real-time notification with live footage of what is happening at your property."
+      },
+      "features": [
+        { "fr": "Centrale d'alarme programmable avec partitionnement de zones", "en": "Programmable alarm panel with zone partitioning" },
+        { "fr": "Détecteurs de mouvement infrarouge intérieurs et extérieurs", "en": "Indoor and outdoor infrared motion detectors" },
+        { "fr": "Détecteurs d'ouverture sur portes et fenêtres", "en": "Door and window opening sensors" },
+        { "fr": "Détecteurs de bris de glace", "en": "Glass break detectors" },
+        { "fr": "Sirènes intérieures et extérieures avec flash lumineux", "en": "Indoor and outdoor sirens with flashing strobe" },
+        { "fr": "Clavier de commande et badges d'armement/désarmement", "en": "Control keypad and arm/disarm RFID tags" },
+        { "fr": "Télécommandes individuelles pour chaque utilisateur", "en": "Individual remote controls for each user" },
+        { "fr": "Notifications push, SMS et appels en cas d'alerte", "en": "Push notifications, SMS and call alerts" },
+        { "fr": "Transmission GSM 4G et liaison filaire (double sécurité)", "en": "4G GSM and wired transmission (dual security)" },
+        { "fr": "Batterie de secours autonome jusqu'à 48 heures", "en": "Backup battery with up to 48 hours autonomy" },
+        { "fr": "Application mobile dédiée (armement à distance, historique)", "en": "Dedicated mobile app (remote arming, event history)" },
+        { "fr": "Intégration avec vidéosurveillance et contrôle d'accès", "en": "Integration with CCTV and access control systems" },
+        { "fr": "Système anti-sabotage (détection d'ouverture ou de coupure)", "en": "Anti-tamper protection (housing opening or wire cut detection)" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Étude personnalisée gratuite", "en": "Free personalised assessment" },
+          "description": { "fr": "Nos experts se déplacent sur votre site pour analyser vos besoins réels et concevoir la solution la plus juste, ni surdimensionnée, ni insuffisante.", "en": "Our experts visit your site to analyse your real needs and design the most appropriate solution — never oversized, never insufficient." }
+        },
+        {
+          "title": { "fr": "Équipements certifiés", "en": "Certified equipment" },
+          "description": { "fr": "Matériel issu de marques internationalement reconnues (Ajax, Hikvision, Paradox, DSC), sélectionné pour sa fiabilité.", "en": "Hardware from world-renowned brands (Ajax, Hikvision, Paradox, DSC), selected for reliability." }
+        },
+        {
+          "title": { "fr": "Installation propre et discrète", "en": "Clean and discreet installation" },
+          "description": { "fr": "Câblage invisible, intégration esthétique, travail soigné par des techniciens certifiés.", "en": "Concealed wiring, aesthetic integration, expert work by certified technicians." }
+        },
+        {
+          "title": { "fr": "Formation complète des utilisateurs", "en": "Comprehensive user training" },
+          "description": { "fr": "Nous accompagnons chaque utilisateur jusqu'à la maîtrise totale du système, pour une autonomie au quotidien.", "en": "We train every user until they fully master the system, ensuring complete autonomy." }
+        },
+        {
+          "title": { "fr": "Service après-vente réactif", "en": "Responsive after-sales service" },
+          "description": { "fr": "Équipe technique disponible partout au Cameroun pour la maintenance préventive et les interventions rapides.", "en": "Technical team available throughout Cameroon for preventive maintenance and rapid interventions." }
+        },
+        {
+          "title": { "fr": "Sécurité connectée et intégrée", "en": "Connected and integrated security" },
+          "description": { "fr": "Votre alarme communique avec vos caméras, votre contrôle d'accès et votre éclairage pour une protection globale.", "en": "Your alarm integrates with your cameras, access control and lighting for complete protection." }
+        }
+      ],
+      "faqRefs": ["faq-intrusion-1", "faq-intrusion-2", "faq-intrusion-3", "faq-intrusion-4", "faq-intrusion-5", "faq-intrusion-6", "faq-intrusion-7"],
+      "seo": {
+        "metaTitle": { "fr": "Alarme anti-intrusion Cameroun — Ajax Hikvision | SP Smart", "en": "Intrusion alarm Cameroon — Ajax Hikvision | SP Smart" },
+        "metaDescription": { "fr": "Installation d'alarmes anti-intrusion au Cameroun. Détecteurs, sirènes, GSM, app mobile. Devis gratuit sous 48h.", "en": "Intrusion alarm installation in Cameroon. Detectors, sirens, GSM, mobile app. Free quote within 48h." },
+        "keywords": ["alarme anti-intrusion Cameroun", "système alarme Yaoundé", "Ajax Cameroun", "alarme maison Douala"]
+      }
+    },
+    {
+      "_key": "cloture-electrique",
+      "slug": "cloture-electrique",
+      "icon": "zap",
+      "order": 6,
+      "title": {
+        "fr": "Clôture électrique de sécurité",
+        "en": "Electric security fence"
+      },
+      "shortDescription": {
+        "fr": "Dissuadez et empêchez les intrusions au périmètre de votre propriété avec une clôture électrique haute sécurité, conforme et fiable.",
+        "en": "Deter and prevent intrusions at your property perimeter with a high-security, compliant and reliable electric fence."
+      },
+      "longDescription": {
+        "fr": "La sécurité commence au périmètre. SP Smart Sarl installe des clôtures électriques de sécurité haute performance pour résidences, entrepôts, usines, fermes et sites industriels au Cameroun. Notre principe : créer une barrière dissuasive, douloureuse mais non létale, qui décourage toute tentative d'intrusion avant même qu'elle n'atteigne vos bâtiments. Nos systèmes intègrent un énergiseur certifié (norme internationale CEI 60335-2-76), des câbles à haute tension pulsée, une signalisation réglementaire avec panneaux d'avertissement, et une centrale d'alarme qui détecte instantanément toute coupure, court-circuit ou tentative d'escalade. En cas d'intrusion, alarme sonore, notification smartphone et liaison avec votre système anti-intrusion ou de télésurveillance. La clôture peut être installée en haut d'un mur existant, sur poteaux indépendants, ou en complément d'une clôture grillagée. Installation conforme, sécurisée et formée par nos techniciens certifiés.",
+        "en": "Security begins at the perimeter. SP Smart Sarl installs high-performance electric security fences for residences, warehouses, factories, farms and industrial sites across Cameroon. Our principle: create a deterrent, painful but non-lethal barrier that discourages any intrusion attempt before it even reaches your buildings. Our systems include a certified energiser (international standard IEC 60335-2-76), high-voltage pulsed wires, regulatory signage with warning signs, and an alarm panel that instantly detects any wire cut, short-circuit or climbing attempt. In case of intrusion: audible alarm, smartphone notification and integration with your intrusion alarm or remote monitoring system. The fence can be installed on top of an existing wall, on standalone posts, or in combination with a chain-link fence. Compliant, safe installation by certified and trained technicians."
+      },
+      "features": [
+        { "fr": "Énergiseur certifié norme CEI 60335-2-76", "en": "Energiser certified to IEC 60335-2-76 standard" },
+        { "fr": "Câbles haute tension pulsée (jusqu'à 10 000 V)", "en": "High-voltage pulsed wires (up to 10,000 V)" },
+        { "fr": "Choc dissuasif mais non létal", "en": "Deterrent but non-lethal shock" },
+        { "fr": "Détection de coupure et de court-circuit", "en": "Wire cut and short-circuit detection" },
+        { "fr": "Centrale d'alarme zoneable", "en": "Zoneable alarm control panel" },
+        { "fr": "Sirène d'alerte intégrée", "en": "Integrated alarm siren" },
+        { "fr": "Notifications smartphone en cas d'alerte", "en": "Smartphone notifications on alert" },
+        { "fr": "Panneaux d'avertissement réglementaires inclus", "en": "Regulatory warning signs included" },
+        { "fr": "Installation sur mur, poteaux ou clôture existante", "en": "Installation on walls, posts or existing fence" },
+        { "fr": "Batterie de secours intégrée", "en": "Integrated backup battery" },
+        { "fr": "Intégration avec système anti-intrusion", "en": "Integration with intrusion alarm system" },
+        { "fr": "Pilotage marche/arrêt par clavier ou télécommande", "en": "On/off control via keypad or remote" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Dissuasion maximale", "en": "Maximum deterrence" },
+          "description": { "fr": "La majorité des intrus abandonnent dès qu'ils voient une clôture électrique signalisée.", "en": "Most intruders give up as soon as they see a signposted electric fence." }
+        },
+        {
+          "title": { "fr": "Protection périmétrique", "en": "Perimeter protection" },
+          "description": { "fr": "L'intrusion est détectée et stoppée avant même d'atteindre votre bâtiment.", "en": "Intrusion is detected and stopped before even reaching your building." }
+        },
+        {
+          "title": { "fr": "Norme internationale", "en": "International standard" },
+          "description": { "fr": "Installation conforme à la norme CEI 60335-2-76 — sécurité garantie pour les personnes.", "en": "Installation compliant with IEC 60335-2-76 — guaranteed safety for people." }
+        },
+        {
+          "title": { "fr": "Alarme intelligente", "en": "Smart alarm" },
+          "description": { "fr": "Notification immédiate en cas de tentative de coupure, escalade ou court-circuit.", "en": "Immediate notification on any cut, climb or short-circuit attempt." }
+        },
+        {
+          "title": { "fr": "Adaptable", "en": "Adaptable" },
+          "description": { "fr": "Installation possible sur murs, poteaux ou clôtures existantes, en intérieur ou extérieur.", "en": "Can be installed on walls, posts or existing fences, indoors or outdoors." }
+        },
+        {
+          "title": { "fr": "Discret et esthétique", "en": "Discreet and aesthetic" },
+          "description": { "fr": "Câbles fins et isolateurs élégants — sécurité maximale, impact visuel minimal.", "en": "Thin wires and elegant insulators — maximum security, minimal visual impact." }
+        }
+      ],
+      "faqRefs": ["faq-cloture-1", "faq-cloture-2", "faq-cloture-3", "faq-cloture-4", "faq-cloture-5"],
+      "seo": {
+        "metaTitle": { "fr": "Clôture électrique sécurité Cameroun — SP Smart", "en": "Electric security fence Cameroon — SP Smart" },
+        "metaDescription": { "fr": "Installation de clôtures électriques de sécurité au Cameroun. Norme internationale, dissuasion maximale, alarme intégrée. Devis gratuit.", "en": "Electric security fence installation in Cameroon. International standard, maximum deterrence, integrated alarm. Free quote." },
+        "keywords": ["clôture électrique Cameroun", "electric fence Yaoundé", "sécurité périmétrique Douala", "clôture sécurité"]
+      }
+    },
+    {
+      "_key": "controle-acces",
+      "slug": "controle-acces",
+      "icon": "fingerprint",
+      "order": 7,
+      "title": {
+        "fr": "Contrôle d'accès et gestion du temps de travail",
+        "en": "Access control and time and attendance management"
+      },
+      "shortDescription": {
+        "fr": "Maîtrisez qui entre, où, quand — et automatisez la gestion des présences de vos collaborateurs avec un système unique.",
+        "en": "Control who enters, where, and when — and automate employee attendance management with a single unified system."
+      },
+      "longDescription": {
+        "fr": "Maîtrisez parfaitement les flux de personnes dans votre entreprise, votre résidence ou votre site sensible. SP Smart Sarl installe des systèmes de contrôle d'accès professionnels qui combinent sécurité d'accès et gestion automatique du temps de travail. Plus besoin de clés perdues, de copies non maîtrisées ou de feuilles de présence manuelles : chaque collaborateur dispose d'un identifiant unique (badge RFID, code, empreinte digitale, reconnaissance faciale ou smartphone) qui lui ouvre uniquement les portes auxquelles il a droit, aux horaires autorisés. Le système enregistre automatiquement chaque passage : entrée/sortie, heures supplémentaires, retards, absences. Les données sont consultables depuis une interface web ou exportables vers votre logiciel de paie. Idéal pour entreprises, hôtels, écoles, bâtiments administratifs, salles serveurs et zones sensibles. Marques de référence : ZKTeco, Hikvision, Suprema, Hid.",
+        "en": "Master the flow of people through your business, residence or sensitive site. SP Smart Sarl installs professional access control systems that combine secure access with automatic time and attendance management. No more lost keys, uncontrolled copies or manual sign-in sheets: each user has a unique identifier (RFID badge, code, fingerprint, facial recognition or smartphone) that opens only the doors they are authorised to use, at authorised hours. The system automatically records every passage: entry/exit, overtime, late arrivals, absences. Data is accessible via a web interface or exportable to your payroll software. Ideal for businesses, hotels, schools, administrative buildings, server rooms and sensitive areas. Reference brands: ZKTeco, Hikvision, Suprema, Hid."
+      },
+      "features": [
+        { "fr": "Badges RFID, codes PIN, biométrie (empreinte, visage)", "en": "RFID badges, PIN codes, biometrics (fingerprint, face)" },
+        { "fr": "Ouverture par smartphone (Bluetooth, NFC)", "en": "Smartphone unlock (Bluetooth, NFC)" },
+        { "fr": "Gestion fine des droits par utilisateur et par porte", "en": "Fine-grained rights per user and per door" },
+        { "fr": "Plages horaires autorisées personnalisables", "en": "Customisable authorised time slots" },
+        { "fr": "Journal complet des passages (qui, où, quand)", "en": "Complete access log (who, where, when)" },
+        { "fr": "Gestion automatique du temps de travail", "en": "Automatic time and attendance management" },
+        { "fr": "Calcul des heures supplémentaires, retards, absences", "en": "Overtime, late arrivals and absence calculation" },
+        { "fr": "Export vers logiciels de paie", "en": "Export to payroll software" },
+        { "fr": "Interface web et application mobile", "en": "Web interface and mobile app" },
+        { "fr": "Gâches électriques, serrures motorisées, tourniquets", "en": "Electric strikes, motorised locks, turnstiles" },
+        { "fr": "Mode visiteur (badge temporaire)", "en": "Visitor mode (temporary badge)" },
+        { "fr": "Intégration avec anti-intrusion et vidéosurveillance", "en": "Integration with intrusion alarm and video surveillance" },
+        { "fr": "Marques ZKTeco, Hikvision, Suprema, Hid", "en": "ZKTeco, Hikvision, Suprema, Hid brands" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Fini les clés perdues", "en": "No more lost keys" },
+          "description": { "fr": "Un badge perdu se désactive en 2 clics — fini les changements de serrures coûteux.", "en": "A lost badge is deactivated in 2 clicks — no more costly lock changes." }
+        },
+        {
+          "title": { "fr": "Traçabilité complète", "en": "Complete traceability" },
+          "description": { "fr": "Vous savez exactement qui est entré, où et à quelle heure — preuves indiscutables en cas de litige.", "en": "You know exactly who entered, where and when — indisputable proof in case of dispute." }
+        },
+        {
+          "title": { "fr": "Gain de temps RH", "en": "HR time savings" },
+          "description": { "fr": "Pointage automatique, calcul des heures et export paie — fini les feuilles de présence manuelles.", "en": "Automatic clocking, hours calculation and payroll export — no more manual sign-in sheets." }
+        },
+        {
+          "title": { "fr": "Sécurité multi-niveaux", "en": "Multi-level security" },
+          "description": { "fr": "Définissez des zones sensibles accessibles uniquement à certains profils, à certaines heures.", "en": "Define sensitive zones accessible only to certain profiles, at certain hours." }
+        },
+        {
+          "title": { "fr": "Biométrie infalsifiable", "en": "Tamper-proof biometrics" },
+          "description": { "fr": "Empreinte digitale ou reconnaissance faciale — impossible à prêter, à voler ou à copier.", "en": "Fingerprint or facial recognition — cannot be lent, stolen or copied." }
+        },
+        {
+          "title": { "fr": "Évolutif", "en": "Scalable" },
+          "description": { "fr": "Démarrez avec quelques portes et étendez progressivement à tout votre bâtiment ou parc de sites.", "en": "Start with a few doors and progressively extend to your entire building or multi-site network." }
+        }
+      ],
+      "faqRefs": ["faq-acces-1", "faq-acces-2", "faq-acces-3", "faq-acces-4", "faq-acces-5", "faq-acces-6"],
+      "seo": {
+        "metaTitle": { "fr": "Contrôle d'accès et pointage Cameroun — SP Smart", "en": "Access control and time attendance Cameroon — SP Smart" },
+        "metaDescription": { "fr": "Contrôle d'accès professionnel au Cameroun : badges, biométrie, gestion du temps de travail. ZKTeco, Hikvision. Devis gratuit.", "en": "Professional access control in Cameroon: badges, biometrics, time attendance. ZKTeco, Hikvision. Free quote." },
+        "keywords": ["contrôle d'accès Cameroun", "pointage biométrique Yaoundé", "ZKTeco Cameroun", "gestion temps travail Douala"]
+      }
+    },
+    {
+      "_key": "electricite-domestique",
+      "slug": "electricite-domestique",
+      "icon": "plug-zap",
+      "order": 8,
+      "title": {
+        "fr": "Électricité domestique et industrielle",
+        "en": "Domestic and industrial electrical works"
+      },
+      "shortDescription": {
+        "fr": "Installations électriques neuves, rénovations et mises aux normes pour résidences, commerces et industries — réalisées dans les règles de l'art.",
+        "en": "New installations, renovations and compliance upgrades for homes, businesses and industry — carried out to the highest standards."
+      },
+      "longDescription": {
+        "fr": "Une installation électrique fiable est la base de tout : sans courant, rien ne fonctionne. SP Smart Sarl réalise vos installations électriques neuves, vos rénovations et vos mises aux normes pour résidences, villas, commerces, bureaux et bâtiments industriels au Cameroun. Notre équipe d'électriciens certifiés intervient sur l'ensemble du cycle : étude des besoins, plans d'installation, tableau électrique principal et divisionnaires, câblage prises et éclairage, mise à la terre, protections différentielles, parafoudre, onduleurs et groupes électrogènes. Nous intégrons aussi les solutions modernes : éclairage LED basse consommation, détecteurs de présence, gradateurs, prises connectées et installations domotiques (KNX, Home Assistant). Chaque chantier est livré avec un schéma électrique à jour, un certificat de conformité et une garantie sur les travaux.",
+        "en": "A reliable electrical installation is the foundation of everything: without power, nothing works. SP Smart Sarl carries out new electrical installations, renovations and compliance upgrades for residences, villas, shops, offices and industrial buildings across Cameroon. Our certified electricians cover the full cycle: needs assessment, installation drawings, main and sub distribution panels, socket and lighting wiring, earthing, RCDs, surge protection, UPS and generators. We also integrate modern solutions: low-consumption LED lighting, presence detectors, dimmers, smart sockets and home automation (KNX, Home Assistant). Each project is delivered with up-to-date electrical drawings, a certificate of compliance and a warranty on the work."
+      },
+      "features": [
+        { "fr": "Installations électriques neuves complètes", "en": "Complete new electrical installations" },
+        { "fr": "Rénovation et mise aux normes", "en": "Renovation and compliance upgrades" },
+        { "fr": "Tableaux électriques principaux et divisionnaires", "en": "Main and sub distribution panels" },
+        { "fr": "Câblage prises de courant et éclairage", "en": "Socket and lighting wiring" },
+        { "fr": "Mise à la terre et liaisons équipotentielles", "en": "Earthing and equipotential bonding" },
+        { "fr": "Disjoncteurs différentiels et protections", "en": "RCDs and protective devices" },
+        { "fr": "Parafoudre et protection contre les surtensions", "en": "Surge protection devices" },
+        { "fr": "Éclairage LED basse consommation", "en": "Low-consumption LED lighting" },
+        { "fr": "Détecteurs de présence et gradateurs", "en": "Presence detectors and dimmers" },
+        { "fr": "Installation onduleurs (UPS) et groupes électrogènes", "en": "UPS and generator installation" },
+        { "fr": "Domotique KNX, Home Assistant", "en": "Home automation: KNX, Home Assistant" },
+        { "fr": "Plans électriques et certificat de conformité fournis", "en": "Electrical drawings and compliance certificate provided" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Sécurité avant tout", "en": "Safety first" },
+          "description": { "fr": "Installation aux normes avec protections différentielles, mise à la terre et parafoudre pour éviter incendies et électrocutions.", "en": "Standards-compliant installation with RCDs, earthing and surge protection to prevent fires and electrocution." }
+        },
+        {
+          "title": { "fr": "Électriciens certifiés", "en": "Certified electricians" },
+          "description": { "fr": "Notre équipe est formée et certifiée — chaque chantier est livré avec un certificat de conformité.", "en": "Our team is trained and certified — every project comes with a compliance certificate." }
+        },
+        {
+          "title": { "fr": "Économies d'énergie", "en": "Energy savings" },
+          "description": { "fr": "Éclairage LED, détecteurs de présence et gradateurs réduisent considérablement votre facture.", "en": "LED lighting, presence detectors and dimmers significantly reduce your bill." }
+        },
+        {
+          "title": { "fr": "Continuité électrique", "en": "Electrical continuity" },
+          "description": { "fr": "Onduleurs et groupes électrogènes garantissent vos équipements critiques même en cas de coupure ENEO.", "en": "UPS and generators keep your critical equipment running even during power outages." }
+        },
+        {
+          "title": { "fr": "Prêt pour la domotique", "en": "Smart-home ready" },
+          "description": { "fr": "Installation pensée pour évoluer vers la domotique : KNX, Home Assistant, prises connectées.", "en": "Installation designed to evolve toward home automation: KNX, Home Assistant, smart sockets." }
+        },
+        {
+          "title": { "fr": "Travail propre et soigné", "en": "Clean and tidy work" },
+          "description": { "fr": "Saignées, passages de câbles et finitions réalisés proprement — votre intérieur reste respecté.", "en": "Cable chases, runs and finishes done cleanly — your interior is respected." }
+        }
+      ],
+      "faqRefs": ["faq-elec-1", "faq-elec-2", "faq-elec-3", "faq-elec-4", "faq-elec-5"],
+      "seo": {
+        "metaTitle": { "fr": "Électricité domestique et industrielle Cameroun — SP Smart", "en": "Domestic and industrial electrical works Cameroon — SP Smart" },
+        "metaDescription": { "fr": "Installations électriques neuves, rénovations, mises aux normes au Cameroun. Électriciens certifiés. Devis gratuit.", "en": "New electrical installations, renovations, compliance upgrades in Cameroon. Certified electricians. Free quote." },
+        "keywords": ["électricien Cameroun", "installation électrique Yaoundé", "rénovation électrique Douala", "tableau électrique Cameroun"]
+      }
+    },
+    {
+      "_key": "systemes-solaires",
+      "slug": "systemes-solaires",
+      "icon": "sun",
+      "order": 9,
+      "title": {
+        "fr": "Installation de systèmes solaires photovoltaïques",
+        "en": "Solar photovoltaic systems installation"
+      },
+      "shortDescription": {
+        "fr": "Produisez votre propre électricité avec des panneaux solaires fiables, dimensionnés sur-mesure pour vos besoins et votre budget.",
+        "en": "Produce your own electricity with reliable solar panels, custom-sized to your needs and budget."
+      },
+      "longDescription": {
+        "fr": "Réduisez vos factures, gagnez en autonomie et protégez-vous des coupures avec une installation solaire conçue sur-mesure. SP Smart Sarl conçoit, dimensionne et installe des systèmes solaires photovoltaïques complets pour résidences, villas, commerces, fermes et sites isolés au Cameroun. Que vous cherchiez une installation autonome (off-grid) pour un site sans accès au réseau, une installation hybride (avec batteries de stockage et back-up ENEO), ou une installation injectée sur le réseau (le cas échéant selon votre région), nous dimensionnons précisément vos besoins en fonction de votre consommation, votre exposition et votre budget. Nos installations comprennent panneaux solaires haut rendement (mono-cristallins), onduleurs hybrides, batteries lithium ou gel longue durée, structures de fixation résistantes au vent et aux UV, câblage solaire DC/AC, protections, et monitoring à distance via smartphone. Nous fournissons aussi des solutions de chauffe-eau solaire et d'éclairage solaire autonome. Marques de référence : Victron, SMA, Growatt, Pylontech, Huawei.",
+        "en": "Reduce your bills, gain autonomy and protect yourself from power cuts with a custom-designed solar installation. SP Smart Sarl designs, sizes and installs complete photovoltaic solar systems for residences, villas, businesses, farms and remote sites across Cameroon. Whether you need a standalone (off-grid) installation for a site without grid access, a hybrid installation (with battery storage and ENEO backup), or a grid-tied installation (where applicable in your region), we precisely size the system based on your consumption, exposure and budget. Our installations include high-efficiency monocrystalline solar panels, hybrid inverters, long-life lithium or gel batteries, wind and UV-resistant mounting structures, DC/AC solar wiring, protections, and remote smartphone monitoring. We also supply solar water heaters and autonomous solar lighting solutions. Reference brands: Victron, SMA, Growatt, Pylontech, Huawei."
+      },
+      "features": [
+        { "fr": "Étude personnalisée et dimensionnement précis", "en": "Personalised study and precise sizing" },
+        { "fr": "Panneaux mono-cristallins haut rendement (400-550 Wc)", "en": "High-efficiency monocrystalline panels (400-550 Wp)" },
+        { "fr": "Onduleurs hybrides (solaire + réseau + batteries)", "en": "Hybrid inverters (solar + grid + batteries)" },
+        { "fr": "Batteries lithium-ion longue durée (10+ ans)", "en": "Long-life lithium-ion batteries (10+ years)" },
+        { "fr": "Batteries gel ou AGM (option économique)", "en": "Gel or AGM batteries (economy option)" },
+        { "fr": "Structures de fixation résistantes vent/UV", "en": "Wind/UV-resistant mounting structures" },
+        { "fr": "Installation autonome (off-grid) ou hybride", "en": "Off-grid or hybrid installation" },
+        { "fr": "Monitoring à distance via smartphone", "en": "Remote monitoring via smartphone" },
+        { "fr": "Chauffe-eau solaires", "en": "Solar water heaters" },
+        { "fr": "Éclairage solaire autonome (extérieur, voirie)", "en": "Autonomous solar lighting (outdoor, street)" },
+        { "fr": "Protections DC/AC et parafoudre", "en": "DC/AC protections and surge protection" },
+        { "fr": "Marques Victron, SMA, Growatt, Pylontech, Huawei", "en": "Victron, SMA, Growatt, Pylontech, Huawei brands" }
+      ],
+      "advantages": [
+        {
+          "title": { "fr": "Autonomie énergétique", "en": "Energy autonomy" },
+          "description": { "fr": "Produisez votre propre électricité et ne subissez plus les coupures ENEO ni les hausses de tarifs.", "en": "Produce your own electricity and stop suffering ENEO outages and tariff increases." }
+        },
+        {
+          "title": { "fr": "Économies durables", "en": "Lasting savings" },
+          "description": { "fr": "Amortissement typique en 4 à 7 ans, puis électricité quasi gratuite pendant 20+ ans.", "en": "Typical payback in 4 to 7 years, then near-free electricity for 20+ years." }
+        },
+        {
+          "title": { "fr": "Dimensionnement sur-mesure", "en": "Custom sizing" },
+          "description": { "fr": "Nous analysons votre consommation réelle pour ne vendre que ce qui vous est utile, sans surdimensionner.", "en": "We analyse your real consumption to sell only what you actually need, without oversizing." }
+        },
+        {
+          "title": { "fr": "Solution écologique", "en": "Ecological solution" },
+          "description": { "fr": "Réduisez votre empreinte carbone — chaque kWh solaire évite plusieurs kg de CO2.", "en": "Reduce your carbon footprint — every solar kWh avoids several kg of CO2." }
+        },
+        {
+          "title": { "fr": "Continuité d'activité", "en": "Business continuity" },
+          "description": { "fr": "Vos équipements critiques (frigos, serveurs, médical) ne s'arrêtent jamais grâce aux batteries.", "en": "Your critical equipment (fridges, servers, medical) never stops thanks to batteries." }
+        },
+        {
+          "title": { "fr": "Monitoring intelligent", "en": "Smart monitoring" },
+          "description": { "fr": "Suivez en temps réel votre production, consommation et état de batterie depuis votre smartphone.", "en": "Monitor your production, consumption and battery status in real time from your smartphone." }
+        }
+      ],
+      "faqRefs": ["faq-solaire-1", "faq-solaire-2", "faq-solaire-3", "faq-solaire-4", "faq-solaire-5", "faq-solaire-6"],
+      "seo": {
+        "metaTitle": { "fr": "Installation panneaux solaires Cameroun — SP Smart", "en": "Solar panel installation Cameroon — SP Smart" },
+        "metaDescription": { "fr": "Installation de systèmes solaires photovoltaïques au Cameroun. Autonome ou hybride, batteries lithium. Devis gratuit.", "en": "Solar PV system installation in Cameroon. Off-grid or hybrid, lithium batteries. Free quote." },
+        "keywords": ["panneau solaire Cameroun", "installation solaire Yaoundé", "kit solaire Douala", "batterie lithium Cameroun"]
+      }
+    }
+  ],
+  "faqs": [
+    { "_key": "faq-portails-1", "category": "installation", "order": 1, "question": { "fr": "Combien de temps prend l'installation d'une motorisation de portail ?", "en": "How long does a gate motor installation take?" }, "answer": { "fr": "Pour un portail standard, l'installation prend généralement 1 à 2 jours. Cela inclut la pose de la motorisation, le câblage, les photocellules de sécurité et la programmation des télécommandes.", "en": "For a standard gate, installation usually takes 1 to 2 days. This includes the motor, wiring, safety photocells and remote control programming." } },
+    { "_key": "faq-portails-2", "category": "installation", "order": 2, "question": { "fr": "Faut-il refaire les piliers ou la maçonnerie du portail ?", "en": "Do the gate posts or masonry need to be redone?" }, "answer": { "fr": "Pas nécessairement. Nous évaluons sur place la solidité de votre installation existante. Si les piliers sont sains, nous adaptons la motorisation. Sinon, nous effectuons les travaux de renforcement nécessaires.", "en": "Not necessarily. We assess on site whether your existing structure is solid. If posts are sound, we adapt the motor. Otherwise, we carry out the necessary reinforcement work." } },
+    { "_key": "faq-portails-3", "category": "general", "order": 3, "question": { "fr": "Que se passe-t-il en cas de coupure de courant ?", "en": "What happens during a power outage?" }, "answer": { "fr": "Toutes nos motorisations disposent d'un système de déverrouillage manuel d'urgence. En option, une batterie de secours permet de continuer à utiliser le portail automatiquement pendant plusieurs heures.", "en": "All our motors have a manual emergency release. As an option, a backup battery allows continued automatic operation for several hours." } },
+    { "_key": "faq-portails-4", "category": "general", "order": 4, "question": { "fr": "Puis-je ouvrir mon portail depuis mon smartphone ?", "en": "Can I open my gate from my smartphone?" }, "answer": { "fr": "Oui. Nous proposons des modules de connectivité qui permettent de piloter votre portail depuis une application dédiée, en local ou à distance, et de partager l'accès à plusieurs utilisateurs.", "en": "Yes. We offer connectivity modules that let you control your gate from a dedicated app, locally or remotely, and share access with multiple users." } },
+    { "_key": "faq-portails-5", "category": "maintenance", "order": 5, "question": { "fr": "Combien de télécommandes peut-on programmer ?", "en": "How many remote controls can be programmed?" }, "answer": { "fr": "Selon le modèle de motorisation, on peut programmer entre 10 et 100 télécommandes. Chaque télécommande peut être désactivée individuellement en cas de perte.", "en": "Depending on the motor model, you can program between 10 and 100 remotes. Each can be deactivated individually if lost." } },
+    { "_key": "faq-portails-6", "category": "devis", "order": 6, "question": { "fr": "Proposez-vous une garantie ?", "en": "Do you offer a warranty?" }, "answer": { "fr": "Oui, nos motorisations sont garanties 2 ans sur le matériel et la main-d'œuvre, avec extension possible via nos contrats de maintenance.", "en": "Yes, our motorisations come with a 2-year warranty on equipment and labour, with extension available through maintenance contracts." } },
+    { "_key": "faq-volets-1", "category": "installation", "order": 1, "question": { "fr": "Peut-on motoriser des volets existants ?", "en": "Can existing shutters be motorised?" }, "answer": { "fr": "Oui, dans la grande majorité des cas. Nous installons des moteurs adaptés à vos volets actuels, qu'ils soient roulants ou battants, sans avoir à les remplacer.", "en": "Yes, in most cases. We install motors adapted to your existing shutters, whether rolling or swing, without needing to replace them." } },
+    { "_key": "faq-volets-2", "category": "general", "order": 2, "question": { "fr": "Les moteurs sont-ils bruyants ?", "en": "Are the motors noisy?" }, "answer": { "fr": "Non. Nous installons des moteurs récents conçus pour être silencieux. Vous pouvez les utiliser même la nuit sans déranger votre famille ou vos voisins.", "en": "No. We install modern motors designed to be silent. You can use them at night without disturbing family or neighbours." } },
+    { "_key": "faq-volets-3", "category": "general", "order": 3, "question": { "fr": "Peut-on programmer une ouverture automatique le matin ?", "en": "Can shutters open automatically in the morning?" }, "answer": { "fr": "Oui. Nos systèmes permettent une programmation horaire, ou une ouverture/fermeture automatique selon la luminosité (lever et coucher du soleil).", "en": "Yes. Our systems allow time scheduling, or automatic opening/closing based on sunlight (sunrise and sunset)." } },
+    { "_key": "faq-volets-4", "category": "general", "order": 4, "question": { "fr": "Les volets motorisés sont-ils plus sécurisés ?", "en": "Are motorised shutters more secure?" }, "answer": { "fr": "Oui. Le verrouillage mécanique du moteur empêche le soulèvement manuel, contrairement aux volets manuels. C'est un dispositif anti-effraction efficace.", "en": "Yes. The motor's mechanical locking prevents manual lifting, unlike manual shutters. It's an effective anti-burglary device." } },
+    { "_key": "faq-volets-5", "category": "installation", "order": 5, "question": { "fr": "Combien de temps prend l'installation ?", "en": "How long does installation take?" }, "answer": { "fr": "Compter environ 1 à 2 heures par volet roulant existant à motoriser. Pour un commerce avec rideau métallique, prévoir une demi-journée.", "en": "Around 1 to 2 hours per existing rolling shutter to motorise. For a shop with a metal rolling door, plan half a day." } },
+    { "_key": "faq-cctv-1", "category": "general", "order": 1, "question": { "fr": "Combien de caméras me faut-il pour ma maison ?", "en": "How many cameras do I need for my home?" }, "answer": { "fr": "Cela dépend de la taille et de la configuration. En général, 4 à 8 caméras suffisent pour couvrir une villa (entrée, façades, jardin). Nous réalisons une étude gratuite sur site pour vous conseiller au plus juste.", "en": "It depends on size and layout. Generally, 4 to 8 cameras cover a villa (entrance, facades, garden). We provide a free on-site assessment to advise you precisely." } },
+    { "_key": "faq-cctv-2", "category": "general", "order": 2, "question": { "fr": "Combien de temps les enregistrements sont-ils conservés ?", "en": "How long are recordings kept?" }, "answer": { "fr": "Cela dépend de la capacité du disque dur et de la qualité d'enregistrement. Avec un disque de 2 To, comptez entre 15 et 30 jours en enregistrement continu pour 4 caméras HD.", "en": "It depends on hard drive capacity and recording quality. With a 2 TB drive, count 15 to 30 days of continuous recording for 4 HD cameras." } },
+    { "_key": "faq-cctv-3", "category": "general", "order": 3, "question": { "fr": "Puis-je voir mes caméras depuis l'étranger ?", "en": "Can I view my cameras from abroad?" }, "answer": { "fr": "Oui. Une application mobile dédiée vous permet de visualiser vos caméras en direct ou en différé depuis n'importe quel endroit dans le monde, dès que vous avez internet.", "en": "Yes. A dedicated mobile app lets you view your cameras live or in playback from anywhere in the world, as long as you have internet." } },
+    { "_key": "faq-cctv-4", "category": "general", "order": 4, "question": { "fr": "Les caméras fonctionnent-elles la nuit ?", "en": "Do the cameras work at night?" }, "answer": { "fr": "Oui. Nos caméras disposent de vision nocturne infrarouge jusqu'à 30 mètres, et certaines peuvent même produire des images en couleur de nuit grâce à des projecteurs intégrés.", "en": "Yes. Our cameras have infrared night vision up to 30 metres, and some can even produce colour night images thanks to integrated spotlights." } },
+    { "_key": "faq-cctv-5", "category": "installation", "order": 5, "question": { "fr": "Que se passe-t-il en cas de coupure de courant ?", "en": "What happens during a power outage?" }, "answer": { "fr": "Nous installons systématiquement un onduleur qui alimente l'enregistreur et les caméras pendant plusieurs heures en cas de coupure ENEO.", "en": "We systematically install a UPS that powers the recorder and cameras for several hours during ENEO outages." } },
+    { "_key": "faq-cctv-6", "category": "devis", "order": 6, "question": { "fr": "Puis-je ajouter des caméras plus tard ?", "en": "Can I add cameras later?" }, "answer": { "fr": "Bien sûr. Nous dimensionnons l'enregistreur et le câblage pour permettre une extension future sans avoir à tout refaire.", "en": "Of course. We size the recorder and wiring to allow future expansion without redoing everything." } },
+    { "_key": "faq-incendie-1", "category": "general", "order": 1, "question": { "fr": "Quel type de détecteur me faut-il ?", "en": "What type of detector do I need?" }, "answer": { "fr": "Détecteurs de fumée optiques pour les pièces habitées, détecteurs de chaleur pour les cuisines et garages, et détecteurs de monoxyde de carbone près des chaudières ou poêles.", "en": "Optical smoke detectors for living areas, heat detectors for kitchens and garages, and carbon monoxide detectors near boilers or stoves." } },
+    { "_key": "faq-incendie-2", "category": "maintenance", "order": 2, "question": { "fr": "À quelle fréquence faut-il tester le système ?", "en": "How often should the system be tested?" }, "answer": { "fr": "Nous recommandons un test mensuel par l'utilisateur (bouton de test) et une maintenance professionnelle annuelle incluant le test de tous les détecteurs, sirènes et batteries.", "en": "We recommend a monthly user test (test button) and an annual professional maintenance including all detectors, sirens and batteries." } },
+    { "_key": "faq-incendie-3", "category": "general", "order": 3, "question": { "fr": "Le système alerte-t-il automatiquement les pompiers ?", "en": "Does the system automatically alert the fire brigade?" }, "answer": { "fr": "En option, oui. Nous pouvons connecter votre système à un centre de télésurveillance qui alertera les secours en cas de déclenchement confirmé.", "en": "Optionally, yes. We can connect your system to a remote monitoring centre that will alert emergency services on confirmed activation." } },
+    { "_key": "faq-incendie-4", "category": "general", "order": 4, "question": { "fr": "Que faire en cas de fausse alarme ?", "en": "What to do in case of a false alarm?" }, "answer": { "fr": "Le système peut être désarmé immédiatement depuis le clavier ou l'application. Nos techniciens peuvent ajuster la sensibilité des détecteurs pour limiter les déclenchements involontaires.", "en": "The system can be disarmed immediately from the keypad or app. Our technicians can adjust detector sensitivity to limit unintended triggers." } },
+    { "_key": "faq-incendie-5", "category": "general", "order": 5, "question": { "fr": "Est-ce obligatoire pour mon entreprise ?", "en": "Is it mandatory for my business?" }, "answer": { "fr": "Selon le type d'établissement (ERP, hôtel, école, entreprise), la réglementation impose des dispositifs précis. Nous vous accompagnons dans la mise en conformité.", "en": "Depending on the type of establishment (public buildings, hotels, schools, businesses), regulations require specific devices. We support you through compliance." } },
+    { "_key": "faq-intrusion-1", "category": "general", "order": 1, "question": { "fr": "Le système fonctionne-t-il en cas de coupure de courant ?", "en": "Does the system work during a power outage?" }, "answer": { "fr": "Oui. Toutes nos centrales sont équipées d'une batterie de secours qui prend automatiquement le relais et peut alimenter le système pendant 24 à 48 heures, selon la configuration.", "en": "Yes. All our control panels are equipped with a backup battery that automatically takes over and can power the system for 24 to 48 hours, depending on the configuration." } },
+    { "_key": "faq-intrusion-2", "category": "general", "order": 2, "question": { "fr": "Que se passe-t-il en cas de coupure internet ?", "en": "What happens if there is an internet outage?" }, "answer": { "fr": "Nos systèmes intègrent un module GSM 4G indépendant de votre box internet. En cas de coupure réseau, les alertes continuent d'être envoyées via le réseau mobile.", "en": "Our systems include a 4G GSM module independent from your internet box. In case of network failure, alerts continue to be sent through the mobile network." } },
+    { "_key": "faq-intrusion-3", "category": "installation", "order": 3, "question": { "fr": "Combien de temps prend l'installation ?", "en": "How long does the installation take?" }, "answer": { "fr": "Pour une villa standard, comptez entre 1 et 3 jours selon le nombre de zones à couvrir. Pour les bâtiments professionnels, nous planifions l'intervention pour minimiser l'impact sur votre activité.", "en": "For a standard villa, expect 1 to 3 days depending on the number of zones to cover. For commercial buildings, we plan the intervention to minimise impact on your business activity." } },
+    { "_key": "faq-intrusion-4", "category": "general", "order": 4, "question": { "fr": "Puis-je gérer le système depuis mon téléphone ?", "en": "Can I manage the system from my phone?" }, "answer": { "fr": "Absolument. Une application mobile dédiée vous permet d'armer ou désarmer le système à distance, de recevoir les alertes en temps réel et de consulter l'historique des événements.", "en": "Absolutely. A dedicated mobile app lets you arm or disarm the system remotely, receive real-time alerts and review the event history." } },
+    { "_key": "faq-intrusion-5", "category": "general", "order": 5, "question": { "fr": "Les détecteurs peuvent-ils être déclenchés par mon animal de compagnie ?", "en": "Can the detectors be triggered by my pet?" }, "answer": { "fr": "Non. Nous installons des détecteurs « pet immune » qui ignorent les animaux jusqu'à 25 kg, évitant ainsi les fausses alertes.", "en": "No. We install \"pet immune\" detectors that ignore animals up to 25 kg, preventing false alarms." } },
+    { "_key": "faq-intrusion-6", "category": "general", "order": 6, "question": { "fr": "Peut-on l'associer à la vidéosurveillance ?", "en": "Can it be paired with video surveillance?" }, "answer": { "fr": "Oui, et c'est fortement recommandé. En cas de détection, vos caméras peuvent enregistrer automatiquement et vous transmettre les images en temps réel.", "en": "Yes, and we strongly recommend it. When an intrusion is detected, your cameras can automatically record and stream the footage to you in real time." } },
+    { "_key": "faq-intrusion-7", "category": "maintenance", "order": 7, "question": { "fr": "Proposez-vous un contrat de maintenance ?", "en": "Do you offer maintenance contracts?" }, "answer": { "fr": "Oui. Nous proposons des formules de maintenance préventive annuelle incluant le contrôle des détecteurs, le test des batteries et les mises à jour logicielles.", "en": "Yes. We offer annual preventive maintenance packages including detector testing, battery checks and software updates." } },
+    { "_key": "faq-cloture-1", "category": "general", "order": 1, "question": { "fr": "La clôture électrique est-elle dangereuse pour les personnes ?", "en": "Is the electric fence dangerous to people?" }, "answer": { "fr": "Non. Nos installations sont conformes à la norme internationale CEI 60335-2-76, qui garantit un choc dissuasif mais non létal. Les enfants et animaux domestiques peuvent passer à proximité sans danger grave.", "en": "No. Our installations comply with international standard IEC 60335-2-76, which guarantees a deterrent but non-lethal shock. Children and pets can pass nearby without serious risk." } },
+    { "_key": "faq-cloture-2", "category": "general", "order": 2, "question": { "fr": "La clôture est-elle légale au Cameroun ?", "en": "Is the electric fence legal in Cameroon?" }, "answer": { "fr": "Oui, à condition d'être installée selon les normes et signalée par des panneaux d'avertissement réglementaires, fournis et posés par nos soins.", "en": "Yes, provided it is installed to standards and signposted with regulatory warning signs, supplied and installed by us." } },
+    { "_key": "faq-cloture-3", "category": "general", "order": 3, "question": { "fr": "Peut-on l'installer sur un mur existant ?", "en": "Can it be installed on an existing wall?" }, "answer": { "fr": "Oui, c'est même la configuration la plus courante. Nous fixons des isolateurs sur le haut du mur et tendons les câbles. Discret, esthétique et très efficace.", "en": "Yes, it's actually the most common configuration. We attach insulators to the top of the wall and run the wires. Discreet, aesthetic and highly effective." } },
+    { "_key": "faq-cloture-4", "category": "general", "order": 4, "question": { "fr": "Que se passe-t-il si un voleur coupe le câble ?", "en": "What happens if a thief cuts the cable?" }, "answer": { "fr": "Une coupure ou un court-circuit déclenche immédiatement l'alarme et une notification sur votre smartphone. Le système détecte aussi les tentatives d'escalade.", "en": "A cut or short-circuit immediately triggers the alarm and a smartphone notification. The system also detects climbing attempts." } },
+    { "_key": "faq-cloture-5", "category": "maintenance", "order": 5, "question": { "fr": "Que se passe-t-il pendant la pluie ?", "en": "What happens during rain?" }, "answer": { "fr": "Nos équipements sont conçus pour fonctionner par tous les temps. Les isolateurs et l'énergiseur sont étanches. La sensibilité s'ajuste automatiquement.", "en": "Our equipment is designed to operate in any weather. Insulators and energiser are weatherproof. Sensitivity adjusts automatically." } },
+    { "_key": "faq-acces-1", "category": "general", "order": 1, "question": { "fr": "Combien de personnes peut gérer le système ?", "en": "How many people can the system handle?" }, "answer": { "fr": "De quelques dizaines pour une PME à plusieurs milliers pour des grandes entreprises ou multi-sites. Le système est entièrement modulable selon vos besoins.", "en": "From a few dozen for an SME to several thousand for large companies or multi-site setups. The system is fully scalable." } },
+    { "_key": "faq-acces-2", "category": "general", "order": 2, "question": { "fr": "Que se passe-t-il si un employé perd son badge ?", "en": "What happens if an employee loses their badge?" }, "answer": { "fr": "Vous désactivez le badge perdu en 2 clics depuis l'interface, et émettez un nouveau badge pour l'employé. Aucun risque pour la sécurité.", "en": "You deactivate the lost badge in 2 clicks from the interface, and issue a new badge to the employee. No security risk." } },
+    { "_key": "faq-acces-3", "category": "general", "order": 3, "question": { "fr": "La biométrie est-elle fiable et sécurisée ?", "en": "Is biometrics reliable and secure?" }, "answer": { "fr": "Oui. Les lecteurs modernes ont un taux d'erreur extrêmement faible. Les empreintes sont stockées sous forme cryptée (et non en image), ce qui protège la vie privée.", "en": "Yes. Modern readers have extremely low error rates. Fingerprints are stored as encrypted data (not images), protecting privacy." } },
+    { "_key": "faq-acces-4", "category": "general", "order": 4, "question": { "fr": "Peut-on exporter les données vers notre logiciel de paie ?", "en": "Can data be exported to our payroll software?" }, "answer": { "fr": "Oui. Le système génère des rapports exportables (Excel, PDF, CSV) compatibles avec la plupart des logiciels de paie utilisés au Cameroun.", "en": "Yes. The system generates exportable reports (Excel, PDF, CSV) compatible with most payroll software used in Cameroon." } },
+    { "_key": "faq-acces-5", "category": "installation", "order": 5, "question": { "fr": "Faut-il refaire les portes existantes ?", "en": "Do existing doors need to be replaced?" }, "answer": { "fr": "Non, dans la majorité des cas. Nous ajoutons des gâches électriques ou ventouses magnétiques sur les portes actuelles, sans avoir à les changer.", "en": "No, in most cases. We add electric strikes or magnetic locks to current doors, without replacing them." } },
+    { "_key": "faq-acces-6", "category": "general", "order": 6, "question": { "fr": "Peut-on définir des horaires d'accès ?", "en": "Can access hours be defined?" }, "answer": { "fr": "Oui, et de façon très fine. Chaque utilisateur ou groupe peut avoir des plages horaires autorisées différentes, jour par jour, incluant week-ends et jours fériés.", "en": "Yes, very precisely. Each user or group can have different authorised time slots, day by day, including weekends and public holidays." } },
+    { "_key": "faq-elec-1", "category": "installation", "order": 1, "question": { "fr": "Mes installations électriques sont-elles aux normes ?", "en": "Are my electrical installations up to standard?" }, "answer": { "fr": "Nous réalisons un diagnostic gratuit sur place pour identifier les non-conformités (mise à la terre, protections différentielles, sections de câbles) et vous proposons un devis de mise aux normes.", "en": "We carry out a free on-site diagnosis to identify non-conformities (earthing, RCDs, cable sections) and offer a compliance upgrade quote." } },
+    { "_key": "faq-elec-2", "category": "general", "order": 2, "question": { "fr": "Combien de temps prend une rénovation électrique complète ?", "en": "How long does a complete electrical renovation take?" }, "answer": { "fr": "Pour une villa de taille moyenne, comptez 1 à 2 semaines selon l'ampleur. Nous organisons les travaux pour minimiser la gêne et maintenir l'électricité dans les pièces essentielles.", "en": "For a medium villa, plan 1 to 2 weeks depending on scope. We organise work to minimise disruption and keep essential rooms powered." } },
+    { "_key": "faq-elec-3", "category": "general", "order": 3, "question": { "fr": "Pouvez-vous installer un groupe électrogène ou un onduleur ?", "en": "Can you install a generator or UPS?" }, "answer": { "fr": "Oui. Nous installons et raccordons groupes électrogènes (avec inverseur automatique) et onduleurs (UPS) adaptés à vos besoins critiques.", "en": "Yes. We install and connect generators (with automatic transfer switch) and UPS units suited to your critical needs." } },
+    { "_key": "faq-elec-4", "category": "general", "order": 4, "question": { "fr": "Pouvez-vous intégrer la domotique dans mon installation ?", "en": "Can you integrate home automation into my installation?" }, "answer": { "fr": "Absolument. Nous concevons des installations « smart-ready » compatibles avec les protocoles modernes (KNX, Home Assistant, Zigbee) — éclairage, prises, volets, climatisation pilotables depuis votre smartphone.", "en": "Absolutely. We design \"smart-ready\" installations compatible with modern protocols (KNX, Home Assistant, Zigbee) — lighting, sockets, shutters, climate control from your smartphone." } },
+    { "_key": "faq-elec-5", "category": "devis", "order": 5, "question": { "fr": "Fournissez-vous un certificat de conformité ?", "en": "Do you provide a compliance certificate?" }, "answer": { "fr": "Oui. Chaque chantier est livré avec un schéma électrique à jour et un certificat de conformité signé par nos électriciens certifiés.", "en": "Yes. Each project is delivered with up-to-date electrical drawings and a compliance certificate signed by our certified electricians." } },
+    { "_key": "faq-solaire-1", "category": "devis", "order": 1, "question": { "fr": "Combien coûte une installation solaire pour une maison ?", "en": "How much does a solar installation cost for a home?" }, "answer": { "fr": "Cela dépend de votre consommation. Une installation pour une villa standard varie de 2 à 10 millions de FCFA, batteries incluses. Nous réalisons un dimensionnement gratuit pour vous donner un prix précis.", "en": "It depends on your consumption. A standard villa installation ranges from 2 to 10 million FCFA, batteries included. We provide free sizing to give you a precise quote." } },
+    { "_key": "faq-solaire-2", "category": "general", "order": 2, "question": { "fr": "En combien de temps mon installation sera-t-elle amortie ?", "en": "How long until my installation pays for itself?" }, "answer": { "fr": "Typiquement entre 4 et 7 ans selon votre consommation et le coût de l'électricité ENEO. Après amortissement, vous bénéficiez de 15 à 20 ans d'électricité quasi gratuite.", "en": "Typically between 4 and 7 years depending on your consumption and ENEO electricity cost. After payback, you enjoy 15 to 20 years of near-free electricity." } },
+    { "_key": "faq-solaire-3", "category": "general", "order": 3, "question": { "fr": "Puis-je vivre uniquement avec le solaire (sans ENEO) ?", "en": "Can I live entirely on solar (without ENEO)?" }, "answer": { "fr": "Oui, c'est une installation autonome (off-grid) avec batteries dimensionnées pour stocker plusieurs jours d'autonomie. Idéal pour les sites isolés ou pour s'affranchir complètement des coupures.", "en": "Yes, that's an off-grid installation with batteries sized for several days of autonomy. Ideal for remote sites or to fully escape outages." } },
+    { "_key": "faq-solaire-4", "category": "general", "order": 4, "question": { "fr": "Que se passe-t-il par temps couvert ou la nuit ?", "en": "What happens on cloudy days or at night?" }, "answer": { "fr": "Les batteries prennent le relais et alimentent votre installation. Une installation bien dimensionnée garantit la continuité même pendant plusieurs jours nuageux.", "en": "The batteries take over and power your installation. A well-sized system ensures continuity even during several cloudy days." } },
+    { "_key": "faq-solaire-5", "category": "maintenance", "order": 5, "question": { "fr": "Quelle est la durée de vie des panneaux et des batteries ?", "en": "What is the lifespan of panels and batteries?" }, "answer": { "fr": "Les panneaux ont une garantie de production de 25 ans (perte de rendement minime). Les batteries lithium durent 10 à 15 ans, les batteries gel/AGM environ 5 à 8 ans.", "en": "Panels come with a 25-year production warranty (minimal efficiency loss). Lithium batteries last 10 to 15 years, gel/AGM batteries about 5 to 8 years." } },
+    { "_key": "faq-solaire-6", "category": "maintenance", "order": 6, "question": { "fr": "Faut-il entretenir les panneaux solaires ?", "en": "Do solar panels need maintenance?" }, "answer": { "fr": "Très peu. Un nettoyage des panneaux 1 à 2 fois par an (eau claire) et un contrôle annuel des connexions et des batteries suffisent. Nous proposons un contrat de maintenance incluant ces opérations.", "en": "Very little. Cleaning panels 1 to 2 times per year (clean water) and an annual check of connections and batteries is enough. We offer maintenance contracts including these operations." } }
+  ]
+}
