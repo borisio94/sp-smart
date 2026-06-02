@@ -45,14 +45,23 @@ function SidebarBody({
   const t = useTranslations("Admin");
   const pathname = usePathname();
 
+  // Initiale de l'utilisateur pour l'avatar du pied de page.
+  const initial = (userEmail.trim()[0] ?? "?").toUpperCase();
+
   return (
     <>
-      <div className="px-5 py-6">
-        <p className="text-sm font-semibold tracking-tight">SP Smart</p>
-        <p className="text-xs text-muted-foreground">{t("nav.moduleName")}</p>
+      {/* En-tête : monogramme SP + nom du module */}
+      <div className="flex items-center gap-3 px-4 py-5">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
+          SP
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold tracking-tight">SP Smart</p>
+          <p className="truncate text-xs text-muted-foreground">{t("nav.moduleName")}</p>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-0.5 px-3">
         {NAV_ITEMS.map((item) => {
           const active =
             item.href === "/admin/billing"
@@ -64,25 +73,42 @@ function SidebarBody({
               key={item.href}
               href={item.href}
               onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                // min-h-11 ≈ 44px : cible tactile confortable sur mobile.
-                "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
+                // Barre d'accent à gauche (border-l) + min-h-11 (~44px tactile).
+                "group relative flex min-h-11 items-center gap-3 rounded-lg border-l-2 pr-3 pl-2.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              <Icon className="size-4" />
+              {/* Icône dans une pastille */}
+              <span
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-md transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground group-hover:bg-background group-hover:text-foreground",
+                )}
+              >
+                <Icon className="size-4" />
+              </span>
               {t(item.labelKey)}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-border px-3 py-4">
-        <p className="truncate px-3 pb-2 text-xs text-muted-foreground">
-          {userEmail}
-        </p>
+      {/* Pied : avatar (initiale) + email + déconnexion */}
+      <div className="mt-2 border-t border-border px-3 py-4">
+        <div className="mb-3 flex items-center gap-2.5 px-1">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-brand">
+            {initial}
+          </div>
+          <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+            {userEmail}
+          </p>
+        </div>
         <LogoutButton />
       </div>
     </>
