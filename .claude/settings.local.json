@@ -150,7 +150,11 @@
       "Bash(echo \"TSC:$?\")",
       "PowerShell(npx eslint \"src/components/billing/document-form.tsx\" \"src/lib/billing/pdf/DocumentPDF.tsx\" 2>&1 | Select-Object -First 15; Write-Output \"ESLINT_EXIT:$LASTEXITCODE\")",
       "PowerShell(npx eslint \"src/components/billing/document-form.tsx\" 2>&1 | Select-Object -First 20; Write-Output \"DONE\")",
-      "Bash(grep -iE \"_PHASE1_COMPLET|devis_extract|\\\\.docx|\\\\.pdf$\")"
+      "Bash(grep -iE \"_PHASE1_COMPLET|devis_extract|\\\\.docx|\\\\.pdf$\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "PowerShell(npx eslint \"src/components/services/services-tabs.tsx\" \"src/app/\\(frontend\\)/[locale]/services/page.tsx\" 2>&1 | Select-Object -First 12; Write-Output \"ESLINT_EXIT:$LASTEXITCODE\")"
     ]
   }
 }
