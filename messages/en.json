@@ -306,6 +306,12 @@
     "home": "Home",
     "services": "Services",
     "allServices": "All our services",
+    "serviceFamily": {
+      "automation": "Automation",
+      "security": "Security",
+      "energy": "Energy & Electrical",
+      "other": "Other services"
+    },
     "realisations": "Projects",
     "promotions": "Promotions",
     "blog": "Blog",

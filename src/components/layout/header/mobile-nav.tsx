@@ -18,6 +18,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { MAIN_LINKS, SERVICES_ICON, type ServiceLink } from "./nav-links";
+import { groupServices } from "./group-services";
 
 /**
  * Menu mobile (tiroir latéral) — visible sous l'écran large.
@@ -30,6 +31,7 @@ export function MobileNav({ services }: { services: ServiceLink[] }) {
   const [servicesOpen, setServicesOpen] = useState(false);
 
   const close = () => setOpen(false);
+  const groups = groupServices(services);
 
   // Style commun d'un lien de navigation (icône en pastille + libellé).
   const linkClass =
@@ -89,17 +91,24 @@ export function MobileNav({ services }: { services: ServiceLink[] }) {
           </button>
 
           {servicesOpen ? (
-            <div className="mb-1 ml-4 space-y-0.5 border-l border-border pl-3">
-              {services.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/services/${s.slug}`}
-                  onClick={close}
-                  className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <DynamicIcon name={s.icon} className="size-4 text-brand" />
-                  {s.title}
-                </Link>
+            <div className="mb-1 ml-4 space-y-2 border-l border-border pl-3">
+              {groups.map((g) => (
+                <div key={g.key}>
+                  <p className="px-3 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t(`serviceFamily.${g.key}`)}
+                  </p>
+                  {g.services.map((s) => (
+                    <Link
+                      key={s.id}
+                      href={`/services/${s.slug}`}
+                      onClick={close}
+                      className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <DynamicIcon name={s.icon} className="size-4 text-brand" />
+                      {s.title}
+                    </Link>
+                  ))}
+                </div>
               ))}
               <Link
                 href="/services"
