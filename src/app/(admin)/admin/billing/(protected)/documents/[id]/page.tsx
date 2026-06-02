@@ -46,10 +46,10 @@ export default async function DocumentDetailPage({
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <StatusBadge status={doc.status} />
         {doc.type === "facture" ? <PaymentBadge status={doc.payment_status} /> : null}
-        <div className="ml-auto flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:ml-auto sm:gap-3">
           <a
             href={`/admin/billing/documents/${id}/pdf?dl=1`}
-            className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary px-2.5 text-[0.8rem] font-medium text-primary-foreground"
+            className="inline-flex h-9 items-center gap-1 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
           >
             {t("documents.downloadPdf")}
           </a>
@@ -57,7 +57,7 @@ export default async function DocumentDetailPage({
             href={`/admin/billing/documents/${id}/pdf`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-7 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+            className="inline-flex h-9 items-center gap-1 rounded-lg border border-border bg-background px-3 text-sm font-medium hover:bg-muted"
           >
             {t("documents.previewPdf")}
           </a>

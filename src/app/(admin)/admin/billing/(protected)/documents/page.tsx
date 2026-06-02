@@ -116,7 +116,36 @@ export default async function DocumentsPage({
           {t("documents.empty")}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
+        <>
+        {/* Vue mobile : cartes empilées (lisible au doigt, pas de scroll horizontal) */}
+        <ul className="space-y-3 md:hidden">
+          {documents.map((d) => (
+            <li key={d.id} className="rounded-xl ring-1 ring-foreground/10">
+              <AdminLink
+                href={`/admin/billing/documents/${d.id}`}
+                variant="ghost"
+                size="default"
+                className="block h-auto w-full rounded-xl p-4 text-left"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{d.number ?? "—"}</span>
+                  <span className="tabular-nums font-medium">{formatMoney(d.total_amount)}</span>
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {DOCUMENT_TYPE_LABELS[d.type]} · {d.client?.name ?? "—"}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <StatusBadge status={d.status} />
+                  {d.type === "facture" ? <PaymentBadge status={d.payment_status} /> : null}
+                  <span className="ml-auto text-xs text-muted-foreground">{formatDate(d.issue_date)}</span>
+                </div>
+              </AdminLink>
+            </li>
+          ))}
+        </ul>
+
+        {/* Vue desktop : tableau */}
+        <div className="hidden overflow-x-auto rounded-xl ring-1 ring-foreground/10 md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
@@ -160,6 +189,7 @@ export default async function DocumentsPage({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

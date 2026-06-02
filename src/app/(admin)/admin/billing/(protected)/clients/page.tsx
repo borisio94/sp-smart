@@ -40,7 +40,34 @@ export default async function ClientsPage({
           {t("clients.empty")}
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
+        <>
+        {/* Vue mobile : cartes empilées */}
+        <ul className="space-y-3 md:hidden">
+          {clients.map((c) => (
+            <li key={c.id} className="rounded-xl ring-1 ring-foreground/10">
+              <AdminLink
+                href={`/admin/billing/clients/${c.id}`}
+                variant="ghost"
+                size="default"
+                className="block h-auto w-full rounded-xl p-4 text-left"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{c.name}</span>
+                  <Badge tone="neutral">{CLIENT_TYPE_LABELS[c.type]}</Badge>
+                </div>
+                {c.ref ? (
+                  <div className="mt-1 font-mono text-xs text-muted-foreground">{c.ref}</div>
+                ) : null}
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {[c.phone, c.email].filter(Boolean).join(" · ") || "—"}
+                </div>
+              </AdminLink>
+            </li>
+          ))}
+        </ul>
+
+        {/* Vue desktop : tableau */}
+        <div className="hidden overflow-hidden rounded-xl ring-1 ring-foreground/10 md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
@@ -80,6 +107,7 @@ export default async function ClientsPage({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

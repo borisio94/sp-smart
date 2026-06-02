@@ -313,8 +313,10 @@ export function DocumentForm(props: Props) {
 
         {bodyMode === "table" ? (
           <div className="space-y-3">
-            <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
-              <table className="w-full text-sm">
+            {/* Défilement horizontal sur mobile : la saisie reste confortable
+                sans écraser les colonnes (largeur mini garantie). */}
+            <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 font-medium">{t("documents.designation")}</th>

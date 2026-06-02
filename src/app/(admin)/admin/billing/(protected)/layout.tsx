@@ -28,9 +28,9 @@ export default async function BillingProtectedLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col lg:flex-row">
       <AdminSidebar userEmail={user.email ?? ""} />
-      <div className="flex-1 px-6 py-8 lg:px-10">{children}</div>
+      <div className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">{children}</div>
     </div>
   );
 }
