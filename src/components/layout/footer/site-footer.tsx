@@ -4,6 +4,7 @@ import NextLink from "next/link";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/lib/locale";
 import { Container } from "@/components/layout/container";
+import { buildServiceMenu } from "@/components/layout/header/service-menu";
 import { sanityFetch } from "../../../../sanity/lib/fetch";
 import {
   siteSettingsQuery,
@@ -33,6 +34,12 @@ export async function SiteFooter({ locale }: { locale: string }) {
   const companyName = settings?.companyName ?? "SP Smart Sarl";
   const year = new Date().getFullYear();
 
+  // Services du pied : même taxonomie curatée que le menu (familles + branches),
+  // filtrée sur les slugs réellement publiés (anti-404).
+  const serviceMenu = buildServiceMenu(
+    (services ?? []).map((s) => s.slug ?? "").filter(Boolean),
+  );
+
   return (
     <footer className="mt-auto bg-brand-navy text-white">
       <Container className="py-14">
@@ -50,21 +57,30 @@ export async function SiteFooter({ locale }: { locale: string }) {
             </div>
           </div>
 
-          {/* Colonne 2 : services */}
+          {/* Colonne 2 : services (taxonomie curatée, groupée par famille) */}
           <nav aria-label={t("services")}>
             <p className="font-semibold">{t("services")}</p>
-            <ul className="mt-4 space-y-2 text-sm text-white/70">
-              {(services ?? []).map((s) => (
-                <li key={s._id}>
-                  <Link
-                    href={`/services/${s.slug ?? ""}`}
-                    className="hover:text-white"
-                  >
-                    {pickLocale(s.title, locale)}
-                  </Link>
-                </li>
+            <div className="mt-4 space-y-3 text-sm">
+              {serviceMenu.map((fam) => (
+                <div key={fam.family}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                    {tn(`serviceFamily.${fam.family}`)}
+                  </p>
+                  <ul className="mt-1 space-y-1 text-white/70">
+                    {fam.items.map((item) => (
+                      <li key={item.labelKey}>
+                        <Link
+                          href={`/services/${item.slug}`}
+                          className="hover:text-white"
+                        >
+                          {tn(`serviceItems.${item.labelKey}`)}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           </nav>
 
           {/* Colonne 3 : liens utiles */}

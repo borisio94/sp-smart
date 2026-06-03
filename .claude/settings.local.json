@@ -161,7 +161,9 @@
       "PowerShell(npx eslint \"src/components/layout/header/mobile-nav.tsx\" \"src/components/layout/header/nav-links.ts\" \"src/components/layout/header/desktop-nav.tsx\" 2>&1 | Select-Object -First 15; Write-Output \"ESLINT:$LASTEXITCODE\")",
       "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 10; Write-Output \"TSC:$LASTEXITCODE\"; npx eslint \"src/components/layout/header\" 2>&1 | Select-Object -First 15; Write-Output \"ESLINT:$LASTEXITCODE\")",
       "Bash(curl -s \"https://9b9fzjxq.api.sanity.io/v2024-01-01/data/query/production?query=$\\(node -e \"console.log\\(encodeURIComponent\\('*[_type==\\\\\"service\\\\\"]{\\\\\"s\\\\\":slug.current,\\\\\"t\\\\\":title}|order\\(s asc\\)'\\)\\)\"\\)\")",
-      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 12; Write-Output \"TSC:$LASTEXITCODE\"; npx eslint \"src/components/layout/header\" 2>&1 | Select-Object -First 15; Write-Output \"ESLINT:$LASTEXITCODE\")"
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 12; Write-Output \"TSC:$LASTEXITCODE\"; npx eslint \"src/components/layout/header\" 2>&1 | Select-Object -First 15; Write-Output \"ESLINT:$LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 15; Write-Output \"TSC:$LASTEXITCODE\")",
+      "PowerShell(npx eslint \"src/components/services/services-tabs.tsx\" \"src/app/\\(frontend\\)/[locale]/services/page.tsx\" \"src/components/layout/footer/site-footer.tsx\" 2>&1 | Select-Object -First 15; Write-Output \"ESLINT:$LASTEXITCODE\")"
     ]
   }
 }

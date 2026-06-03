@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
+import { pickLocale } from "@/lib/locale";
 import { Section } from "@/components/layout/section";
 import { SectionHeader } from "@/components/layout/section-header";
 import { EmptyState } from "@/components/empty-state";
@@ -35,11 +36,21 @@ export default async function ServicesPage({
     [],
   );
 
+  // Slugs publiés (anti-404) + descriptions courtes indexées par slug,
+  // consommés par les onglets qui suivent la taxonomie curatée du menu.
+  const slugs = services.map((s) => s.slug).filter((s): s is string => Boolean(s));
+  const descriptions: Record<string, string> = {};
+  for (const s of services) {
+    if (s.slug) {
+      descriptions[s.slug] = pickLocale(s.shortDescription, locale) ?? "";
+    }
+  }
+
   return (
     <Section>
       <SectionHeader title={t("services")} />
-      {services.length > 0 ? (
-        <ServicesTabs services={services} locale={locale} cta={tc("readMore")} />
+      {slugs.length > 0 ? (
+        <ServicesTabs slugs={slugs} descriptions={descriptions} cta={tc("readMore")} />
       ) : (
         <EmptyState message="Aucun service publié pour le moment. Ajoutez vos services depuis l'administration (/studio)." />
       )}
