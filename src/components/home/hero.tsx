@@ -26,10 +26,12 @@ export function Hero({ data, locale }: { data: HomePage; locale: string }) {
           width={1920}
           height={1080}
           priority
-          className="absolute inset-0 -z-10 size-full object-cover opacity-40"
+          className="absolute inset-0 -z-10 size-full object-cover"
         />
       )}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-brand-navy/90 to-brand/60" />
+      {/* Voile dégradé : assez sombre à gauche (lisibilité du texte) et plus
+          léger à droite pour laisser l'image de fond bien visible. */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-navy/80 via-brand-navy/45 to-transparent" />
 
       <Container className="py-24 sm:py-32 lg:py-40">
         <div className="max-w-3xl">

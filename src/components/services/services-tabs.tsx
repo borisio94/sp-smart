@@ -18,10 +18,12 @@ import { buildServiceMenu } from "@/components/layout/header/service-menu";
 export function ServicesTabs({
   slugs,
   descriptions,
+  images,
   cta,
 }: {
   slugs: string[];
   descriptions: Record<string, string>;
+  images: Record<string, string>;
   cta: string;
 }) {
   const t = useTranslations("Nav");
@@ -69,27 +71,48 @@ export function ServicesTabs({
         {current.items.map((item) => {
           const Icon = item.icon;
           const desc = descriptions[item.slug];
+          const img = images[item.slug];
+          const label = t(`serviceItems.${item.labelKey}`);
           return (
             <Link
               key={item.labelKey}
               href={`/services/${item.slug}`}
-              className="group flex flex-col rounded-xl bg-card p-5 ring-1 ring-foreground/10 transition hover:shadow-lg hover:ring-brand/30"
+              className="group flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 transition hover:shadow-lg hover:ring-brand/30"
             >
-              <div className="flex size-12 items-center justify-center rounded-lg bg-accent text-brand">
-                <Icon className="size-6" />
+              {/* Image illustrative (ou dégradé de repli avec icône) */}
+              <div className="relative aspect-[3/2] overflow-hidden bg-accent">
+                {img ? (
+                  // Image Sanity pré-résolue (URL). <img> car URL déjà optimisée.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={img}
+                    alt={label}
+                    loading="lazy"
+                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-brand/15 to-accent text-brand">
+                    <Icon className="size-12" />
+                  </div>
+                )}
+                {/* Pastille icône en surimpression */}
+                <div className="absolute left-3 top-3 flex size-9 items-center justify-center rounded-lg bg-background/90 text-brand shadow-sm">
+                  <Icon className="size-5" />
+                </div>
               </div>
-              <h3 className="mt-4 font-semibold">
-                {t(`serviceItems.${item.labelKey}`)}
-              </h3>
-              {desc ? (
-                <p className="mt-1.5 flex-1 text-sm text-muted-foreground">{desc}</p>
-              ) : (
-                <div className="flex-1" />
-              )}
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand">
-                {cta}
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-              </span>
+
+              <div className="flex flex-1 flex-col p-5">
+                <h3 className="font-semibold">{label}</h3>
+                {desc ? (
+                  <p className="mt-1.5 flex-1 text-sm text-muted-foreground">{desc}</p>
+                ) : (
+                  <div className="flex-1" />
+                )}
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand">
+                  {cta}
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
             </Link>
           );
         })}
