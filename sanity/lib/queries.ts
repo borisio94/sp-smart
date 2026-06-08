@@ -32,7 +32,8 @@ export const servicesNavQuery = groq`
 /** Page d'accueil (singleton). */
 export const homePageQuery = groq`
   *[_type == "homePage"][0]{
-    heroTitle, heroSubtitle, heroImage{asset, alt}, heroVideoUrl,
+    heroTitle, heroSubtitle, heroImage{asset, alt},
+    heroImages[]{asset, alt}, heroVideoUrl,
     heroPrimaryCta, heroSecondaryCta,
     stats[]{value, label},
     whyTitle, whyItems[]{icon, title, description},

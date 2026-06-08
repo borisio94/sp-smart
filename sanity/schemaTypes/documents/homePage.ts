@@ -1,4 +1,4 @@
-import { defineType, defineField } from "sanity";
+import { defineType, defineField, defineArrayMember } from "sanity";
 import { HomeIcon } from "@sanity/icons";
 
 /**
@@ -37,10 +37,27 @@ export const homePage = defineType({
     }),
     defineField({
       name: "heroImage",
-      title: "Image de fond",
+      title: "Image de fond (repli)",
+      description:
+        "Utilisée si le diaporama « Images de fond » ci-dessous est vide.",
       type: "image",
       group: "hero",
       options: { hotspot: true },
+    }),
+    defineField({
+      name: "heroImages",
+      title: "Images de fond (diaporama)",
+      description:
+        "Plusieurs images qui défilent automatiquement en fondu. Laisser vide pour n'afficher qu'une seule image (« Image de fond » ci-dessus).",
+      type: "array",
+      group: "hero",
+      of: [
+        defineArrayMember({
+          type: "image",
+          options: { hotspot: true },
+          fields: [{ name: "alt", title: "Texte alternatif", type: "string" }],
+        }),
+      ],
     }),
     defineField({
       name: "heroVideoUrl",

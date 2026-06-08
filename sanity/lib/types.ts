@@ -64,6 +64,7 @@ export type HomePage = {
   heroTitle?: LocaleStr;
   heroSubtitle?: { fr?: string; en?: string } | null;
   heroImage?: SanityImageRef;
+  heroImages?: (SanityImageRef & { alt?: string })[];
   heroVideoUrl?: string;
   heroPrimaryCta?: CtaButton;
   heroSecondaryCta?: CtaButton;
