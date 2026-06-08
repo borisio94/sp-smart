@@ -6,7 +6,7 @@ import { urlForImage } from "../../../../../sanity/lib/image";
 import { Section } from "@/components/layout/section";
 import { SectionHeader } from "@/components/layout/section-header";
 import { EmptyState } from "@/components/empty-state";
-import { ServicesTabs } from "@/components/services/services-tabs";
+import { ServicesShowcase } from "@/components/services/services-showcase";
 import { sanityFetch } from "../../../../../sanity/lib/fetch";
 import { servicesListQuery } from "../../../../../sanity/lib/queries";
 import type { ServiceCardData } from "../../../../../sanity/lib/types";
@@ -54,7 +54,7 @@ export default async function ServicesPage({
     <Section>
       <SectionHeader title={t("services")} />
       {slugs.length > 0 ? (
-        <ServicesTabs
+        <ServicesShowcase
           slugs={slugs}
           descriptions={descriptions}
           images={images}

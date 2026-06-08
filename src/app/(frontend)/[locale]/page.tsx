@@ -5,8 +5,9 @@ import { Section } from "@/components/layout/section";
 import { SectionHeader } from "@/components/layout/section-header";
 import { EmptyState } from "@/components/empty-state";
 import { ButtonLink } from "@/components/ui/button-link";
-import { ServiceCard } from "@/components/services/service-card";
+import { ServicesShowcase } from "@/components/services/services-showcase";
 import { ArticleCard } from "@/components/articles/article-card";
+import { urlForImage } from "../../../../sanity/lib/image";
 import { Hero } from "@/components/home/hero";
 import { PromoBanner } from "@/components/home/promo-banner";
 import { Stats } from "@/components/home/stats";
@@ -54,6 +55,21 @@ export default async function HomePage({
       sanityFetch<Partner[]>(partnersQuery, {}, []),
     ]);
 
+  // Maps slug → image / description, consommées par la vitrine des services
+  // (mise en avant des photos, regroupement par famille).
+  const serviceSlugs = services
+    .map((s) => s.slug)
+    .filter((s): s is string => Boolean(s));
+  const serviceDescriptions: Record<string, string> = {};
+  const serviceImages: Record<string, string> = {};
+  for (const s of services) {
+    if (!s.slug) continue;
+    serviceDescriptions[s.slug] = pickLocale(s.shortDescription, locale) ?? "";
+    if (s.heroImage?.asset?._ref) {
+      serviceImages[s.slug] = urlForImage(s.heroImage).width(600).height(400).url();
+    }
+  }
+
   return (
     <>
       <PromoBanner promotions={promotions} locale={locale} />
@@ -68,16 +84,12 @@ export default async function HomePage({
         />
         {services.length > 0 ? (
           <>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {services.map((s) => (
-                <ServiceCard
-                  key={s._id}
-                  service={s}
-                  locale={locale}
-                  cta={tc("readMore")}
-                />
-              ))}
-            </div>
+            <ServicesShowcase
+              slugs={serviceSlugs}
+              descriptions={serviceDescriptions}
+              images={serviceImages}
+              cta={tc("readMore")}
+            />
             <div className="mt-10 text-center">
               <ButtonLink href="/services">{t("allServices")}</ButtonLink>
             </div>
