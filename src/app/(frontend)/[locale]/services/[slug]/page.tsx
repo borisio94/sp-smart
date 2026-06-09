@@ -127,6 +127,18 @@ export default async function ServiceDetailPage({
               </div>
             )}
 
+            {service.videoFileUrl && (
+              <div className="mt-8 aspect-video overflow-hidden rounded-lg">
+                <video
+                  className="size-full bg-black"
+                  controls
+                  preload="metadata"
+                >
+                  <source src={service.videoFileUrl} />
+                </video>
+              </div>
+            )}
+
             {service.gallery && service.gallery.length > 0 && (
               <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {service.gallery.map((img, i) => (

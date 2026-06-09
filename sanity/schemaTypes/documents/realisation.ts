@@ -56,6 +56,13 @@ export const realisation = defineType({
       type: "url",
     }),
     defineField({
+      name: "video",
+      title: "Vidéo (fichier MP4, optionnel)",
+      description: "Alternative au lien YouTube : un fichier téléversé.",
+      type: "file",
+      options: { accept: "video/mp4,video/webm" },
+    }),
+    defineField({
       name: "featured",
       title: "Mettre en avant",
       type: "boolean",

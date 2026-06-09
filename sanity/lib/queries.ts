@@ -34,9 +34,13 @@ export const homePageQuery = groq`
   *[_type == "homePage"][0]{
     heroTitle, heroSubtitle, heroImage{asset, alt},
     heroImages[]{asset, alt}, heroVideoUrl,
+    "heroVideoUrlFile": heroVideo.asset->url,
     heroPrimaryCta, heroSecondaryCta,
     stats[]{value, label},
     whyTitle, whyItems[]{icon, title, description},
+    presentationTitle, presentationText,
+    "presentationVideoUrl": presentationVideo.asset->url,
+    presentationPoster{asset, alt},
     servicesTitle, testimonialsTitle, blogTitle, partnersTitle,
     ctaTitle, ctaText, ctaButton,
     seo
@@ -58,7 +62,7 @@ export const serviceBySlugQuery = groq`
     shortDescription, heroImage{asset, alt},
     longDescription,
     gallery[]{asset, alt},
-    videoUrl, features,
+    videoUrl, "videoFileUrl": video.asset->url, features,
     advantages[]{title, description, icon},
     faq[]->{_id, question, answer},
     seo
@@ -139,7 +143,7 @@ export const realisationBySlugQuery = groq`
     client, location, date, description,
     beforeImages[]{asset, alt},
     afterImages[]{asset, alt},
-    videoUrl
+    videoUrl, "videoFileUrl": video.asset->url
   }
 `;
 

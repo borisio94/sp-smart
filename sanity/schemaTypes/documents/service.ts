@@ -88,6 +88,14 @@ export const service = defineType({
       group: "media",
     }),
     defineField({
+      name: "video",
+      title: "Vidéo (fichier MP4, optionnel)",
+      description: "Alternative au lien YouTube : un fichier téléversé.",
+      type: "file",
+      group: "media",
+      options: { accept: "video/mp4,video/webm" },
+    }),
+    defineField({
       name: "features",
       title: "Caractéristiques techniques (FR / EN)",
       type: "array",

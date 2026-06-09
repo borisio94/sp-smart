@@ -66,6 +66,13 @@ export type HomePage = {
   heroImage?: SanityImageRef;
   heroImages?: (SanityImageRef & { alt?: string })[];
   heroVideoUrl?: string;
+  /** URL du fichier vidéo de fond téléversé (Sanity). */
+  heroVideoUrlFile?: string;
+  presentationTitle?: LocaleStr;
+  presentationText?: { fr?: string; en?: string } | null;
+  /** URL du fichier vidéo de présentation téléversé (Sanity). */
+  presentationVideoUrl?: string;
+  presentationPoster?: SanityImageRef;
   heroPrimaryCta?: CtaButton;
   heroSecondaryCta?: CtaButton;
   stats?: { value?: string; label?: LocaleStr }[];
@@ -98,6 +105,7 @@ export type ServiceDetail = ServiceCardData & {
   longDescription?: LocaleBlock;
   gallery?: (SanityImageRef & { alt?: string })[];
   videoUrl?: string;
+  videoFileUrl?: string;
   features?: LocaleStr[];
   advantages?: {
     _key?: string;
@@ -183,6 +191,7 @@ export type RealisationDetail = {
   beforeImages?: (SanityImageRef & { alt?: string })[];
   afterImages?: (SanityImageRef & { alt?: string })[];
   videoUrl?: string;
+  videoFileUrl?: string;
 };
 
 export type PromotionFull = {

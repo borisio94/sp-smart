@@ -126,6 +126,14 @@ export default async function RealisationDetailPage({
           />
         </div>
       )}
+
+      {item.videoFileUrl && (
+        <div className="mt-12 aspect-video overflow-hidden rounded-lg">
+          <video className="size-full bg-black" controls preload="metadata">
+            <source src={item.videoFileUrl} />
+          </video>
+        </div>
+      )}
     </Section>
   );
 }

@@ -16,6 +16,7 @@ export const homePage = defineType({
     { name: "hero", title: "Hero", default: true },
     { name: "stats", title: "Chiffres clés" },
     { name: "why", title: "Pourquoi nous" },
+    { name: "presentation", title: "Vidéo de présentation" },
     { name: "sections", title: "Titres de sections" },
     { name: "cta", title: "Appel à l'action" },
     { name: "seo", title: "SEO" },
@@ -60,10 +61,46 @@ export const homePage = defineType({
       ],
     }),
     defineField({
+      name: "heroVideo",
+      title: "Vidéo de fond (fichier MP4)",
+      description:
+        "Si renseignée, cette vidéo (muette, en boucle) remplace le diaporama en fond du hero. Privilégier un fichier court et léger (< 10 Mo).",
+      type: "file",
+      group: "hero",
+      options: { accept: "video/mp4,video/webm" },
+    }),
+    defineField({
       name: "heroVideoUrl",
       title: "Vidéo de fond (URL, optionnel)",
       type: "url",
       group: "hero",
+    }),
+    // --- Vidéo de présentation (section dédiée sur l'accueil) ---
+    defineField({
+      name: "presentationTitle",
+      title: "Titre de la section (FR / EN)",
+      type: "localeString",
+      group: "presentation",
+    }),
+    defineField({
+      name: "presentationText",
+      title: "Texte d'introduction (FR / EN)",
+      type: "localeText",
+      group: "presentation",
+    }),
+    defineField({
+      name: "presentationVideo",
+      title: "Vidéo de présentation (fichier MP4)",
+      type: "file",
+      group: "presentation",
+      options: { accept: "video/mp4,video/webm" },
+    }),
+    defineField({
+      name: "presentationPoster",
+      title: "Image d'aperçu (affichée avant lecture)",
+      type: "image",
+      group: "presentation",
+      options: { hotspot: true },
     }),
     defineField({
       name: "heroPrimaryCta",

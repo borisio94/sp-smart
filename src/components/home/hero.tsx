@@ -36,11 +36,29 @@ export function Hero({ data, locale }: { data: HomePage; locale: string }) {
       alt: img?.alt || title,
     }));
 
+  // Une vidéo de fond (fichier MP4) prend le pas sur le diaporama si fournie.
+  const bgVideo = data?.heroVideoUrlFile;
+  const poster = slides[0]?.url;
+
   return (
     <section className="relative isolate overflow-hidden bg-brand-navy text-white">
-      <HeroSlideshow slides={slides} />
+      {bgVideo ? (
+        <video
+          className="absolute inset-0 -z-10 size-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster={poster}
+          aria-hidden
+        >
+          <source src={bgVideo} />
+        </video>
+      ) : (
+        <HeroSlideshow slides={slides} />
+      )}
       {/* Voile dégradé : assez sombre à gauche (lisibilité du texte) et plus
-          léger à droite pour laisser l'image de fond bien visible. */}
+          léger à droite pour laisser l'image/vidéo de fond bien visible. */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-navy/80 via-brand-navy/45 to-transparent" />
 
       <Container className="py-24 sm:py-32 lg:py-40">

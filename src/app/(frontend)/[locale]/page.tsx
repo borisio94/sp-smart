@@ -9,6 +9,7 @@ import { ServicesShowcase } from "@/components/services/services-showcase";
 import { ArticleCard } from "@/components/articles/article-card";
 import { urlForImage } from "../../../../sanity/lib/image";
 import { Hero } from "@/components/home/hero";
+import { PresentationVideo } from "@/components/home/presentation-video";
 import { PromoBanner } from "@/components/home/promo-banner";
 import { Stats } from "@/components/home/stats";
 import { WhyUs } from "@/components/home/why-us";
@@ -102,6 +103,8 @@ export default async function HomePage({
       </Section>
 
       <WhyUs data={home} locale={locale} />
+
+      <PresentationVideo data={home} locale={locale} />
 
       <TestimonialsCarousel
         testimonials={testimonials}

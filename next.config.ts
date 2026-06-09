@@ -25,6 +25,8 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
       "style-src 'self' 'unsafe-inline' https:",
       "img-src 'self' data: blob: https:",
+      // Vidéos (fichiers MP4 servis depuis le CDN Sanity, blob pour previews)
+      "media-src 'self' data: blob: https:",
       "font-src 'self' data: https:",
       "connect-src 'self' https: wss:",
       "frame-src 'self' https:",
