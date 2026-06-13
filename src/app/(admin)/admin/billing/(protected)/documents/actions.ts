@@ -4,10 +4,14 @@ import { revalidatePath } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/billing/auth";
-import { documentSchema, type DocumentInput } from "@/lib/billing/validation";
+import {
+  documentSchema,
+  customDocumentTypeSchema,
+  type DocumentInput,
+} from "@/lib/billing/validation";
 import { computeTotals, lineTotal } from "@/lib/billing/compute";
 import { canTransition, timestampField } from "@/lib/billing/status-machine";
-import type { DocumentStatus } from "@/lib/billing/types";
+import type { DocumentStatus, CustomDocumentType } from "@/lib/billing/types";
 
 export type ActionResult =
   | { ok: true; id?: string }
@@ -54,7 +58,9 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       created_by: profile.id,
       client_id: v.client_id,
       category_id: nz(v.category_id),
-      type: v.type,
+      // Un type personnalisé est stocké en type="autre" + custom_type_id.
+      type: nz(v.custom_type_id) ? "autre" : v.type,
+      custom_type_id: nz(v.custom_type_id),
       issue_date: v.issue_date,
       validity_date: nz(v.validity_date),
       title: nz(v.title),
@@ -70,6 +76,8 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       total_amount: totals.totalAmount,
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
+      // Forcé côté serveur pour un bon de commande (zone non désactivable).
+      include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
       notes_internes: nz(v.notes_internes),
       status: "brouillon",
     })
@@ -111,7 +119,9 @@ export async function updateDocument(
     .update({
       client_id: v.client_id,
       category_id: nz(v.category_id),
-      type: v.type,
+      // Un type personnalisé est stocké en type="autre" + custom_type_id.
+      type: nz(v.custom_type_id) ? "autre" : v.type,
+      custom_type_id: nz(v.custom_type_id),
       issue_date: v.issue_date,
       validity_date: nz(v.validity_date),
       title: nz(v.title),
@@ -127,6 +137,8 @@ export async function updateDocument(
       total_amount: totals.totalAmount,
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
+      // Forcé côté serveur pour un bon de commande (zone non désactivable).
+      include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
       notes_internes: nz(v.notes_internes),
     })
     .eq("id", id);
@@ -200,6 +212,50 @@ export async function changeDocumentStatus(
   revalidatePath("/admin/billing/documents");
   revalidatePath(`/admin/billing/documents/${id}`);
   return { ok: true, id };
+}
+
+export type CreateCustomTypeResult =
+  | { ok: true; customType: CustomDocumentType }
+  | { ok: false; error: string };
+
+/**
+ * Crée un type de document personnalisé (ex. « Attestation » / « ATT »).
+ * Renvoie l'objet créé pour que le formulaire l'ajoute à la liste et le
+ * sélectionne immédiatement.
+ */
+export async function createCustomType(values: {
+  name: string;
+  prefix: string;
+}): Promise<CreateCustomTypeResult> {
+  const parsed = customDocumentTypeSchema.safeParse(values);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Données invalides." };
+  }
+
+  const profile = await requireProfile();
+  const supabase = await createSupabaseServerClient();
+  const v = parsed.data;
+
+  // Place le nouveau type en fin de liste.
+  const { count } = await supabase
+    .from("document_types")
+    .select("id", { count: "exact", head: true });
+
+  const { data, error } = await supabase
+    .from("document_types")
+    .insert({
+      organization_id: profile.organization_id,
+      name: v.name,
+      prefix: v.prefix,
+      order: (count ?? 0) + 1,
+      active: true,
+    })
+    .select("*")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/billing/documents/nouveau");
+  return { ok: true, customType: data as CustomDocumentType };
 }
 
 /** Supprime un document (les lignes partent en cascade via la FK). */

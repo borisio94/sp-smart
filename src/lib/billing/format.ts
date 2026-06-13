@@ -44,9 +44,10 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   bon_commande: "Bon de commande",
   facture: "Facture",
   recu: "Reçu de paiement",
+  autre: "Autre",
 };
 
-/** Ordre d'affichage des 5 types dans les sélecteurs. */
+/** Types STANDARDS proposés dans le sélecteur (hors « autre », réservé aux types perso). */
 export const DOCUMENT_TYPES: DocumentType[] = [
   "devis",
   "proforma",
@@ -54,6 +55,19 @@ export const DOCUMENT_TYPES: DocumentType[] = [
   "facture",
   "recu",
 ];
+
+/**
+ * Libellé affichable d'un document : nom du type personnalisé s'il existe,
+ * sinon le libellé du type standard. À utiliser partout où l'on affichait
+ * `DOCUMENT_TYPE_LABELS[doc.type]` pour une entité qui porte `custom_type`.
+ */
+export function documentTypeLabel(doc: {
+  type: DocumentType;
+  custom_type?: { name: string | null } | null;
+}): string {
+  const custom = doc.custom_type?.name?.trim();
+  return custom && custom.length > 0 ? custom : DOCUMENT_TYPE_LABELS[doc.type];
+}
 
 /** Libellé lisible d'un statut de document. */
 export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {

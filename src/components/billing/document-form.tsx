@@ -19,8 +19,10 @@ import {
 import {
   createDocument,
   updateDocument,
+  createCustomType,
 } from "@/app/(admin)/admin/billing/(protected)/documents/actions";
-import type { Client, Category } from "@/lib/billing/types";
+import { createCategoryQuick } from "@/app/(admin)/admin/billing/(protected)/parametres/categories/actions";
+import type { Client, Category, CustomDocumentType } from "@/lib/billing/types";
 import type { DocumentWithLines } from "@/lib/billing/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface Props {
   clients: Client[];
   categories: Category[];
+  customTypes: CustomDocumentType[];
   defaultIssueDate: string;
   defaultPaymentTerms?: string | null;
   defaultDeliveryTerms?: string | null;
@@ -45,6 +48,7 @@ function buildDefaults(props: Props): DocumentInput {
   if (d) {
     return {
       type: d.type,
+      custom_type_id: d.custom_type_id ?? "",
       client_id: d.client_id ?? "",
       category_id: d.category_id ?? "",
       issue_date: d.issue_date,
@@ -68,11 +72,13 @@ function buildDefaults(props: Props): DocumentInput {
       tax_rate: d.tax_rate ?? 0,
       payment_terms: d.payment_terms ?? "",
       delivery_terms: d.delivery_terms ?? "",
+      include_conditions: d.include_conditions ?? false,
       notes_internes: d.notes_internes ?? "",
     };
   }
   return {
     type: "devis",
+    custom_type_id: "",
     client_id: props.defaultClientId ?? "",
     category_id: "",
     issue_date: props.defaultIssueDate,
@@ -88,6 +94,7 @@ function buildDefaults(props: Props): DocumentInput {
     tax_rate: props.defaultTaxRate ?? 0,
     payment_terms: props.defaultPaymentTerms ?? "",
     delivery_terms: props.defaultDeliveryTerms ?? "",
+    include_conditions: false,
     notes_internes: "",
   };
 }
@@ -184,6 +191,90 @@ export function DocumentForm(props: Props) {
     m ? <p className="mt-1 text-sm text-destructive">{m}</p> : null;
 
   const bodyMode = watched.body_mode;
+  // L'encadré « conditions » est obligatoire (et verrouillé) pour un bon de commande.
+  const conditionsForced = watched.type === "bon_commande";
+  useEffect(() => {
+    if (conditionsForced) setValue("include_conditions", true);
+  }, [conditionsForced, setValue]);
+
+  // ── Types de documents personnalisés (liste enrichie par les créations) ──
+  const [customTypes, setCustomTypes] = useState<CustomDocumentType[]>(
+    props.customTypes,
+  );
+  const [showTypeForm, setShowTypeForm] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypePrefix, setNewTypePrefix] = useState("");
+  const [creatingType, setCreatingType] = useState(false);
+
+  // ── Catégories (liste enrichie par les créations rapides) ──
+  type CatOption = { id: string; name_fr: string; active: boolean };
+  const [categories, setCategories] = useState<CatOption[]>(
+    props.categories.map((c) => ({ id: c.id, name_fr: c.name_fr, active: c.active })),
+  );
+  const [showCatForm, setShowCatForm] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
+
+  // Valeur du sélecteur de type : un type standard OU « custom:<id> ».
+  const typeChoice = watched.custom_type_id
+    ? `custom:${watched.custom_type_id}`
+    : watched.type;
+
+  function onTypeChange(value: string) {
+    if (value.startsWith("custom:")) {
+      setValue("custom_type_id", value.slice(7));
+      setValue("type", "autre");
+    } else {
+      setValue("custom_type_id", "");
+      setValue("type", value as DocumentInput["type"]);
+    }
+  }
+
+  async function onCreateType() {
+    const name = newTypeName.trim();
+    const prefix = newTypePrefix.trim();
+    if (name.length < 2 || prefix.length < 2) {
+      toast.error(t("documents.customTypeInvalid"));
+      return;
+    }
+    setCreatingType(true);
+    const res = await createCustomType({ name, prefix });
+    setCreatingType(false);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    setCustomTypes((list) => [...list, res.customType]);
+    setValue("custom_type_id", res.customType.id);
+    setValue("type", "autre");
+    setNewTypeName("");
+    setNewTypePrefix("");
+    setShowTypeForm(false);
+    toast.success(t("documents.customTypeCreated"));
+  }
+
+  async function onCreateCategory() {
+    const name = newCatName.trim();
+    if (name.length < 2) {
+      toast.error(t("documents.categoryQuickInvalid"));
+      return;
+    }
+    setCreatingCat(true);
+    const res = await createCategoryQuick(name);
+    setCreatingCat(false);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    setCategories((list) => [
+      ...list,
+      { id: res.category.id, name_fr: res.category.name_fr, active: true },
+    ]);
+    setValue("category_id", res.category.id);
+    setNewCatName("");
+    setShowCatForm(false);
+    toast.success(t("categories.created"));
+  }
 
   // Le <form> n'a PAS de onSubmit : il ne peut donc jamais se soumettre seul
   // (ni via Entrée, ni via un bouton). On bloque aussi explicitement la
@@ -222,26 +313,94 @@ export function DocumentForm(props: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="d-type">{t("documents.type")}</Label>
-            <Select id="d-type" className="mt-1" {...register("type")}>
-              {DOCUMENT_TYPES.map((ty) => (
-                <option key={ty} value={ty}>
-                  {DOCUMENT_TYPE_LABELS[ty]}
-                </option>
-              ))}
-            </Select>
+            <div className="mt-1 flex gap-2">
+              <Select
+                id="d-type"
+                value={typeChoice}
+                onChange={(e) => onTypeChange(e.target.value)}
+              >
+                {DOCUMENT_TYPES.map((ty) => (
+                  <option key={ty} value={ty}>
+                    {DOCUMENT_TYPE_LABELS[ty]}
+                  </option>
+                ))}
+                {customTypes.filter((ct) => ct.active).length > 0 ? (
+                  <optgroup label={t("documents.customTypesGroup")}>
+                    {customTypes
+                      .filter((ct) => ct.active)
+                      .map((ct) => (
+                        <option key={ct.id} value={`custom:${ct.id}`}>
+                          {ct.name} ({ct.prefix})
+                        </option>
+                      ))}
+                  </optgroup>
+                ) : null}
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setShowTypeForm((s) => !s)}
+                aria-label={t("documents.addCustomType")}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+            {err(errors.custom_type_id?.message)}
+            {showTypeForm ? (
+              <div className="mt-2 grid gap-2 rounded-xl p-3 ring-1 ring-foreground/10 sm:grid-cols-[1fr_110px_auto]">
+                <Input
+                  placeholder={t("documents.customTypeNamePlaceholder")}
+                  value={newTypeName}
+                  onChange={(e) => setNewTypeName(e.target.value)}
+                />
+                <Input
+                  placeholder={t("documents.customTypePrefixPlaceholder")}
+                  value={newTypePrefix}
+                  maxLength={6}
+                  onChange={(e) => setNewTypePrefix(e.target.value)}
+                />
+                <Button type="button" onClick={onCreateType} disabled={creatingType}>
+                  {creatingType ? t("common.saving") : t("categories.add")}
+                </Button>
+              </div>
+            ) : null}
           </div>
           <div>
             <Label htmlFor="d-category">{t("documents.category")}</Label>
-            <Select id="d-category" className="mt-1" {...register("category_id")}>
-              <option value="">{t("documents.noCategory")}</option>
-              {props.categories
-                .filter((c) => c.active)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name_fr}
-                  </option>
-                ))}
-            </Select>
+            <div className="mt-1 flex gap-2">
+              <Select id="d-category" {...register("category_id")}>
+                <option value="">{t("documents.noCategory")}</option>
+                {categories
+                  .filter((c) => c.active)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name_fr}
+                    </option>
+                  ))}
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setShowCatForm((s) => !s)}
+                aria-label={t("documents.addCategory")}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+            {showCatForm ? (
+              <div className="mt-2 grid gap-2 rounded-xl p-3 ring-1 ring-foreground/10 sm:grid-cols-[1fr_auto]">
+                <Input
+                  placeholder={t("documents.categoryNamePlaceholder")}
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                />
+                <Button type="button" onClick={onCreateCategory} disabled={creatingCat}>
+                  {creatingCat ? t("common.saving") : t("categories.add")}
+                </Button>
+              </div>
+            ) : null}
           </div>
           <div>
             <Label htmlFor="d-issue">{t("documents.issueDate")}</Label>
@@ -255,6 +414,7 @@ export function DocumentForm(props: Props) {
           <div className="sm:col-span-2">
             <Label htmlFor="d-title">{t("documents.docTitle")}</Label>
             <Input id="d-title" className="mt-1" placeholder={t("documents.titlePlaceholder")} {...register("title")} />
+            {err(errors.title?.message)}
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="d-subject">{t("documents.subject")}</Label>
@@ -462,6 +622,22 @@ export function DocumentForm(props: Props) {
           <Label htmlFor="d-delterms">{t("documents.deliveryTerms")}</Label>
           <Textarea id="d-delterms" className="mt-1" {...register("delivery_terms")} />
         </div>
+        <label className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            disabled={conditionsForced}
+            {...register("include_conditions")}
+          />
+          <span>
+            <span className="font-medium">{t("documents.includeConditions")}</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              {conditionsForced
+                ? t("documents.includeConditionsForced")
+                : t("documents.includeConditionsHint")}
+            </span>
+          </span>
+        </label>
         <div>
           <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
           <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />

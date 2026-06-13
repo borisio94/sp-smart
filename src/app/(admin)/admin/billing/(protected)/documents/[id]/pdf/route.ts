@@ -53,6 +53,7 @@ export async function GET(
       organization,
       client: doc.client,
       categoryName: doc.category?.name_fr ?? null,
+      customTypeName: doc.custom_type?.name ?? null,
       logoData,
       watermarkData,
       signatureData,

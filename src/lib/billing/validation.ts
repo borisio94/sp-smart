@@ -43,6 +43,20 @@ export const categorySchema = z.object({
 
 export type CategoryInput = z.infer<typeof categorySchema>;
 
+// ───────────── Type de document personnalisé ─────────────
+export const customDocumentTypeSchema = z.object({
+  name: z.string().trim().min(2, "Nom trop court").max(60),
+  prefix: z
+    .string()
+    .trim()
+    .min(2, "Code trop court")
+    .max(6, "Code trop long (6 max)")
+    .regex(/^[A-Za-z0-9]+$/, "Lettres et chiffres uniquement")
+    .transform((s) => s.toUpperCase()),
+});
+
+export type CustomDocumentTypeInput = z.infer<typeof customDocumentTypeSchema>;
+
 // ───────────── Documents ─────────────
 export const documentLineSchema = z.object({
   designation: z.string().trim().min(1, "Désignation requise").max(400),
@@ -55,9 +69,10 @@ export type DocumentLineInput = z.infer<typeof documentLineSchema>;
 
 export const documentSchema = z
   .object({
-    type: z.enum(["devis", "proforma", "bon_commande", "facture", "recu"]),
+    type: z.enum(["devis", "proforma", "bon_commande", "facture", "recu", "autre"]),
     client_id: z.string().uuid("Client requis"),
     category_id: z.string().uuid("Catégorie requise").optional().or(z.literal("")),
+    custom_type_id: z.string().uuid().optional().or(z.literal("")),
     issue_date: z.string().trim().min(1, "Date d'émission requise"),
     validity_date: z.string().trim().optional().or(z.literal("")),
     title: z.string().trim().max(200).optional().or(z.literal("")),
@@ -71,6 +86,7 @@ export const documentSchema = z
     tax_rate: z.number().min(0, "Taux invalide").max(100, "Taux invalide"),
     payment_terms: z.string().trim().max(2000).optional().or(z.literal("")),
     delivery_terms: z.string().trim().max(2000).optional().or(z.literal("")),
+    include_conditions: z.boolean(),
     notes_internes: z.string().trim().max(2000).optional().or(z.literal("")),
   })
   .refine(
@@ -80,6 +96,25 @@ export const documentSchema = z
   .refine(
     (d) => d.body_mode !== "text" || (d.body_text && d.body_text.trim().length > 0),
     { message: "Le corps texte ne peut pas être vide", path: ["body_text"] },
+  )
+  .refine(
+    (d) =>
+      d.type !== "bon_commande" ||
+      (d.payment_terms?.trim() ?? "") !== "" ||
+      (d.delivery_terms?.trim() ?? "") !== "",
+    {
+      message:
+        "Un bon de commande exige au moins une condition (modalités ou délais).",
+      path: ["payment_terms"],
+    },
+  )
+  .refine(
+    // Un type personnalisé est stocké en type="autre" + custom_type_id.
+    (d) => d.type !== "autre" || (d.custom_type_id?.trim() ?? "") !== "",
+    {
+      message: "Type personnalisé requis.",
+      path: ["custom_type_id"],
+    },
   );
 
 export type DocumentInput = z.infer<typeof documentSchema>;
@@ -107,7 +142,7 @@ export type PaymentInput = z.infer<typeof paymentSchema>;
 
 // ───────────── Saisie historique (document antérieur au site) ─────────────
 export const historicalSchema = z.object({
-  type: z.enum(["devis", "proforma", "bon_commande", "facture", "recu"]),
+  type: z.enum(["devis", "proforma", "bon_commande", "facture", "recu", "autre"]),
   number: z.string().trim().max(40).optional().or(z.literal("")),
   client_id: z.string().uuid("Client requis"),
   category_id: z.string().uuid("Catégorie requise").optional().or(z.literal("")),

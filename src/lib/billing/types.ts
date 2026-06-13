@@ -14,7 +14,8 @@ export type DocumentType =
   | "proforma"
   | "bon_commande"
   | "facture"
-  | "recu";
+  | "recu"
+  | "autre";
 
 export type BodyMode = "table" | "text";
 
@@ -94,6 +95,19 @@ export interface Client {
   updated_at: string;
 }
 
+/** Type de document personnalisé créé par l'utilisateur (ex. « Attestation »). */
+export interface CustomDocumentType {
+  id: string;
+  organization_id: string;
+  name: string;
+  prefix: string;
+  color: string | null;
+  order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Category {
   id: string;
   organization_id: string;
@@ -125,6 +139,7 @@ export interface BillingDocument {
   category_id: string | null;
   created_by: string | null;
   type: DocumentType;
+  custom_type_id: string | null; // type personnalisé (si type = "autre")
   number: string | null;
   year: number;
   sequence: number | null;
@@ -151,6 +166,7 @@ export interface BillingDocument {
   linked_document_id: string | null;
   is_historical: boolean;
   include_signature: boolean;
+  include_conditions: boolean; // affiche l'encadré « conditions » dans le PDF
   notes_internes: string | null;
   created_at: string;
   updated_at: string;

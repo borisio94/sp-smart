@@ -144,6 +144,16 @@
       "validityDate": "Date de validité",
       "docTitle": "Titre",
       "titlePlaceholder": "ex : Vidéosurveillance villa privée",
+      "titleAsHeadingHint": "Pour un document « Autre », ce titre s'affiche en haut du document (à la place de « DEVIS », « FACTURE »…).",
+      "customTypesGroup": "Mes types",
+      "addCustomType": "Ajouter un type de document",
+      "customTypeNamePlaceholder": "Nom (ex : Attestation)",
+      "customTypePrefixPlaceholder": "Code (ex : ATT)",
+      "customTypeInvalid": "Renseignez un nom (2+) et un code (2 à 6 caractères).",
+      "customTypeCreated": "Type de document créé.",
+      "addCategory": "Ajouter une catégorie",
+      "categoryNamePlaceholder": "Nom de la catégorie",
+      "categoryQuickInvalid": "Nom de catégorie trop court.",
       "subject": "Objet",
       "subjectPlaceholder": "ex : Étude — automatisation portail",
       "chooseClient": "— Choisir un client —",
@@ -167,6 +177,9 @@
       "deliveryTerms": "Délais & garantie",
       "internalNotes": "Notes internes",
       "internalNotesHint": "Visibles uniquement en interne (jamais sur le document).",
+      "includeConditions": "Afficher l'encadré « Conditions particulières » sur le document",
+      "includeConditionsHint": "Reprend les modalités de paiement et les délais/garantie dans un encadré en bas du document.",
+      "includeConditionsForced": "Obligatoire pour un bon de commande (non désactivable).",
       "saveDraft": "Enregistrer le brouillon",
       "content": "Contenu",
       "conditions": "Conditions",
@@ -287,7 +300,7 @@
       "replace": "Remplacer",
       "uploaded": "Image enregistrée.",
       "removed": "Image supprimée.",
-      "note": "Astuce : utilisez des PNG à fond transparent pour un rendu net sur le document. La signature et le cachet apparaissent dans le bloc « Pour SP Smart Sarl »."
+      "note": "Astuce : utilisez des PNG à fond transparent pour un rendu net sur le document. La signature et le cachet apparaissent ensemble dans le bloc « Pour SP Smart Sarl », à leur taille réelle (signature ≈ 55 mm, cachet ≈ 40 mm), le cachet chevauchant la signature comme sur un document signé à la main."
     }
   },
   "Realizations": {

@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { getDocument } from "@/lib/billing/queries";
 import {
-  DOCUMENT_TYPE_LABELS,
+  documentTypeLabel,
   formatMoney,
   formatDate,
   formatNumber,
@@ -39,7 +39,7 @@ export default async function DocumentDetailPage({
   return (
     <div>
       <PageHeader
-        title={`${DOCUMENT_TYPE_LABELS[doc.type]} ${doc.number ?? ""}`.trim()}
+        title={`${documentTypeLabel(doc)} ${doc.number ?? ""}`.trim()}
         subtitle={doc.title ?? undefined}
       />
 

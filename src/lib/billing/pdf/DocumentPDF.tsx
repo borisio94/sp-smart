@@ -35,11 +35,19 @@ export interface DocumentPDFData {
   organization: Organization;
   client: Client | null;
   categoryName: string | null;
+  customTypeName: string | null; // nom du type perso (bandeau), si applicable
   logoData: string | null;
   watermarkData: string | null;
   signatureData: string | null;
   stampData: string | null;
 }
+
+// Conversion millimètres → points PDF (1 pt = 1/72 pouce ; 1 pouce = 25,4 mm).
+const MM_TO_PT = 72 / 25.4;
+// Tailles physiques réelles des images apposées, pour un rendu fidèle au papier.
+// On ne contraint que la largeur (le ratio intrinsèque de l'image est préservé).
+const SIGNATURE_WIDTH = 55 * MM_TO_PT; // signature manuscrite ≈ 55 mm de large
+const STAMP_SIZE = 40 * MM_TO_PT; // cachet rond ≈ 40 mm de diamètre
 
 const styles = StyleSheet.create({
   page: {
@@ -209,9 +217,22 @@ const styles = StyleSheet.create({
   // Montant en gras, en minuscules (pas de mise en majuscules).
   wordsStrong: { fontFamily: "Times-Bold" },
 
-  // ── Conditions (NB) ──
-  conditions: { marginHorizontal: 28, marginTop: 16 },
-  condTitle: { fontSize: 10.5, fontFamily: "Times-Bold", color: PDF_COLORS.text, marginBottom: 4 },
+  // ── Conditions : encadré titré (bandeau couleur du type + corps) ──
+  conditionsBox: {
+    marginHorizontal: 28,
+    marginTop: 16,
+    borderWidth: 1,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  conditionsHeader: {
+    backgroundColor: PDF_COLORS.bandBg,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+  },
+  conditionsHeaderText: { fontSize: 10.5, fontFamily: "Times-Bold", letterSpacing: 0.8 },
+  conditionsBody: { paddingVertical: 8, paddingHorizontal: 10, backgroundColor: PDF_COLORS.white },
   condItem: { fontSize: 10.5, color: PDF_COLORS.text, lineHeight: 1.45, marginBottom: 2.5 },
 
   // ── Signatures ──
@@ -223,7 +244,41 @@ const styles = StyleSheet.create({
   },
   signBox: { width: 200, alignItems: "center" },
   signLabel: { fontSize: 10.5, fontFamily: "Times-Bold", color: PDF_COLORS.text },
-  signImage: { height: 56, objectFit: "contain", marginTop: 4 },
+  // Zone d'apposition (signature + cachet superposés) : hauteur = diamètre du
+  // cachet, qui est l'élément le plus grand. Position relative pour ancrer les
+  // deux images en absolu et créer le chevauchement réaliste.
+  signStack: {
+    marginTop: 6,
+    width: 200,
+    height: STAMP_SIZE,
+    position: "relative",
+  },
+  // Signature placée vers le bas-gauche de la zone (la main signe puis on tamponne).
+  signImageOverlap: {
+    position: "absolute",
+    top: 36,
+    left: 2,
+    width: SIGNATURE_WIDTH,
+    objectFit: "contain",
+  },
+  // Cachet apposé à droite, chevauchant partiellement la signature.
+  stampImageOverlap: {
+    position: "absolute",
+    top: 0,
+    left: 80,
+    width: STAMP_SIZE,
+    height: STAMP_SIZE,
+    objectFit: "contain",
+  },
+  // Signature seule : taille réelle, centrée dans le bloc.
+  signImageAlone: { marginTop: 6, width: SIGNATURE_WIDTH, objectFit: "contain" },
+  // Cachet seul : taille réelle, centré dans le bloc.
+  stampImageAlone: {
+    marginTop: 6,
+    width: STAMP_SIZE,
+    height: STAMP_SIZE,
+    objectFit: "contain",
+  },
   signSpacer: { height: 56 },
 
   // ── Pied de page (3 colonnes) ──
@@ -281,7 +336,14 @@ function toItems(text: string | null): string[] {
 export function DocumentPDF(data: DocumentPDFData) {
   const { document: doc, lines, organization: org, client } = data;
   const band = bandColor(doc.type);
-  const typeLabel = DOCUMENT_TYPE_LABELS[doc.type].toUpperCase();
+  // Libellé du document : pour un type « autre », on utilise l'intitulé libre
+  // saisi dans le champ « Titre » ; sinon le libellé standard du type.
+  const docLabel = data.customTypeName?.trim()
+    ? data.customTypeName.trim()
+    : doc.type === "autre"
+      ? doc.title?.trim() || DOCUMENT_TYPE_LABELS.autre
+      : DOCUMENT_TYPE_LABELS[doc.type];
+  const typeLabel = docLabel.toUpperCase();
   const amountWords = doc.amount_in_words?.trim() || amountToWords(doc.total_amount);
 
   // Champs nettoyés (jamais "A_REMPLIR" ni vide affiché sur un document client).
@@ -305,10 +367,15 @@ export function DocumentPDF(data: DocumentPDFData) {
   const facebook = cleanField(org.facebook);
 
   const conditionItems = [...toItems(doc.payment_terms), ...toItems(doc.delivery_terms)];
+  // L'encadré n'apparaît que s'il est activé (ou forcé pour un bon de commande)
+  // ET qu'il a au moins une ligne à afficher.
+  const showConditions =
+    (doc.include_conditions || doc.type === "bon_commande") &&
+    conditionItems.length > 0;
 
   return (
     <Document
-      title={`${DOCUMENT_TYPE_LABELS[doc.type]} ${doc.number ?? ""}`.trim()}
+      title={`${docLabel} ${doc.number ?? ""}`.trim()}
       author={org.name}
     >
       <Page size="A4" style={styles.page}>
@@ -459,15 +526,21 @@ export function DocumentPDF(data: DocumentPDFData) {
           <Text style={styles.wordsStrong}>{amountWords.toLowerCase()}</Text>.
         </Text>
 
-        {/* Conditions (NB) */}
-        {conditionItems.length > 0 ? (
-          <View style={styles.conditions}>
-            <Text style={styles.condTitle}>NB :</Text>
-            {conditionItems.map((item, i) => (
-              <Text key={i} style={styles.condItem}>
-                - {item}
+        {/* Encadré « conditions particulières » (optionnel / forcé sur BC) */}
+        {showConditions ? (
+          <View style={[styles.conditionsBox, { borderColor: band }]}>
+            <View style={[styles.conditionsHeader, { borderBottomColor: band }]}>
+              <Text style={[styles.conditionsHeaderText, { color: band }]}>
+                CONDITIONS PARTICULIÈRES
               </Text>
-            ))}
+            </View>
+            <View style={styles.conditionsBody}>
+              {conditionItems.map((item, i) => (
+                <Text key={i} style={styles.condItem}>
+                  • {item}
+                </Text>
+              ))}
+            </View>
           </View>
         ) : null}
 
@@ -480,11 +553,21 @@ export function DocumentPDF(data: DocumentPDFData) {
           <View style={styles.signBox}>
             <Text style={styles.signLabel}>{org.name}</Text>
             {doc.include_signature && (data.signatureData || data.stampData) ? (
-              // eslint-disable-next-line jsx-a11y/alt-text
-              <Image
-                src={(data.signatureData || data.stampData) as string}
-                style={styles.signImage}
-              />
+              data.signatureData && data.stampData ? (
+                // Signature + cachet : le cachet est apposé en chevauchant la signature.
+                <View style={styles.signStack}>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <Image src={data.signatureData} style={styles.signImageOverlap} />
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <Image src={data.stampData} style={styles.stampImageOverlap} />
+                </View>
+              ) : data.signatureData ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Image src={data.signatureData} style={styles.signImageAlone} />
+              ) : (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Image src={data.stampData as string} style={styles.stampImageAlone} />
+              )
             ) : (
               <View style={styles.signSpacer} />
             )}

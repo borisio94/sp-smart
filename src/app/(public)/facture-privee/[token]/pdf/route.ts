@@ -30,7 +30,7 @@ export async function GET(
   // Récupère le document par token (service role : on filtre nous-mêmes).
   const { data: doc } = await admin
     .from("documents")
-    .select("*, lines:document_lines(*), client:clients(*), category:categories(name_fr), organization:organizations(*)")
+    .select("*, lines:document_lines(*), client:clients(*), category:categories(name_fr), custom_type:document_types(name), organization:organizations(*)")
     .eq("share_token", token)
     .maybeSingle();
 
@@ -42,6 +42,7 @@ export async function GET(
     lines: DocumentLine[];
     client: Client | null;
     category: { name_fr: string } | null;
+    custom_type: { name: string } | null;
     organization: Organization;
   };
 
@@ -63,6 +64,7 @@ export async function GET(
       organization: org,
       client: document.client,
       categoryName: document.category?.name_fr ?? null,
+      customTypeName: document.custom_type?.name ?? null,
       logoData,
       watermarkData,
       signatureData,

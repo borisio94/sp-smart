@@ -6,6 +6,7 @@ import type {
   DocumentLine,
   Organization,
   Payment,
+  CustomDocumentType,
 } from "./types";
 
 /**
@@ -53,6 +54,21 @@ export async function getCategory(id: string): Promise<Category | null> {
   return (data as Category | null) ?? null;
 }
 
+// ───────────── Types de documents personnalisés ─────────────
+export async function listCustomDocumentTypes(
+  onlyActive = false,
+): Promise<CustomDocumentType[]> {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("document_types")
+    .select("*")
+    .order("order", { ascending: true })
+    .order("name", { ascending: true });
+  if (onlyActive) query = query.eq("active", true);
+  const { data } = await query;
+  return (data as CustomDocumentType[] | null) ?? [];
+}
+
 // ───────────── Documents ─────────────
 export interface DocumentFilters {
   type?: string;
@@ -67,6 +83,7 @@ export interface DocumentFilters {
 export interface DocumentListItem extends BillingDocument {
   client: { name: string } | null;
   category: { name_fr: string } | null;
+  custom_type: { name: string; prefix: string } | null;
 }
 
 export async function listDocuments(
@@ -75,7 +92,9 @@ export async function listDocuments(
   const supabase = await createSupabaseServerClient();
   let query = supabase
     .from("documents")
-    .select("*, client:clients(name), category:categories(name_fr)")
+    .select(
+      "*, client:clients(name), category:categories(name_fr), custom_type:document_types(name, prefix)",
+    )
     .order("created_at", { ascending: false });
 
   if (filters.type) query = query.eq("type", filters.type);
@@ -97,13 +116,16 @@ export interface DocumentWithLines extends BillingDocument {
   lines: DocumentLine[];
   client: Client | null;
   category: Category | null;
+  custom_type: { name: string; prefix: string } | null;
 }
 
 export async function getDocument(id: string): Promise<DocumentWithLines | null> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("documents")
-    .select("*, lines:document_lines(*), client:clients(*), category:categories(*)")
+    .select(
+      "*, lines:document_lines(*), client:clients(*), category:categories(*), custom_type:document_types(name, prefix)",
+    )
     .eq("id", id)
     .maybeSingle();
 

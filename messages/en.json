@@ -144,6 +144,16 @@
       "validityDate": "Validity date",
       "docTitle": "Title",
       "titlePlaceholder": "e.g. Private villa video surveillance",
+      "titleAsHeadingHint": "For an “Other” document, this title is shown at the top of the document (instead of “QUOTE”, “INVOICE”…).",
+      "customTypesGroup": "My types",
+      "addCustomType": "Add a document type",
+      "customTypeNamePlaceholder": "Name (e.g. Certificate)",
+      "customTypePrefixPlaceholder": "Code (e.g. CRT)",
+      "customTypeInvalid": "Provide a name (2+) and a code (2 to 6 characters).",
+      "customTypeCreated": "Document type created.",
+      "addCategory": "Add a category",
+      "categoryNamePlaceholder": "Category name",
+      "categoryQuickInvalid": "Category name too short.",
       "subject": "Subject",
       "subjectPlaceholder": "e.g. Study — gate automation",
       "chooseClient": "— Choose a client —",
@@ -167,6 +177,9 @@
       "deliveryTerms": "Lead time & warranty",
       "internalNotes": "Internal notes",
       "internalNotesHint": "Internal only (never shown on the document).",
+      "includeConditions": "Show the “Special conditions” box on the document",
+      "includeConditionsHint": "Displays the payment terms and lead time/warranty in a box at the bottom of the document.",
+      "includeConditionsForced": "Required for a purchase order (cannot be disabled).",
       "saveDraft": "Save draft",
       "content": "Content",
       "conditions": "Terms",
@@ -287,7 +300,7 @@
       "replace": "Replace",
       "uploaded": "Image saved.",
       "removed": "Image removed.",
-      "note": "Tip: use transparent PNGs for a clean look on the document. The signature and stamp appear in the \"For SP Smart Sarl\" block."
+      "note": "Tip: use transparent PNGs for a clean look on the document. The signature and stamp appear together in the \"For SP Smart Sarl\" block at their real size (signature ≈ 55 mm, stamp ≈ 40 mm), with the stamp overlapping the signature like a hand-signed document."
     }
   },
   "Realizations": {

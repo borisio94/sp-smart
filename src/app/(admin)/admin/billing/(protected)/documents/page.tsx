@@ -6,6 +6,7 @@ import {
   DOCUMENT_TYPE_LABELS,
   DOCUMENT_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
+  documentTypeLabel,
   formatMoney,
   formatDate,
 } from "@/lib/billing/format";
@@ -132,7 +133,7 @@ export default async function DocumentsPage({
                   <span className="tabular-nums font-medium">{formatMoney(d.total_amount)}</span>
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {DOCUMENT_TYPE_LABELS[d.type]} · {d.client?.name ?? "—"}
+                  {documentTypeLabel(d)} · {d.client?.name ?? "—"}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <StatusBadge status={d.status} />
@@ -175,7 +176,7 @@ export default async function DocumentsPage({
                     </AdminLink>
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">
-                    {DOCUMENT_TYPE_LABELS[d.type]}
+                    {documentTypeLabel(d)}
                   </td>
                   <td className="px-4 py-2.5">{d.client?.name ?? "—"}</td>
                   <td className="px-4 py-2.5 text-muted-foreground">{formatDate(d.issue_date)}</td>
