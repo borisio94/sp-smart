@@ -47,3 +47,7 @@ next-env.d.ts
 
 # Fichier SQL de travail (les migrations sources suffisent)
 supabase/_PHASE1_COMPLET.sql
+
+# Artefacts de dev locaux (non versionnés)
+dev.log
+/.pdf-test/
