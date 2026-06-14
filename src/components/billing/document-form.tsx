@@ -20,8 +20,12 @@ import {
   createDocument,
   updateDocument,
   createCustomType,
+  deleteCustomType,
 } from "@/app/(admin)/admin/billing/(protected)/documents/actions";
-import { createCategoryQuick } from "@/app/(admin)/admin/billing/(protected)/parametres/categories/actions";
+import {
+  createCategoryQuick,
+  deleteCategory,
+} from "@/app/(admin)/admin/billing/(protected)/parametres/categories/actions";
 import type { Client, Category, CustomDocumentType } from "@/lib/billing/types";
 import type { DocumentWithLines } from "@/lib/billing/queries";
 import { Button } from "@/components/ui/button";
@@ -253,6 +257,24 @@ export function DocumentForm(props: Props) {
     toast.success(t("documents.customTypeCreated"));
   }
 
+  async function onDeleteType() {
+    const id = watched.custom_type_id;
+    if (!id) return;
+    if (!window.confirm(t("documents.deleteTypeConfirm"))) return;
+    setCreatingType(true);
+    const res = await deleteCustomType(id);
+    setCreatingType(false);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    setCustomTypes((list) => list.filter((c) => c.id !== id));
+    // L'élément sélectionné a disparu → on revient à un type standard.
+    setValue("custom_type_id", "");
+    setValue("type", "devis");
+    toast.success(t("documents.customTypeDeleted"));
+  }
+
   async function onCreateCategory() {
     const name = newCatName.trim();
     if (name.length < 2) {
@@ -274,6 +296,22 @@ export function DocumentForm(props: Props) {
     setNewCatName("");
     setShowCatForm(false);
     toast.success(t("categories.created"));
+  }
+
+  async function onDeleteCategory() {
+    const id = watched.category_id;
+    if (!id) return;
+    if (!window.confirm(t("documents.deleteCategoryConfirm"))) return;
+    setCreatingCat(true);
+    const res = await deleteCategory(id);
+    setCreatingCat(false);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    setCategories((list) => list.filter((c) => c.id !== id));
+    setValue("category_id", "");
+    toast.success(t("common.deleted"));
   }
 
   // Le <form> n'a PAS de onSubmit : il ne peut donc jamais se soumettre seul
@@ -345,6 +383,18 @@ export function DocumentForm(props: Props) {
               >
                 <Plus className="size-4" />
               </Button>
+              {watched.custom_type_id ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={onDeleteType}
+                  disabled={creatingType}
+                  aria-label={t("documents.deleteCustomType")}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              ) : null}
             </div>
             {err(errors.custom_type_id?.message)}
             {showTypeForm ? (
@@ -392,6 +442,18 @@ export function DocumentForm(props: Props) {
               >
                 <Plus className="size-4" />
               </Button>
+              {watched.category_id ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={onDeleteCategory}
+                  disabled={creatingCat}
+                  aria-label={t("documents.deleteCategory")}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              ) : null}
             </div>
             {showCatForm ? (
               <div className="mt-2 grid gap-2 rounded-xl p-3 ring-1 ring-foreground/10 sm:grid-cols-[1fr_auto]">

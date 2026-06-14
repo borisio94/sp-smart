@@ -110,6 +110,21 @@ export async function createCategoryQuick(
   return { ok: true, category: data as { id: string; name_fr: string } };
 }
 
+/**
+ * Supprime définitivement une catégorie.
+ * Les documents qui l'utilisaient voient leur `category_id` mis à NULL
+ * (ON DELETE SET NULL) et la ligne `category_stats` part en cascade.
+ */
+export async function deleteCategory(id: string): Promise<ActionResult> {
+  await requireProfile();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("categories").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/billing/documents/nouveau");
+  revalidatePath("/admin/billing/parametres/categories");
+  return { ok: true };
+}
+
 /** Active ou désactive une catégorie (sans la supprimer). */
 export async function toggleCategory(
   id: string,

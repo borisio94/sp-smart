@@ -258,6 +258,20 @@ export async function createCustomType(values: {
   return { ok: true, customType: data as CustomDocumentType };
 }
 
+/**
+ * Supprime un type de document personnalisé.
+ * Les documents qui l'utilisaient voient leur `custom_type_id` mis à NULL
+ * (ON DELETE SET NULL) : ils ne sont pas supprimés, ils perdent juste ce type.
+ */
+export async function deleteCustomType(id: string): Promise<ActionResult> {
+  await requireProfile();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("document_types").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/billing/documents/nouveau");
+  return { ok: true };
+}
+
 /** Supprime un document (les lignes partent en cascade via la FK). */
 export async function deleteDocument(id: string): Promise<ActionResult> {
   await requireProfile();
