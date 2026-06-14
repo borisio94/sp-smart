@@ -369,7 +369,11 @@ export function DocumentForm(props: Props) {
           <div>
             <Label htmlFor="d-category">{t("documents.category")}</Label>
             <div className="mt-1 flex gap-2">
-              <Select id="d-category" {...register("category_id")}>
+              <Select
+                id="d-category"
+                value={watched.category_id ?? ""}
+                onChange={(e) => setValue("category_id", e.target.value)}
+              >
                 <option value="">{t("documents.noCategory")}</option>
                 {categories
                   .filter((c) => c.active)
