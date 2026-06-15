@@ -183,3 +183,94 @@ export async function listUnpaidInvoices(): Promise<DocumentListItem[]> {
     .order("issue_date", { ascending: true });
   return (data as DocumentListItem[] | null) ?? [];
 }
+
+// ───────────── Tableau de bord ─────────────
+export interface DashboardStats {
+  /** Nombre de documents émis dans le mois courant. */
+  docsThisMonth: number;
+  /** Chiffre d'affaires des documents confirmés dans le mois courant (FCFA). */
+  revenueConfirmedMonth: number;
+  /** Nombre de documents en attente (envoyé ou confirmé). */
+  pendingCount: number;
+  /** Montant total restant dû sur les factures non soldées (FCFA). */
+  unpaidAmount: number;
+  /** Nombre de factures non soldées. */
+  unpaidCount: number;
+  /** Derniers documents créés (pour la liste récente). */
+  recent: DocumentListItem[];
+}
+
+/**
+ * Agrège les indicateurs du tableau de bord à partir des données réelles
+ * (scoupées RLS à l'organisation). Le mois courant est calculé côté serveur.
+ */
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const supabase = await createSupabaseServerClient();
+
+  // Bornes du mois courant au format ISO (yyyy-mm-dd).
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    .toISOString()
+    .slice(0, 10);
+
+  const [docsMonthRes, revenueRes, pendingRes, unpaidRes, recentRes] =
+    await Promise.all([
+      // Documents émis ce mois (comptage seul).
+      supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .gte("issue_date", monthStart)
+        .lt("issue_date", nextMonthStart),
+      // CA confirmé ce mois : documents dont confirmed_at tombe dans le mois.
+      supabase
+        .from("documents")
+        .select("total_amount")
+        .not("confirmed_at", "is", null)
+        .gte("confirmed_at", monthStart)
+        .lt("confirmed_at", nextMonthStart),
+      // Documents en attente (envoyé ou confirmé).
+      supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["envoye", "confirme"]),
+      // Factures non soldées + leurs paiements (pour le restant dû).
+      supabase
+        .from("documents")
+        .select("total_amount, payments(amount)")
+        .eq("type", "facture")
+        .in("payment_status", ["non_paye", "acompte", "partiel"]),
+      // Derniers documents créés.
+      supabase
+        .from("documents")
+        .select(
+          "*, client:clients(name), category:categories(name_fr), custom_type:document_types(name, prefix)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(6),
+    ]);
+
+  const revenueConfirmedMonth = (
+    (revenueRes.data as { total_amount: number | null }[] | null) ?? []
+  ).reduce((sum, d) => sum + Number(d.total_amount ?? 0), 0);
+
+  const unpaidRows =
+    (unpaidRes.data as
+      | { total_amount: number | null; payments: { amount: number | null }[] | null }[]
+      | null) ?? [];
+  const unpaidAmount = unpaidRows.reduce((sum, d) => {
+    const paid = (d.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0);
+    return sum + Math.max(0, Number(d.total_amount ?? 0) - paid);
+  }, 0);
+
+  return {
+    docsThisMonth: docsMonthRes.count ?? 0,
+    revenueConfirmedMonth,
+    pendingCount: pendingRes.count ?? 0,
+    unpaidAmount,
+    unpaidCount: unpaidRows.length,
+    recent: (recentRes.data as DocumentListItem[] | null) ?? [],
+  };
+}

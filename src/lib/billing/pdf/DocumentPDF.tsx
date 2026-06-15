@@ -510,7 +510,8 @@ export function DocumentPDF(data: DocumentPDFData) {
                 </View>
               ) : null}
               <View style={[styles.grandRow, { backgroundColor: PDF_COLORS.totalGreen }]}>
-                <Text style={styles.grandLabelCell}>Total TTC</Text>
+                {/* IR = 0 → total hors taxe (HT) ; IR > 0 → total toutes taxes (TTC) */}
+                <Text style={styles.grandLabelCell}>{doc.tax_rate > 0 ? "Total TTC" : "Total HT"}</Text>
                 <Text style={styles.grandValueCell}>{pdfMoney(doc.total_amount)}</Text>
               </View>
             </View>

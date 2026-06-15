@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { getDocument } from "@/lib/billing/queries";
+import { canReceivePayment } from "@/lib/billing/payments";
 import {
   documentTypeLabel,
   formatMoney,
@@ -45,7 +46,9 @@ export default async function DocumentDetailPage({
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <StatusBadge status={doc.status} />
-        {doc.type === "facture" ? <PaymentBadge status={doc.payment_status} /> : null}
+        {canReceivePayment(doc.type, doc.status) ? (
+          <PaymentBadge status={doc.payment_status} />
+        ) : null}
         <div className="flex flex-wrap gap-2 sm:ml-auto sm:gap-3">
           <a
             href={`/admin/billing/documents/${id}/pdf?dl=1`}
@@ -157,7 +160,7 @@ export default async function DocumentDetailPage({
           </Card>
 
           {/* Paiements (factures uniquement) */}
-          {doc.type === "facture" ? (
+          {canReceivePayment(doc.type, doc.status) ? (
             <PaymentSection documentId={doc.id} totalAmount={doc.total_amount} />
           ) : null}
         </div>
@@ -204,8 +207,14 @@ export default async function DocumentDetailPage({
               <Row label={t("documents.discountAmount")}>
                 <span className="tabular-nums text-destructive">- {formatMoney(doc.discount_amount)}</span>
               </Row>
+              {doc.tax_rate > 0 ? (
+                <Row label={`${t("documents.tax")} (${formatNumber(doc.tax_rate)} %)`}>
+                  <span className="tabular-nums">{formatMoney(doc.tax_amount)}</span>
+                </Row>
+              ) : null}
               <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
-                <span>{t("documents.totalAmount")}</span>
+                {/* IR = 0 → total hors taxe (HT) ; IR > 0 → total toutes taxes (TTC) */}
+                <span>{doc.tax_rate > 0 ? t("documents.totalTTC") : t("documents.totalHT")}</span>
                 <span className="tabular-nums">{formatMoney(doc.total_amount)}</span>
               </div>
             </CardContent>

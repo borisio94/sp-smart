@@ -194,6 +194,8 @@
       "discountAmount": "Remise globale",
       "materialsSubtotal": "Total matériel",
       "totalAmount": "Net à payer",
+      "totalHT": "Total HT",
+      "totalTTC": "Total TTC",
       "paymentTerms": "Modalités de paiement",
       "deliveryTerms": "Délais & garantie",
       "internalNotes": "Notes internes",

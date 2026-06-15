@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/billing/auth";
 import { paymentSchema, type PaymentInput } from "@/lib/billing/validation";
-import { computePaymentStatus, sumPayments } from "@/lib/billing/payments";
+import {
+  canReceivePayment,
+  computePaymentStatus,
+  sumPayments,
+} from "@/lib/billing/payments";
 import type { Payment } from "@/lib/billing/types";
 
 export type ActionResult =
@@ -58,13 +62,16 @@ export async function recordPayment(
   // Vérifie que le document existe, est une facture, et récupère le contexte.
   const { data: doc } = await supabase
     .from("documents")
-    .select("id, type, total_amount, client_id, category_id, payment_status")
+    .select("id, type, status, total_amount, client_id, category_id, payment_status")
     .eq("id", documentId)
     .maybeSingle();
 
   if (!doc) return { ok: false, error: "Document introuvable." };
-  if (doc.type !== "facture") {
-    return { ok: false, error: "Les paiements ne concernent que les factures." };
+  if (!canReceivePayment(doc.type, doc.status)) {
+    return {
+      ok: false,
+      error: "Ce document doit d'abord être confirmé pour recevoir un paiement.",
+    };
   }
 
   const { error: insertError } = await supabase.from("payments").insert({
@@ -105,9 +112,9 @@ export async function recordPayment(
           type: "recu",
           issue_date: v.received_at,
           title: "Reçu de paiement",
-          subject: "Règlement intégral de la facture",
+          subject: "Règlement intégral du document",
           body_mode: "text",
-          body_text: "Reçu généré automatiquement au paiement intégral de la facture.",
+          body_text: "Reçu généré automatiquement au paiement intégral du document.",
           materials_subtotal: 0,
           labor_amount: 0,
           discount_amount: 0,

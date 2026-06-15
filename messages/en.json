@@ -194,6 +194,8 @@
       "discountAmount": "Global discount",
       "materialsSubtotal": "Materials total",
       "totalAmount": "Net to pay",
+      "totalHT": "Total excl. tax",
+      "totalTTC": "Total incl. tax",
       "paymentTerms": "Payment terms",
       "deliveryTerms": "Lead time & warranty",
       "internalNotes": "Internal notes",

@@ -1,4 +1,20 @@
-import type { Payment, PaymentStatus } from "./types";
+import type { DocumentStatus, DocumentType, Payment, PaymentStatus } from "./types";
+
+/**
+ * Indique si un document peut recevoir un paiement.
+ * - Une facture est payable quel que soit son statut (comportement historique).
+ * - Tout autre document devient payable dès qu'il est « confirmé » ou « terminé »
+ *   (ex. acompte encaissé sur un devis confirmé avant émission de la facture).
+ * - Un reçu n'est jamais payable (il constate déjà un règlement).
+ */
+export function canReceivePayment(
+  type: DocumentType,
+  status: DocumentStatus,
+): boolean {
+  if (type === "recu") return false;
+  if (type === "facture") return true;
+  return status === "confirme" || status === "termine";
+}
 
 /**
  * Logique de paiement (source de vérité partagée client/serveur).
