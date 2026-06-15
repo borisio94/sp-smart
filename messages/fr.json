@@ -30,7 +30,23 @@
       "emailRequired": "Saisissez d'abord votre email.",
       "showPassword": "Afficher le mot de passe",
       "hidePassword": "Masquer le mot de passe",
+      "forgot": "Mot de passe oublié ?",
+      "forgotSending": "Envoi…",
+      "forgotSent": "Email de réinitialisation envoyé : consultez votre boîte mail.",
+      "forgotError": "Impossible d'envoyer l'email. Réessayez.",
       "notConfigured": "Module non configuré : les clés Supabase sont manquantes (voir ACTIONS_PHASE_1.md)."
+    },
+    "password": {
+      "title": "Mot de passe",
+      "subtitle": "Définissez un nouveau mot de passe pour votre compte.",
+      "cardTitle": "Changer mon mot de passe",
+      "cardSubtitle": "Au moins 8 caractères. La modification est immédiate.",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "submit": "Enregistrer le mot de passe",
+      "submitting": "Enregistrement…",
+      "success": "Mot de passe mis à jour.",
+      "error": "Impossible de mettre à jour le mot de passe. Réessayez."
     },
     "dashboard": {
       "title": "Tableau de bord",
@@ -213,7 +229,8 @@
       "title": "Paramètres",
       "subtitle": "Coordonnées de la boutique et réglages du module.",
       "linkBranding": "Logo, signature & cachet",
-      "linkCategories": "Catégories"
+      "linkCategories": "Catégories",
+      "linkPassword": "Mot de passe"
     },
     "organization": {
       "title": "Coordonnées de la boutique",

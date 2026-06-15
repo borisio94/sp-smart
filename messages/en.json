@@ -30,7 +30,23 @@
       "emailRequired": "Enter your email first.",
       "showPassword": "Show password",
       "hidePassword": "Hide password",
+      "forgot": "Forgot your password?",
+      "forgotSending": "Sending…",
+      "forgotSent": "Reset email sent: check your inbox.",
+      "forgotError": "Could not send the email. Please try again.",
       "notConfigured": "Module not configured: Supabase keys are missing (see ACTIONS_PHASE_1.md)."
+    },
+    "password": {
+      "title": "Password",
+      "subtitle": "Set a new password for your account.",
+      "cardTitle": "Change my password",
+      "cardSubtitle": "At least 8 characters. The change takes effect immediately.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "submit": "Save password",
+      "submitting": "Saving…",
+      "success": "Password updated.",
+      "error": "Could not update the password. Please try again."
     },
     "dashboard": {
       "title": "Dashboard",
@@ -213,7 +229,8 @@
       "title": "Settings",
       "subtitle": "Shop details and module settings.",
       "linkBranding": "Logo, signature & stamp",
-      "linkCategories": "Categories"
+      "linkCategories": "Categories",
+      "linkPassword": "Password"
     },
     "organization": {
       "title": "Shop details",

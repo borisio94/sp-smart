@@ -13,6 +13,26 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// Demande de réinitialisation : on ne saisit que l'email.
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Email invalide").max(160),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+// Définition d'un nouveau mot de passe (changement volontaire ou récupération).
+export const updatePasswordSchema = z
+  .object({
+    password: z.string().min(8, "Mot de passe trop court (8 caractères min.)").max(72),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, {
+    message: "Les mots de passe ne correspondent pas",
+    path: ["confirm"],
+  });
+
+export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
+
 // ───────────── Clients ─────────────
 export const clientSchema = z.object({
   name: z.string().trim().min(2, "Nom trop court").max(160),

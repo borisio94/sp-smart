@@ -23,6 +23,7 @@ export function LoginForm() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [magicPending, setMagicPending] = useState(false);
+  const [forgotPending, setForgotPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -77,6 +78,28 @@ export function LoginForm() {
     toast.success(t("login.magicSent"));
   }
 
+  // Réinitialisation par email : envoie un lien vers le callback puis la page
+  // de changement de mot de passe (la session y est déjà ouverte).
+  async function onForgotPassword() {
+    const email = getValues("email");
+    if (!email || !email.includes("@")) {
+      toast.error(t("login.emailRequired"));
+      return;
+    }
+    setForgotPending(true);
+    const supabase = createSupabaseBrowserClient();
+    const next = encodeURIComponent("/admin/billing/parametres/mot-de-passe");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/admin/billing/auth/callback?next=${next}`,
+    });
+    setForgotPending(false);
+    if (error) {
+      toast.error(t("login.forgotError"));
+      return;
+    }
+    toast.success(t("login.forgotSent"));
+  }
+
   const err = (m?: string) =>
     m ? <p className="mt-1 text-sm text-destructive">{m}</p> : null;
 
@@ -116,6 +139,16 @@ export function LoginForm() {
           </button>
         </div>
         {err(errors.password?.message)}
+        <div className="mt-1.5 text-right">
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            disabled={forgotPending}
+            className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:opacity-50"
+          >
+            {forgotPending ? t("login.forgotSending") : t("login.forgot")}
+          </button>
+        </div>
       </div>
 
       <Button type="submit" className="w-full" size="lg" disabled={pending}>
