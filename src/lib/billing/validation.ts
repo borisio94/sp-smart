@@ -101,8 +101,14 @@ export const documentSchema = z
     body_mode: z.enum(["table", "text"]),
     body_text: z.string().trim().max(8000).optional().or(z.literal("")),
     lines: z.array(documentLineSchema).max(100),
-    labor_amount: z.number().min(0).max(1_000_000_000),
-    discount_amount: z.number().min(0).max(1_000_000_000),
+    labor_amount: z
+      .number({ message: "Montant invalide" })
+      .min(0, "Montant invalide")
+      .max(1_000_000_000),
+    discount_amount: z
+      .number({ message: "Remise invalide" })
+      .min(0, "Remise invalide")
+      .max(1_000_000_000),
     tax_rate: z.number().min(0, "Taux invalide").max(100, "Taux invalide"),
     payment_terms: z.string().trim().max(2000).optional().or(z.literal("")),
     delivery_terms: z.string().trim().max(2000).optional().or(z.literal("")),

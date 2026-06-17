@@ -125,6 +125,7 @@
       "created": "Document enregistré.",
       "updated": "Document mis à jour.",
       "formInvalid": "Veuillez corriger les champs en rouge.",
+      "stepInvalid": "Veuillez renseigner les champs obligatoires (en rouge) avant de continuer.",
       "downloadPdf": "Télécharger le PDF",
       "previewPdf": "Aperçu PDF",
       "phaseNotice": "Changements de statut (Phase 4) et paiements (Phase 5) arrivent prochainement.",

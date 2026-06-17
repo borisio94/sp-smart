@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -105,6 +105,22 @@ function buildDefaults(props: Props): DocumentInput {
 
 const STEPS = ["infos", "client", "body", "totals", "conditions"] as const;
 
+/**
+ * Champs obligatoires à valider AVANT de passer à l'étape suivante.
+ * Chaque entrée liste les noms RHF à contrôler via `trigger()` : si l'un est
+ * invalide, l'étape reste bloquée, le champ s'encadre en rouge (aria-invalid)
+ * et un toast prévient l'utilisateur. Les refines de schéma (lignes vides,
+ * corps texte vide, conditions du bon de commande, type personnalisé) sont
+ * rattachés à ces mêmes chemins, donc couverts ici.
+ */
+const STEP_FIELDS: Record<number, (keyof DocumentInput)[]> = {
+  0: ["issue_date", "custom_type_id"],
+  1: ["client_id"],
+  2: ["lines", "body_text"],
+  3: ["labor_amount", "discount_amount", "tax_rate"],
+  4: ["payment_terms"],
+};
+
 /** Formulaire de création / édition d'un document (parcours multi-étapes). */
 export function DocumentForm(props: Props) {
   const t = useTranslations("Admin");
@@ -120,6 +136,7 @@ export function DocumentForm(props: Props) {
     watch,
     setValue,
     getValues,
+    trigger,
     formState: { errors },
   } = useForm<DocumentInput>({
     resolver: zodResolver(documentSchema),
@@ -142,25 +159,18 @@ export function DocumentForm(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClientId]);
 
-  // Recalcul live des totaux
+  // Recalcul live des totaux. `watch()` (sans argument) ré-abonne le composant
+  // à CHAQUE frappe : on recalcule donc directement à chaque rendu (calcul pur
+  // et bon marché). Pas de useMemo ici, car RHF peut muter le tableau `lines`
+  // en place sans changer sa référence — le total général resterait alors figé.
   const watched = watch();
-  const totals = useMemo(
-    () =>
-      computeTotals({
-        body_mode: watched.body_mode,
-        lines: watched.lines ?? [],
-        labor_amount: watched.labor_amount ?? 0,
-        discount_amount: watched.discount_amount ?? 0,
-        tax_rate: watched.tax_rate ?? 0,
-      }),
-    [
-      watched.body_mode,
-      watched.lines,
-      watched.labor_amount,
-      watched.discount_amount,
-      watched.tax_rate,
-    ],
-  );
+  const totals = computeTotals({
+    body_mode: watched.body_mode,
+    lines: watched.lines ?? [],
+    labor_amount: watched.labor_amount ?? 0,
+    discount_amount: watched.discount_amount ?? 0,
+    tax_rate: watched.tax_rate ?? 0,
+  });
 
   function onSubmit(values: DocumentInput) {
     startTransition(async () => {
@@ -193,6 +203,35 @@ export function DocumentForm(props: Props) {
 
   const err = (m?: string) =>
     m ? <p className="mt-1 text-sm text-destructive">{m}</p> : null;
+
+  // Astérisque rouge des libellés obligatoires.
+  const reqMark = (
+    <span className="text-destructive" aria-hidden="true">
+      {" "}
+      *
+    </span>
+  );
+
+  // Navigation entre étapes. Reculer est toujours libre. Avancer exige que les
+  // champs obligatoires de TOUTES les étapes franchies soient valides : sinon
+  // on bloque, les champs concernés s'encadrent en rouge (errors → aria-invalid)
+  // et un toast prévient l'utilisateur.
+  async function goToStep(target: number) {
+    if (target <= step) {
+      setStep(target);
+      return;
+    }
+    const toCheck: (keyof DocumentInput)[] = [];
+    for (let s = step; s < target; s++) {
+      toCheck.push(...(STEP_FIELDS[s] ?? []));
+    }
+    const valid = toCheck.length === 0 ? true : await trigger(toCheck);
+    if (!valid) {
+      toast.error(t("documents.stepInvalid"));
+      return;
+    }
+    setStep(target);
+  }
 
   const bodyMode = watched.body_mode;
   // L'encadré « conditions » est obligatoire (et verrouillé) pour un bon de commande.
@@ -333,7 +372,7 @@ export function DocumentForm(props: Props) {
           <li key={s}>
             <button
               type="button"
-              onClick={() => setStep(i)}
+              onClick={() => goToStep(i)}
               className={`rounded-full px-3 py-1 transition-colors ${
                 i === step
                   ? "bg-primary text-primary-foreground"
@@ -356,6 +395,7 @@ export function DocumentForm(props: Props) {
                 id="d-type"
                 value={typeChoice}
                 onChange={(e) => onTypeChange(e.target.value)}
+                aria-invalid={errors.custom_type_id ? true : undefined}
               >
                 {DOCUMENT_TYPES.map((ty) => (
                   <option key={ty} value={ty}>
@@ -469,8 +509,17 @@ export function DocumentForm(props: Props) {
             ) : null}
           </div>
           <div>
-            <Label htmlFor="d-issue">{t("documents.issueDate")}</Label>
-            <Input id="d-issue" type="date" className="mt-1" {...register("issue_date")} />
+            <Label htmlFor="d-issue">
+              {t("documents.issueDate")}
+              {reqMark}
+            </Label>
+            <Input
+              id="d-issue"
+              type="date"
+              className="mt-1"
+              aria-invalid={errors.issue_date ? true : undefined}
+              {...register("issue_date")}
+            />
             {err(errors.issue_date?.message)}
           </div>
           <div>
@@ -492,8 +541,16 @@ export function DocumentForm(props: Props) {
       {/* Étape 2 — Client */}
       <section hidden={step !== 1} className="space-y-4">
         <div>
-          <Label htmlFor="d-client">{t("documents.client")}</Label>
-          <Select id="d-client" className="mt-1 max-w-md" {...register("client_id")}>
+          <Label htmlFor="d-client">
+            {t("documents.client")}
+            {reqMark}
+          </Label>
+          <Select
+            id="d-client"
+            className="mt-1 max-w-md"
+            aria-invalid={errors.client_id ? true : undefined}
+            {...register("client_id")}
+          >
             <option value="">{t("documents.chooseClient")}</option>
             {props.clients.map((c) => (
               <option key={c.id} value={c.id}>
@@ -545,7 +602,10 @@ export function DocumentForm(props: Props) {
               <table className="w-full min-w-[640px] text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 font-medium">{t("documents.designation")}</th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("documents.designation")}
+                      {reqMark}
+                    </th>
                     <th className="w-24 px-3 py-2 font-medium">{t("documents.unit")}</th>
                     <th className="w-20 px-3 py-2 font-medium">{t("documents.quantity")}</th>
                     <th className="w-32 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
@@ -560,7 +620,12 @@ export function DocumentForm(props: Props) {
                     return (
                       <tr key={field.id} className="border-t border-border align-top">
                         <td className="px-3 py-2">
-                          <Input {...register(`lines.${i}.designation` as const)} />
+                          <Input
+                            aria-invalid={
+                              errors.lines?.[i]?.designation ? true : undefined
+                            }
+                            {...register(`lines.${i}.designation` as const)}
+                          />
                         </td>
                         <td className="px-3 py-2">
                           <Input
@@ -618,11 +683,15 @@ export function DocumentForm(props: Props) {
           </div>
         ) : (
           <div>
-            <Label htmlFor="d-body">{t("documents.bodyText")}</Label>
+            <Label htmlFor="d-body">
+              {t("documents.bodyText")}
+              {reqMark}
+            </Label>
             <Textarea
               id="d-body"
               className="mt-1 min-h-48"
               placeholder={t("documents.bodyTextPlaceholder")}
+              aria-invalid={errors.body_text ? true : undefined}
               {...register("body_text")}
             />
             {err(errors.body_text?.message)}
@@ -635,15 +704,18 @@ export function DocumentForm(props: Props) {
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <Label htmlFor="d-labor">{t("documents.laborAmount")}</Label>
-            <Input id="d-labor" type="number" min="0" className="mt-1" {...register("labor_amount", { valueAsNumber: true })} />
+            <Input id="d-labor" type="number" min="0" className="mt-1" aria-invalid={errors.labor_amount ? true : undefined} {...register("labor_amount", { valueAsNumber: true })} />
+            {err(errors.labor_amount?.message)}
           </div>
           <div>
             <Label htmlFor="d-discount">{t("documents.discountAmount")}</Label>
-            <Input id="d-discount" type="number" min="0" className="mt-1" {...register("discount_amount", { valueAsNumber: true })} />
+            <Input id="d-discount" type="number" min="0" className="mt-1" aria-invalid={errors.discount_amount ? true : undefined} {...register("discount_amount", { valueAsNumber: true })} />
+            {err(errors.discount_amount?.message)}
           </div>
           <div>
             <Label htmlFor="d-tax">{t("documents.taxRate")}</Label>
-            <Input id="d-tax" type="number" step="0.01" min="0" max="100" className="mt-1" {...register("tax_rate", { valueAsNumber: true })} />
+            <Input id="d-tax" type="number" step="0.01" min="0" max="100" className="mt-1" aria-invalid={errors.tax_rate ? true : undefined} {...register("tax_rate", { valueAsNumber: true })} />
+            {err(errors.tax_rate?.message)}
             <p className="mt-1 text-xs text-muted-foreground">{t("documents.taxHint")}</p>
           </div>
         </div>
@@ -681,11 +753,23 @@ export function DocumentForm(props: Props) {
       {/* Étape 5 — Conditions */}
       <section hidden={step !== 4} className="space-y-4">
         <div>
-          <Label htmlFor="d-payterms">{t("documents.paymentTerms")}</Label>
-          <Textarea id="d-payterms" className="mt-1" {...register("payment_terms")} />
+          <Label htmlFor="d-payterms">
+            {t("documents.paymentTerms")}
+            {conditionsForced ? reqMark : null}
+          </Label>
+          <Textarea
+            id="d-payterms"
+            className="mt-1"
+            aria-invalid={errors.payment_terms ? true : undefined}
+            {...register("payment_terms")}
+          />
+          {err(errors.payment_terms?.message)}
         </div>
         <div>
-          <Label htmlFor="d-delterms">{t("documents.deliveryTerms")}</Label>
+          <Label htmlFor="d-delterms">
+            {t("documents.deliveryTerms")}
+            {conditionsForced ? reqMark : null}
+          </Label>
           <Textarea id="d-delterms" className="mt-1" {...register("delivery_terms")} />
         </div>
         <label className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm">
@@ -722,7 +806,7 @@ export function DocumentForm(props: Props) {
         </Button>
 
         {step < STEPS.length - 1 ? (
-          <Button type="button" onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}>
+          <Button type="button" onClick={() => goToStep(step + 1)}>
             {t("common.next")}
           </Button>
         ) : (

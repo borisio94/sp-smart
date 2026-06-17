@@ -125,6 +125,7 @@
       "created": "Document saved.",
       "updated": "Document updated.",
       "formInvalid": "Please fix the highlighted fields.",
+      "stepInvalid": "Please fill in the required fields (highlighted in red) before continuing.",
       "downloadPdf": "Download PDF",
       "previewPdf": "PDF preview",
       "phaseNotice": "Status changes (Phase 4) and payments (Phase 5) are coming soon.",
