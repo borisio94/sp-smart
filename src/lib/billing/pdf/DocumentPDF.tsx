@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: PDF_COLORS.text,
     paddingTop: 2,
-    paddingBottom: 92, // place pour le pied de page fixe (3 lignes)
+    paddingBottom: 78, // place pour le pied de page fixe (3 lignes ≈ 62 pt + marge)
   },
   // ── En-tête : logo + nom + slogan, puis bande bleue ──
   header: {
@@ -133,6 +133,11 @@ const styles = StyleSheet.create({
     fontFamily: "Times-Bold",
     letterSpacing: 0.5,
   },
+
+  // ── Objet : ligne sous le bandeau-titre, alignée à gauche ──
+  subjectRow: { marginHorizontal: 28, marginTop: 10 },
+  subjectText: { fontSize: 10.5, textAlign: "left", color: PDF_COLORS.text },
+  subjectLabel: { fontFamily: "Times-Bold" },
 
   // ── Tableau ──
   table: { marginHorizontal: 28, marginTop: 14 },
@@ -239,7 +244,7 @@ const styles = StyleSheet.create({
   signatures: {
     flexDirection: "row",
     marginHorizontal: 28,
-    marginTop: 32,
+    marginTop: 20,
     justifyContent: "space-between",
   },
   signBox: { width: 200, alignItems: "center" },
@@ -348,6 +353,7 @@ export function DocumentPDF(data: DocumentPDFData) {
 
   // Champs nettoyés (jamais "A_REMPLIR" ni vide affiché sur un document client).
   const orgSlogan = cleanField(org.slogan);
+  const subject = cleanField(doc.subject);
   const clRef = cleanField(doc.client_ref);
   const clAddress = cleanField(client?.address);
   const clPhone = cleanField(client?.phone);
@@ -389,22 +395,26 @@ export function DocumentPDF(data: DocumentPDFData) {
           </View>
         )}
 
-        {/* En-tête : logo + nom + slogan */}
-        <View style={styles.header}>
-          {data.logoData ? (
-            // eslint-disable-next-line jsx-a11y/alt-text
-            <Image src={data.logoData} style={styles.logoImg} />
-          ) : (
-            <View style={styles.logoFallbackBox}>
-              <Text style={styles.logoFallbackText}>SP</Text>
+        {/* En-tête (logo + nom + slogan + filet) répété sur CHAQUE page d'un
+            document multi-pages : marqué `fixed` pour se redessiner en haut de
+            toutes les pages, comme le pied de page. */}
+        <View fixed>
+          <View style={styles.header}>
+            {data.logoData ? (
+              // eslint-disable-next-line jsx-a11y/alt-text
+              <Image src={data.logoData} style={styles.logoImg} />
+            ) : (
+              <View style={styles.logoFallbackBox}>
+                <Text style={styles.logoFallbackText}>SP</Text>
+              </View>
+            )}
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.orgName}>{org.name}</Text>
+              {orgSlogan ? <Text style={styles.orgSlogan}>{orgSlogan}</Text> : null}
             </View>
-          )}
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.orgName}>{org.name}</Text>
-            {orgSlogan ? <Text style={styles.orgSlogan}>{orgSlogan}</Text> : null}
           </View>
+          <View style={[styles.headerBand, { backgroundColor: PDF_COLORS.corporateLight }]} />
         </View>
-        <View style={[styles.headerBand, { backgroundColor: PDF_COLORS.corporateLight }]} />
 
         {/* Date */}
         <Text style={styles.dateLine}>{pdfDate(doc.issue_date)}</Text>
@@ -451,6 +461,16 @@ export function DocumentPDF(data: DocumentPDFData) {
           <Text style={styles.bandTitle}>{typeLabel}</Text>
           <Text style={styles.bandNumber}>{doc.number ?? ""}</Text>
         </View>
+
+        {/* Objet du document (aligné à gauche, juste après le titre) */}
+        {subject ? (
+          <View style={styles.subjectRow}>
+            <Text style={styles.subjectText}>
+              <Text style={styles.subjectLabel}>Objet : </Text>
+              {subject}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Corps : tableau ou texte libre */}
         {doc.body_mode === "table" ? (
@@ -545,8 +565,9 @@ export function DocumentPDF(data: DocumentPDFData) {
           </View>
         ) : null}
 
-        {/* Signatures : Le client / Pour l'entreprise (+ signature/cachet si présents) */}
-        <View style={styles.signatures}>
+        {/* Signatures : Le client / Pour l'entreprise (+ signature/cachet si présents).
+            `wrap={false}` : le bloc reste insécable (jamais coupé entre deux pages). */}
+        <View style={styles.signatures} wrap={false}>
           <View style={styles.signBox}>
             <Text style={styles.signLabel}>Le client</Text>
             <View style={styles.signSpacer} />
