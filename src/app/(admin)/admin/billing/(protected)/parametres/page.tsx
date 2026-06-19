@@ -29,6 +29,9 @@ export default async function ParametresPage() {
         <AdminLink href="/admin/billing/parametres/categories" variant="outline" size="sm">
           {t("settingsPage.linkCategories")}
         </AdminLink>
+        <AdminLink href="/admin/billing/parametres/caisse" variant="outline" size="sm">
+          {t("settingsPage.linkCaisse")}
+        </AdminLink>
         <AdminLink href="/admin/billing/parametres/mot-de-passe" variant="outline" size="sm">
           {t("settingsPage.linkPassword")}
         </AdminLink>

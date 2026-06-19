@@ -244,6 +244,60 @@ export interface Payment {
   created_at: string;
 }
 
+// ───────────── Trésorerie / Caisse ─────────────
+/** Sens d'un mouvement de caisse : entrée (encaissement) ou dépense. */
+export type MovementDirection = "in" | "out";
+
+/** Réglages de caisse (singleton par organisation). */
+export interface CashSettings {
+  organization_id: string;
+  opening_balance: number; // fonds initial disponible (FCFA)
+  red_line: number; // ligne rouge / seuil minimum (FCFA)
+  opening_note: string | null;
+  updated_at: string;
+}
+
+/** Catégorie de dépense (gérable par l'utilisateur). */
+export interface ExpenseCategory {
+  id: string;
+  organization_id: string;
+  name: string;
+  color: string | null;
+  order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Mouvement de caisse (entrée ou dépense). */
+export interface CashMovement {
+  id: string;
+  organization_id: string;
+  created_by: string | null;
+  direction: MovementDirection;
+  amount: number; // montant positif (FCFA)
+  occurred_at: string;
+  description: string | null;
+  category_id: string | null;
+  document_id: string | null;
+  payment_id: string | null; // renseigné si issu d'un paiement de facture
+  method: string | null;
+  reference: string | null;
+  created_at: string;
+}
+
+/** Synthèse de caisse : solde courant et marge avant la ligne rouge. */
+export interface CashOverview {
+  openingBalance: number;
+  redLine: number;
+  balance: number; // solde courant
+  margin: number; // marge avant la ligne rouge (balance − redLine)
+  totalIn: number; // total des entrées
+  totalOut: number; // total des dépenses
+  monthIn: number; // entrées du mois courant
+  monthOut: number; // dépenses du mois courant
+}
+
 export interface CategoryStats {
   category_id: string;
   realized_count: number;

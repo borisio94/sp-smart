@@ -9,6 +9,7 @@ import {
   FileText,
   Users,
   CreditCard,
+  Wallet,
   History,
   Settings,
   MoreHorizontal,
@@ -34,6 +35,7 @@ const PRIMARY_ITEMS: NavItem[] = [
 
 /** Entrées secondaires (panneau « Plus » sur mobile). */
 const SECONDARY_ITEMS: NavItem[] = [
+  { href: "/admin/billing/caisse", labelKey: "nav.treasury", icon: Wallet },
   { href: "/admin/billing/historique", labelKey: "nav.history", icon: History },
   { href: "/admin/billing/parametres", labelKey: "nav.settings", icon: Settings },
 ];

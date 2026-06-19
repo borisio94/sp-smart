@@ -250,6 +250,75 @@ export const paymentSchema = z.object({
 
 export type PaymentInput = z.infer<typeof paymentSchema>;
 
+// ───────────── Trésorerie / Caisse ─────────────
+// Moyen de paiement optionnel (réutilise l'énumération des paiements).
+const methodOptional = z
+  .enum(["especes", "momo_mtn", "momo_orange", "virement", "cheque", "carte"])
+  .optional()
+  .or(z.literal(""));
+
+// Réglages de caisse : fonds initial + ligne rouge (ajustables).
+export const cashSettingsSchema = z.object({
+  opening_balance: z
+    .number({ message: "Montant invalide" })
+    .min(0, "Montant invalide")
+    .max(1_000_000_000_000),
+  red_line: z
+    .number({ message: "Montant invalide" })
+    .min(0, "Montant invalide")
+    .max(1_000_000_000_000),
+  opening_note: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export type CashSettingsInput = z.infer<typeof cashSettingsSchema>;
+
+// Catégorie de dépense.
+export const expenseCategorySchema = z.object({
+  name: z.string().trim().min(2, "Nom trop court").max(60),
+});
+
+export type ExpenseCategoryInput = z.infer<typeof expenseCategorySchema>;
+
+// Dépense : description OBLIGATOIRE + catégorie + moyen. `confirmed` autorise
+// le franchissement de la ligne rouge après avertissement explicite.
+export const expenseSchema = z.object({
+  amount: z
+    .number({ message: "Montant invalide" })
+    .positive("Montant requis")
+    .max(1_000_000_000),
+  occurred_at: z.string().trim().min(1, "Date requise"),
+  description: z.string().trim().min(2, "Description requise").max(1000),
+  category_id: z.string().uuid().optional().or(z.literal("")),
+  method: methodOptional,
+  reference: z.string().trim().max(120).optional().or(z.literal("")),
+  confirmed: z.boolean().optional(),
+});
+
+export type ExpenseInput = z.infer<typeof expenseSchema>;
+
+// Entrée en caisse : liée à un document OU décrite (au moins l'un des deux).
+export const cashEntrySchema = z
+  .object({
+    amount: z
+      .number({ message: "Montant invalide" })
+      .positive("Montant requis")
+      .max(1_000_000_000),
+    occurred_at: z.string().trim().min(1, "Date requise"),
+    document_id: z.string().uuid().optional().or(z.literal("")),
+    description: z.string().trim().max(1000).optional().or(z.literal("")),
+    method: methodOptional,
+    reference: z.string().trim().max(120).optional().or(z.literal("")),
+  })
+  .refine(
+    (d) => (d.document_id?.trim() ?? "") !== "" || (d.description?.trim() ?? "") !== "",
+    {
+      message: "Liez un document ou décrivez l'entrée.",
+      path: ["description"],
+    },
+  );
+
+export type CashEntryInput = z.infer<typeof cashEntrySchema>;
+
 // ───────────── Saisie historique (document antérieur au site) ─────────────
 export const historicalSchema = z.object({
   type: z.enum([

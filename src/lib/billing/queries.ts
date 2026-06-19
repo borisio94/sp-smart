@@ -7,6 +7,10 @@ import type {
   Organization,
   Payment,
   CustomDocumentType,
+  CashSettings,
+  ExpenseCategory,
+  CashMovement,
+  CashOverview,
 } from "./types";
 
 /**
@@ -182,6 +186,121 @@ export async function listUnpaidInvoices(): Promise<DocumentListItem[]> {
     .in("payment_status", ["non_paye", "acompte", "partiel"])
     .order("issue_date", { ascending: true });
   return (data as DocumentListItem[] | null) ?? [];
+}
+
+// ───────────── Trésorerie / Caisse ─────────────
+/** Réglages de caisse de l'organisation (fonds initial + ligne rouge). */
+export async function getCashSettings(): Promise<CashSettings | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from("cash_settings").select("*").maybeSingle();
+  return (data as CashSettings | null) ?? null;
+}
+
+/** Catégories de dépenses. */
+export async function listExpenseCategories(
+  onlyActive = false,
+): Promise<ExpenseCategory[]> {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("expense_categories")
+    .select("*")
+    .order("order", { ascending: true })
+    .order("name", { ascending: true });
+  if (onlyActive) query = query.eq("active", true);
+  const { data } = await query;
+  return (data as ExpenseCategory[] | null) ?? [];
+}
+
+/** Mouvement enrichi du nom de catégorie et du document lié (pour la liste). */
+export interface CashMovementListItem extends CashMovement {
+  category: { name: string } | null;
+  document: { id: string; number: string | null; type: BillingDocument["type"] } | null;
+}
+
+export async function listCashMovements(
+  direction?: "in" | "out",
+): Promise<CashMovementListItem[]> {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("cash_movements")
+    .select("*, category:expense_categories(name), document:documents(id, number, type)")
+    .order("occurred_at", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (direction) query = query.eq("direction", direction);
+  const { data } = await query;
+  return (data as CashMovementListItem[] | null) ?? [];
+}
+
+/**
+ * Synthèse de caisse : solde courant, marge avant la ligne rouge et totaux
+ * (global + mois courant). Le solde est recalculé à partir des mouvements.
+ */
+export async function getCashOverview(): Promise<CashOverview> {
+  const supabase = await createSupabaseServerClient();
+  const [settingsRes, movementsRes] = await Promise.all([
+    supabase.from("cash_settings").select("opening_balance, red_line").maybeSingle(),
+    supabase.from("cash_movements").select("direction, amount, occurred_at"),
+  ]);
+
+  const settings = settingsRes.data as
+    | { opening_balance: number; red_line: number }
+    | null;
+  const openingBalance = Number(settings?.opening_balance ?? 0);
+  const redLine = Number(settings?.red_line ?? 0);
+
+  const movements =
+    (movementsRes.data as
+      | { direction: string; amount: number; occurred_at: string }[]
+      | null) ?? [];
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+
+  let totalIn = 0;
+  let totalOut = 0;
+  let monthIn = 0;
+  let monthOut = 0;
+  for (const m of movements) {
+    const amt = Number(m.amount) || 0;
+    const inMonth = m.occurred_at >= monthStart;
+    if (m.direction === "in") {
+      totalIn += amt;
+      if (inMonth) monthIn += amt;
+    } else {
+      totalOut += amt;
+      if (inMonth) monthOut += amt;
+    }
+  }
+
+  const balance = openingBalance + totalIn - totalOut;
+  return {
+    openingBalance,
+    redLine,
+    balance,
+    margin: balance - redLine,
+    totalIn,
+    totalOut,
+    monthIn,
+    monthOut,
+  };
+}
+
+/** Documents récents pouvant être liés à une entrée en caisse. */
+export async function listLinkableDocuments(): Promise<
+  { id: string; number: string | null; type: BillingDocument["type"] }[]
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("documents")
+    .select("id, number, type")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  return (
+    (data as { id: string; number: string | null; type: BillingDocument["type"] }[] | null) ??
+    []
+  );
 }
 
 // ───────────── Tableau de bord ─────────────

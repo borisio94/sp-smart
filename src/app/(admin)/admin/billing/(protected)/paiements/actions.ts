@@ -89,6 +89,8 @@ export async function recordPayment(
 
   revalidatePath("/admin/billing/paiements");
   revalidatePath(`/admin/billing/documents/${documentId}`);
+  // Le paiement a généré une entrée en caisse (trigger DB) → rafraîchir la caisse.
+  revalidatePath("/admin/billing/caisse");
 
   // Génération automatique d'un reçu quand la facture devient soldée
   // (et qu'aucun reçu n'a déjà été émis pour cette facture).
@@ -147,5 +149,7 @@ export async function deletePayment(
   await recomputePaymentStatus(documentId);
   revalidatePath("/admin/billing/paiements");
   revalidatePath(`/admin/billing/documents/${documentId}`);
+  // Le mouvement de caisse lié a été supprimé en cascade → rafraîchir la caisse.
+  revalidatePath("/admin/billing/caisse");
   return { ok: true };
 }
