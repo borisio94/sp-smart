@@ -3,6 +3,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDocument, getOrganization } from "@/lib/billing/queries";
 import { DocumentPDF } from "@/lib/billing/pdf/DocumentPDF";
+import { ReportPDF } from "@/lib/billing/pdf/ReportPDF";
 import { fetchBrandingDataUri } from "@/lib/billing/pdf/branding";
 import { fetchSiteLogoDataUri } from "@/lib/billing/pdf/site-logo";
 import { pdfFilename } from "@/lib/billing/pdf/filename";
@@ -46,20 +47,33 @@ export async function GET(
   // Filigrane : logo uploadé dans le bucket uniquement (sinon monogramme "SP").
   const watermarkData = uploadedLogo;
 
-  const buffer = await renderToBuffer(
-    DocumentPDF({
-      document: doc,
-      lines: doc.lines,
-      organization,
-      client: doc.client,
-      categoryName: doc.category?.name_fr ?? null,
-      customTypeName: doc.custom_type?.name ?? null,
-      logoData,
-      watermarkData,
-      signatureData,
-      stampData,
-    }),
-  );
+  // Un rapport de maintenance utilise une mise en page dédiée (sections
+  // techniques) ; les autres types gardent la mise en page commerciale.
+  const element =
+    doc.type === "rapport_maintenance"
+      ? ReportPDF({
+          document: doc,
+          organization,
+          client: doc.client,
+          logoData,
+          watermarkData,
+          signatureData,
+          stampData,
+        })
+      : DocumentPDF({
+          document: doc,
+          lines: doc.lines,
+          organization,
+          client: doc.client,
+          categoryName: doc.category?.name_fr ?? null,
+          customTypeName: doc.custom_type?.name ?? null,
+          logoData,
+          watermarkData,
+          signatureData,
+          stampData,
+        });
+
+  const buffer = await renderToBuffer(element);
 
   const url = new URL(request.url);
   const download = url.searchParams.get("dl") === "1";

@@ -15,9 +15,64 @@ export type DocumentType =
   | "bon_commande"
   | "facture"
   | "recu"
+  | "rapport_maintenance"
   | "autre";
 
 export type BodyMode = "table" | "text";
+
+// ───────────── Rapport de maintenance (sections structurées) ─────────────
+/** Nature de l'intervention consignée dans le rapport. */
+export type InterventionType =
+  | "preventive"
+  | "corrective"
+  | "curative"
+  | "installation"
+  | "controle";
+
+/** Équipement concerné par l'intervention. */
+export interface ReportEquipment {
+  designation: string; // ex. « Caméra IP dôme »
+  brand_model: string; // marque / modèle
+  serial: string; // n° de série
+  location: string; // emplacement
+}
+
+/** Opération réalisée pendant l'intervention. */
+export interface ReportOperation {
+  description: string; // opération effectuée
+  status: string; // « Réalisée », « Partielle », « À prévoir »…
+  duration: string; // durée (ex. « 1h30 »)
+}
+
+/** Pièce ou fourniture utilisée. */
+export interface ReportPart {
+  designation: string;
+  quantity: number;
+}
+
+/**
+ * Contenu structuré d'un rapport de maintenance (stocké en JSONB
+ * `documents.report_data`). Aucune logique de montant : un rapport documente
+ * une intervention technique, pas une transaction commerciale.
+ */
+export interface MaintenanceReportData {
+  intervention_type: InterventionType;
+  site: string; // lieu d'intervention
+  intervention_date: string; // date(s) d'intervention (texte libre)
+  start_time: string; // heure d'arrivée
+  end_time: string; // heure de départ
+  technicians: string; // technicien(s) intervenant(s)
+  equipments: ReportEquipment[];
+  request: string; // objet / motif de l'intervention
+  diagnosis: string; // constat / diagnostic
+  operations: ReportOperation[];
+  parts: ReportPart[];
+  tests: string; // tests & vérifications, mesures relevées
+  conformity: string; // « Conforme », « Non conforme », « Avec réserves »
+  observations: string; // observations & recommandations
+  final_state: string; // état final (opérationnel, partiel, hors service)
+  next_maintenance: string; // prochaine maintenance recommandée
+}
 
 export type DocumentStatus =
   | "brouillon"
@@ -150,6 +205,7 @@ export interface BillingDocument {
   client_ref: string | null; // « Réf client »
   body_mode: BodyMode;
   body_text: string | null;
+  report_data: MaintenanceReportData | null; // sections du rapport (type rapport_maintenance)
   materials_subtotal: number;
   labor_amount: number;
   discount_amount: number;

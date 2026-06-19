@@ -68,6 +68,8 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       client_ref: nz(v.client_ref),
       body_mode: v.body_mode,
       body_text: v.body_mode === "text" ? nz(v.body_text) : null,
+      // Sections du rapport (uniquement pour un rapport de maintenance).
+      report_data: v.type === "rapport_maintenance" ? (v.report ?? null) : null,
       materials_subtotal: totals.materialsSubtotal,
       labor_amount: totals.laborAmount,
       discount_amount: totals.discountAmount,
@@ -129,6 +131,8 @@ export async function updateDocument(
       client_ref: nz(v.client_ref),
       body_mode: v.body_mode,
       body_text: v.body_mode === "text" ? nz(v.body_text) : null,
+      // Sections du rapport (uniquement pour un rapport de maintenance).
+      report_data: v.type === "rapport_maintenance" ? (v.report ?? null) : null,
       materials_subtotal: totals.materialsSubtotal,
       labor_amount: totals.laborAmount,
       discount_amount: totals.discountAmount,

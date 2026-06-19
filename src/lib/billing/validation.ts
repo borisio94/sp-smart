@@ -87,9 +87,63 @@ export const documentLineSchema = z.object({
 
 export type DocumentLineInput = z.infer<typeof documentLineSchema>;
 
+// ───────────── Rapport de maintenance (sections structurées) ─────────────
+const reportEquipmentSchema = z.object({
+  designation: z.string().trim().max(200),
+  brand_model: z.string().trim().max(120),
+  serial: z.string().trim().max(120),
+  location: z.string().trim().max(160),
+});
+
+const reportOperationSchema = z.object({
+  description: z.string().trim().max(400),
+  status: z.string().trim().max(60),
+  duration: z.string().trim().max(40),
+});
+
+const reportPartSchema = z.object({
+  designation: z.string().trim().max(200),
+  quantity: z.number({ message: "Quantité invalide" }).min(0).max(1_000_000),
+});
+
+export const reportDataSchema = z.object({
+  intervention_type: z.enum([
+    "preventive",
+    "corrective",
+    "curative",
+    "installation",
+    "controle",
+  ]),
+  site: z.string().trim().max(200),
+  intervention_date: z.string().trim().max(120),
+  start_time: z.string().trim().max(20),
+  end_time: z.string().trim().max(20),
+  technicians: z.string().trim().max(200),
+  equipments: z.array(reportEquipmentSchema).max(30),
+  request: z.string().trim().max(2000),
+  diagnosis: z.string().trim().max(4000),
+  operations: z.array(reportOperationSchema).max(50),
+  parts: z.array(reportPartSchema).max(50),
+  tests: z.string().trim().max(4000),
+  conformity: z.string().trim().max(200),
+  observations: z.string().trim().max(4000),
+  final_state: z.string().trim().max(200),
+  next_maintenance: z.string().trim().max(120),
+});
+
+export type ReportDataInput = z.infer<typeof reportDataSchema>;
+
 export const documentSchema = z
   .object({
-    type: z.enum(["devis", "proforma", "bon_commande", "facture", "recu", "autre"]),
+    type: z.enum([
+      "devis",
+      "proforma",
+      "bon_commande",
+      "facture",
+      "recu",
+      "rapport_maintenance",
+      "autre",
+    ]),
     client_id: z.string().uuid("Client requis"),
     category_id: z.string().uuid("Catégorie requise").optional().or(z.literal("")),
     custom_type_id: z.string().uuid().optional().or(z.literal("")),
@@ -114,13 +168,23 @@ export const documentSchema = z
     delivery_terms: z.string().trim().max(2000).optional().or(z.literal("")),
     include_conditions: z.boolean(),
     notes_internes: z.string().trim().max(2000).optional().or(z.literal("")),
+    // Sections du rapport de maintenance (requises seulement si type = rapport).
+    report: reportDataSchema.optional(),
   })
   .refine(
-    (d) => d.body_mode !== "table" || d.lines.length > 0,
+    // Le tableau de lignes ne concerne pas un rapport (corps = sections dédiées).
+    (d) =>
+      d.type === "rapport_maintenance" ||
+      d.body_mode !== "table" ||
+      d.lines.length > 0,
     { message: "Ajoutez au moins une ligne au tableau", path: ["lines"] },
   )
   .refine(
-    (d) => d.body_mode !== "text" || (d.body_text && d.body_text.trim().length > 0),
+    // Le corps texte n'est pas exigé pour un rapport (ses sections le remplacent).
+    (d) =>
+      d.type === "rapport_maintenance" ||
+      d.body_mode !== "text" ||
+      (d.body_text && d.body_text.trim().length > 0),
     { message: "Le corps texte ne peut pas être vide", path: ["body_text"] },
   )
   .refine(
@@ -141,7 +205,27 @@ export const documentSchema = z
       message: "Type personnalisé requis.",
       path: ["custom_type_id"],
     },
-  );
+  )
+  .superRefine((d, ctx) => {
+    // Champs obligatoires d'un rapport de maintenance (sinon ignorés).
+    if (d.type !== "rapport_maintenance") return;
+    const r = d.report;
+    const required: [string | undefined, string, string][] = [
+      [r?.site, "site", "Lieu d'intervention requis"],
+      [r?.technicians, "technicians", "Technicien(s) requis"],
+      [r?.intervention_date, "intervention_date", "Date d'intervention requise"],
+      [r?.request, "request", "Objet de l'intervention requis"],
+    ];
+    for (const [value, field, message] of required) {
+      if (!value || value.trim() === "") {
+        ctx.addIssue({
+          code: "custom",
+          message,
+          path: ["report", field],
+        });
+      }
+    }
+  });
 
 export type DocumentInput = z.infer<typeof documentSchema>;
 
@@ -168,7 +252,15 @@ export type PaymentInput = z.infer<typeof paymentSchema>;
 
 // ───────────── Saisie historique (document antérieur au site) ─────────────
 export const historicalSchema = z.object({
-  type: z.enum(["devis", "proforma", "bon_commande", "facture", "recu", "autre"]),
+  type: z.enum([
+    "devis",
+    "proforma",
+    "bon_commande",
+    "facture",
+    "recu",
+    "rapport_maintenance",
+    "autre",
+  ]),
   number: z.string().trim().max(40).optional().or(z.literal("")),
   client_id: z.string().uuid("Client requis"),
   category_id: z.string().uuid("Catégorie requise").optional().or(z.literal("")),

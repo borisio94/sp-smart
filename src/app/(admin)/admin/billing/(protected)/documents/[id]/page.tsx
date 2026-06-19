@@ -9,6 +9,7 @@ import {
   formatDate,
   formatNumber,
 } from "@/lib/billing/format";
+import { INTERVENTION_TYPE_LABELS } from "@/lib/billing/templates";
 import { deleteDocument } from "../actions";
 import { PageHeader } from "@/components/billing/page-header";
 import { AdminLink } from "@/components/billing/admin-link";
@@ -36,6 +37,10 @@ export default async function DocumentDetailPage({
   const { id } = await params;
   const doc = await getDocument(id);
   if (!doc) notFound();
+
+  // Un rapport de maintenance affiche ses sections techniques (pas de totaux).
+  const isReport = doc.type === "rapport_maintenance";
+  const r = doc.report_data;
 
   return (
     <div>
@@ -99,65 +104,168 @@ export default async function DocumentDetailPage({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Colonne principale */}
         <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("documents.content")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {doc.body_mode === "table" ? (
-                <table className="w-full text-sm">
-                  <thead className="text-left text-xs text-muted-foreground">
-                    <tr className="border-b border-border">
-                      <th className="py-2 font-medium">{t("documents.designation")}</th>
-                      <th className="py-2 text-right font-medium">{t("documents.quantity")}</th>
-                      <th className="py-2 text-right font-medium">{t("documents.unitPrice")}</th>
-                      <th className="py-2 text-right font-medium">{t("documents.lineTotal")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {doc.lines.map((l) => (
-                      <tr key={l.id} className="border-b border-border/60">
-                        <td className="py-2">{l.designation}</td>
-                        <td className="py-2 text-right tabular-nums">{formatNumber(l.quantity)}</td>
-                        <td className="py-2 text-right tabular-nums">{formatMoney(l.unit_price)}</td>
-                        <td className="py-2 text-right tabular-nums">{formatMoney(l.line_total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="whitespace-pre-wrap text-sm">{doc.body_text || "—"}</p>
-              )}
-            </CardContent>
-          </Card>
+          {isReport ? (
+            /* ── Rapport de maintenance : sections techniques ── */
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("documents.report.cardTitle")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                {r ? (
+                  <>
+                    <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                      <Row label={t("documents.report.interventionType")}>
+                        {INTERVENTION_TYPE_LABELS[r.intervention_type] ?? "—"}
+                      </Row>
+                      <Row label={t("documents.report.site")}>{r.site || "—"}</Row>
+                      <Row label={t("documents.report.interventionDate")}>
+                        {r.intervention_date || "—"}
+                      </Row>
+                      <Row label={t("documents.report.hours")}>
+                        {[r.start_time, r.end_time].filter(Boolean).join(" → ") || "—"}
+                      </Row>
+                      <Row label={t("documents.report.technicians")}>{r.technicians || "—"}</Row>
+                    </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("documents.conditions")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
-                  {t("documents.paymentTerms")}
-                </p>
-                <p className="whitespace-pre-wrap">{doc.payment_terms || "—"}</p>
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
-                  {t("documents.deliveryTerms")}
-                </p>
-                <p className="whitespace-pre-wrap">{doc.delivery_terms || "—"}</p>
-              </div>
-              {doc.notes_internes ? (
-                <div>
-                  <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
-                    {t("documents.internalNotes")}
-                  </p>
-                  <p className="whitespace-pre-wrap text-muted-foreground">{doc.notes_internes}</p>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+                    <Section title={t("documents.report.request")}>{r.request}</Section>
+
+                    {r.equipments.length > 0 ? (
+                      <div>
+                        <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                          {t("documents.report.equipments")}
+                        </p>
+                        <ul className="space-y-1">
+                          {r.equipments.map((e, i) => (
+                            <li key={i} className="border-b border-border/60 py-1">
+                              {[e.designation, e.brand_model, e.serial, e.location]
+                                .filter((v) => v && v.trim() !== "")
+                                .join(" · ") || "—"}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    <Section title={t("documents.report.diagnosis")}>{r.diagnosis}</Section>
+
+                    {r.operations.length > 0 ? (
+                      <div>
+                        <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                          {t("documents.report.operations")}
+                        </p>
+                        <ul className="space-y-1">
+                          {r.operations.map((o, i) => (
+                            <li key={i} className="flex justify-between gap-3 border-b border-border/60 py-1">
+                              <span>{o.description || "—"}</span>
+                              <span className="text-muted-foreground">
+                                {[o.status, o.duration].filter((v) => v && v.trim() !== "").join(" · ")}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {r.parts.length > 0 ? (
+                      <div>
+                        <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                          {t("documents.report.parts")}
+                        </p>
+                        <ul className="space-y-1">
+                          {r.parts.map((p, i) => (
+                            <li key={i} className="flex justify-between gap-3 border-b border-border/60 py-1">
+                              <span>{p.designation || "—"}</span>
+                              <span className="tabular-nums text-muted-foreground">{formatNumber(p.quantity)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    <Section title={t("documents.report.tests")}>{r.tests}</Section>
+                    {r.conformity ? (
+                      <Row label={t("documents.report.conformity")}>{r.conformity}</Row>
+                    ) : null}
+                    <Section title={t("documents.report.observations")}>{r.observations}</Section>
+
+                    <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                      <Row label={t("documents.report.finalState")}>{r.final_state || "—"}</Row>
+                      <Row label={t("documents.report.nextMaintenance")}>
+                        {r.next_maintenance || "—"}
+                      </Row>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">—</p>
+                )}
+                {doc.notes_internes ? (
+                  <Section title={t("documents.internalNotes")}>{doc.notes_internes}</Section>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t("documents.content")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {doc.body_mode === "table" ? (
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-xs text-muted-foreground">
+                        <tr className="border-b border-border">
+                          <th className="py-2 font-medium">{t("documents.designation")}</th>
+                          <th className="py-2 text-right font-medium">{t("documents.quantity")}</th>
+                          <th className="py-2 text-right font-medium">{t("documents.unitPrice")}</th>
+                          <th className="py-2 text-right font-medium">{t("documents.lineTotal")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {doc.lines.map((l) => (
+                          <tr key={l.id} className="border-b border-border/60">
+                            <td className="py-2">{l.designation}</td>
+                            <td className="py-2 text-right tabular-nums">{formatNumber(l.quantity)}</td>
+                            <td className="py-2 text-right tabular-nums">{formatMoney(l.unit_price)}</td>
+                            <td className="py-2 text-right tabular-nums">{formatMoney(l.line_total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="whitespace-pre-wrap text-sm">{doc.body_text || "—"}</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t("documents.conditions")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div>
+                    <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                      {t("documents.paymentTerms")}
+                    </p>
+                    <p className="whitespace-pre-wrap">{doc.payment_terms || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                      {t("documents.deliveryTerms")}
+                    </p>
+                    <p className="whitespace-pre-wrap">{doc.delivery_terms || "—"}</p>
+                  </div>
+                  {doc.notes_internes ? (
+                    <div>
+                      <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                        {t("documents.internalNotes")}
+                      </p>
+                      <p className="whitespace-pre-wrap text-muted-foreground">{doc.notes_internes}</p>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           {/* Paiements (factures uniquement) */}
           {canReceivePayment(doc.type, doc.status) ? (
@@ -193,6 +301,7 @@ export default async function DocumentDetailPage({
             </CardContent>
           </Card>
 
+          {!isReport ? (
           <Card>
             <CardHeader>
               <CardTitle>{t("documents.totals")}</CardTitle>
@@ -219,6 +328,7 @@ export default async function DocumentDetailPage({
               </div>
             </CardContent>
           </Card>
+          ) : null}
 
           <Card>
             <CardHeader>
@@ -249,6 +359,17 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     <div className="flex justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right">{children}</span>
+    </div>
+  );
+}
+
+/** Bloc titré avec texte multiligne (sections du rapport). Masqué si vide. */
+function Section({ title, children }: { title: string; children?: string | null }) {
+  if (!children || children.trim() === "") return null;
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">{title}</p>
+      <p className="whitespace-pre-wrap">{children}</p>
     </div>
   );
 }

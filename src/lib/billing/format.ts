@@ -44,6 +44,7 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   bon_commande: "Bon de commande",
   facture: "Facture",
   recu: "Reçu de paiement",
+  rapport_maintenance: "Rapport de maintenance",
   autre: "Autre",
 };
 
@@ -54,6 +55,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
   "bon_commande",
   "facture",
   "recu",
+  "rapport_maintenance",
 ];
 
 /**

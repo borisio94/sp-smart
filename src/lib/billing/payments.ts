@@ -6,12 +6,13 @@ import type { DocumentStatus, DocumentType, Payment, PaymentStatus } from "./typ
  * - Tout autre document devient payable dès qu'il est « confirmé » ou « terminé »
  *   (ex. acompte encaissé sur un devis confirmé avant émission de la facture).
  * - Un reçu n'est jamais payable (il constate déjà un règlement).
+ * - Un rapport de maintenance n'est jamais payable (document technique).
  */
 export function canReceivePayment(
   type: DocumentType,
   status: DocumentStatus,
 ): boolean {
-  if (type === "recu") return false;
+  if (type === "recu" || type === "rapport_maintenance") return false;
   if (type === "facture") return true;
   return status === "confirme" || status === "termine";
 }

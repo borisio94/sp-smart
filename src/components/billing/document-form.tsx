@@ -3,11 +3,16 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import {
+  useForm,
+  useFieldArray,
+  FormProvider,
+  type Path,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileText } from "lucide-react";
 
 import { documentSchema, type DocumentInput } from "@/lib/billing/validation";
 import { computeTotals, lineTotal } from "@/lib/billing/compute";
@@ -16,6 +21,12 @@ import {
   DOCUMENT_TYPE_LABELS,
   formatMoney,
 } from "@/lib/billing/format";
+import {
+  DOCUMENT_TEMPLATES,
+  emptyReport,
+  reportSkeleton,
+  isReportEmpty,
+} from "@/lib/billing/templates";
 import {
   createDocument,
   updateDocument,
@@ -33,6 +44,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ReportFields } from "@/components/billing/report-fields";
 
 interface Props {
   clients: Client[];
@@ -78,6 +90,7 @@ function buildDefaults(props: Props): DocumentInput {
       delivery_terms: d.delivery_terms ?? "",
       include_conditions: d.include_conditions ?? false,
       notes_internes: d.notes_internes ?? "",
+      report: d.report_data ?? emptyReport(),
     };
   }
   return {
@@ -100,25 +113,39 @@ function buildDefaults(props: Props): DocumentInput {
     delivery_terms: props.defaultDeliveryTerms ?? "",
     include_conditions: false,
     notes_internes: "",
+    report: emptyReport(),
   };
 }
 
-const STEPS = ["infos", "client", "body", "totals", "conditions"] as const;
+// Deux parcours en 5 étapes : commercial (devis/facture…) et rapport technique.
+// Les étapes « infos » et « client » sont communes ; les étapes 3-5 diffèrent.
+const BILLING_STEPS = ["infos", "client", "body", "totals", "conditions"] as const;
+const REPORT_STEPS = ["infos", "client", "intervention", "travaux", "conclusion"] as const;
 
 /**
- * Champs obligatoires à valider AVANT de passer à l'étape suivante.
- * Chaque entrée liste les noms RHF à contrôler via `trigger()` : si l'un est
- * invalide, l'étape reste bloquée, le champ s'encadre en rouge (aria-invalid)
- * et un toast prévient l'utilisateur. Les refines de schéma (lignes vides,
- * corps texte vide, conditions du bon de commande, type personnalisé) sont
- * rattachés à ces mêmes chemins, donc couverts ici.
+ * Champs obligatoires à valider AVANT de passer à l'étape suivante (par
+ * parcours). Si l'un est invalide, l'étape reste bloquée, le champ s'encadre
+ * en rouge (aria-invalid) et un toast prévient l'utilisateur.
  */
-const STEP_FIELDS: Record<number, (keyof DocumentInput)[]> = {
+const BILLING_STEP_FIELDS: Record<number, Path<DocumentInput>[]> = {
   0: ["issue_date", "custom_type_id"],
   1: ["client_id"],
   2: ["lines", "body_text"],
   3: ["labor_amount", "discount_amount", "tax_rate"],
   4: ["payment_terms"],
+};
+
+const REPORT_STEP_FIELDS: Record<number, Path<DocumentInput>[]> = {
+  0: ["issue_date"],
+  1: ["client_id"],
+  2: [
+    "report.site",
+    "report.technicians",
+    "report.intervention_date",
+    "report.request",
+  ],
+  3: [],
+  4: [],
 };
 
 /** Formulaire de création / édition d'un document (parcours multi-étapes). */
@@ -129,20 +156,21 @@ export function DocumentForm(props: Props) {
   const [step, setStep] = useState(0);
   const isEdit = Boolean(props.document);
 
+  const methods = useForm<DocumentInput>({
+    resolver: zodResolver(documentSchema),
+    defaultValues: buildDefaults(props),
+    mode: "onTouched",
+  });
   const {
     register,
-    handleSubmit,
     control,
     watch,
     setValue,
     getValues,
     trigger,
+    handleSubmit,
     formState: { errors },
-  } = useForm<DocumentInput>({
-    resolver: zodResolver(documentSchema),
-    defaultValues: buildDefaults(props),
-    mode: "onTouched",
-  });
+  } = methods;
 
   const { fields, append, remove } = useFieldArray({ control, name: "lines" });
 
@@ -171,6 +199,11 @@ export function DocumentForm(props: Props) {
     discount_amount: watched.discount_amount ?? 0,
     tax_rate: watched.tax_rate ?? 0,
   });
+
+  // Parcours actif : un rapport de maintenance a ses propres étapes 3-5.
+  const isReport = watched.type === "rapport_maintenance";
+  const STEPS = isReport ? REPORT_STEPS : BILLING_STEPS;
+  const stepFields = isReport ? REPORT_STEP_FIELDS : BILLING_STEP_FIELDS;
 
   function onSubmit(values: DocumentInput) {
     startTransition(async () => {
@@ -221,9 +254,9 @@ export function DocumentForm(props: Props) {
       setStep(target);
       return;
     }
-    const toCheck: (keyof DocumentInput)[] = [];
+    const toCheck: Path<DocumentInput>[] = [];
     for (let s = step; s < target; s++) {
-      toCheck.push(...(STEP_FIELDS[s] ?? []));
+      toCheck.push(...(stepFields[s] ?? []));
     }
     const valid = toCheck.length === 0 ? true : await trigger(toCheck);
     if (!valid) {
@@ -267,10 +300,43 @@ export function DocumentForm(props: Props) {
     if (value.startsWith("custom:")) {
       setValue("custom_type_id", value.slice(7));
       setValue("type", "autre");
-    } else {
-      setValue("custom_type_id", "");
-      setValue("type", value as DocumentInput["type"]);
+      return;
     }
+    const previous = watched.type;
+    setValue("custom_type_id", "");
+    const next = value as DocumentInput["type"];
+    setValue("type", next);
+    if (next === "rapport_maintenance") {
+      // Neutralise le tableau commercial et propose la structure type.
+      setValue("body_mode", "text");
+      if (isReportEmpty(getValues("report"))) {
+        setValue("report", reportSkeleton());
+      }
+      setStep(0);
+    } else if (previous === "rapport_maintenance") {
+      // On quitte le rapport → on repasse au mode tableau commercial.
+      setValue("body_mode", "table");
+      setStep(0);
+    }
+  }
+
+  /** Insère le modèle professionnel du type commercial courant (objet + conditions). */
+  function applyBillingTemplate() {
+    const tpl = DOCUMENT_TEMPLATES[watched.type];
+    if (!tpl) return;
+    const hasContent = [
+      getValues("subject"),
+      getValues("payment_terms"),
+      getValues("delivery_terms"),
+    ].some((v) => (v ?? "").trim() !== "");
+    if (hasContent && !window.confirm(t("documents.applyTemplateConfirm"))) return;
+    if (tpl.subject !== undefined) setValue("subject", tpl.subject);
+    if (tpl.payment_terms !== undefined) setValue("payment_terms", tpl.payment_terms);
+    if (tpl.delivery_terms !== undefined) setValue("delivery_terms", tpl.delivery_terms);
+    if (tpl.include_conditions !== undefined && !conditionsForced) {
+      setValue("include_conditions", tpl.include_conditions);
+    }
+    toast.success(t("documents.templateApplied"));
   }
 
   async function onCreateType() {
@@ -360,461 +426,493 @@ export function DocumentForm(props: Props) {
     e.preventDefault();
   }
 
-  return (
-    <form
-      onSubmit={onFormSubmit}
-      className="max-w-3xl space-y-6"
-      noValidate
-    >
-      {/* Indicateur d'étapes */}
-      <ol className="flex flex-wrap gap-2 text-xs">
-        {STEPS.map((s, i) => (
-          <li key={s}>
-            <button
-              type="button"
-              onClick={() => goToStep(i)}
-              className={`rounded-full px-3 py-1 transition-colors ${
-                i === step
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/70"
-              }`}
-            >
-              {i + 1}. {t(`documents.step_${s}`)}
-            </button>
-          </li>
-        ))}
-      </ol>
+  // Objet/validité du document : masqués pour un rapport (sections dédiées).
+  const showSubjectField = !isReport;
 
-      {/* Étape 1 — Infos */}
-      <section hidden={step !== 0} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="d-type">{t("documents.type")}</Label>
-            <div className="mt-1 flex gap-2">
-              <Select
-                id="d-type"
-                value={typeChoice}
-                onChange={(e) => onTypeChange(e.target.value)}
-                aria-invalid={errors.custom_type_id ? true : undefined}
-              >
-                {DOCUMENT_TYPES.map((ty) => (
-                  <option key={ty} value={ty}>
-                    {DOCUMENT_TYPE_LABELS[ty]}
-                  </option>
-                ))}
-                {customTypes.filter((ct) => ct.active).length > 0 ? (
-                  <optgroup label={t("documents.customTypesGroup")}>
-                    {customTypes
-                      .filter((ct) => ct.active)
-                      .map((ct) => (
-                        <option key={ct.id} value={`custom:${ct.id}`}>
-                          {ct.name} ({ct.prefix})
-                        </option>
-                      ))}
-                  </optgroup>
-                ) : null}
-              </Select>
-              <Button
+  return (
+    <FormProvider {...methods}>
+      <form onSubmit={onFormSubmit} className="max-w-3xl space-y-6" noValidate>
+        {/* Indicateur d'étapes */}
+        <ol className="flex flex-wrap gap-2 text-xs">
+          {STEPS.map((s, i) => (
+            <li key={s}>
+              <button
                 type="button"
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setShowTypeForm((s) => !s)}
-                aria-label={t("documents.addCustomType")}
+                onClick={() => goToStep(i)}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  i === step
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70"
+                }`}
               >
-                <Plus className="size-4" />
-              </Button>
-              {watched.custom_type_id ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={onDeleteType}
-                  disabled={creatingType}
-                  aria-label={t("documents.deleteCustomType")}
+                {i + 1}. {t(`documents.step_${s}`)}
+              </button>
+            </li>
+          ))}
+        </ol>
+
+        {/* Étape 1 — Infos (commune) */}
+        <section hidden={step !== 0} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="d-type">{t("documents.type")}</Label>
+              <div className="mt-1 flex gap-2">
+                <Select
+                  id="d-type"
+                  value={typeChoice}
+                  onChange={(e) => onTypeChange(e.target.value)}
+                  aria-invalid={errors.custom_type_id ? true : undefined}
                 >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
-              ) : null}
-            </div>
-            {err(errors.custom_type_id?.message)}
-            {showTypeForm ? (
-              <div className="mt-2 grid gap-2 rounded-xl p-3 ring-1 ring-foreground/10 sm:grid-cols-[1fr_110px_auto]">
-                <Input
-                  placeholder={t("documents.customTypeNamePlaceholder")}
-                  value={newTypeName}
-                  onChange={(e) => setNewTypeName(e.target.value)}
-                />
-                <Input
-                  placeholder={t("documents.customTypePrefixPlaceholder")}
-                  value={newTypePrefix}
-                  maxLength={6}
-                  onChange={(e) => setNewTypePrefix(e.target.value)}
-                />
-                <Button type="button" onClick={onCreateType} disabled={creatingType}>
-                  {creatingType ? t("common.saving") : t("categories.add")}
-                </Button>
-              </div>
-            ) : null}
-          </div>
-          <div>
-            <Label htmlFor="d-category">{t("documents.category")}</Label>
-            <div className="mt-1 flex gap-2">
-              <Select
-                id="d-category"
-                value={watched.category_id ?? ""}
-                onChange={(e) => setValue("category_id", e.target.value)}
-              >
-                <option value="">{t("documents.noCategory")}</option>
-                {categories
-                  .filter((c) => c.active)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name_fr}
+                  {DOCUMENT_TYPES.map((ty) => (
+                    <option key={ty} value={ty}>
+                      {DOCUMENT_TYPE_LABELS[ty]}
                     </option>
                   ))}
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                onClick={() => setShowCatForm((s) => !s)}
-                aria-label={t("documents.addCategory")}
-              >
-                <Plus className="size-4" />
-              </Button>
-              {watched.category_id ? (
+                  {customTypes.filter((ct) => ct.active).length > 0 ? (
+                    <optgroup label={t("documents.customTypesGroup")}>
+                      {customTypes
+                        .filter((ct) => ct.active)
+                        .map((ct) => (
+                          <option key={ct.id} value={`custom:${ct.id}`}>
+                            {ct.name} ({ct.prefix})
+                          </option>
+                        ))}
+                    </optgroup>
+                  ) : null}
+                </Select>
                 <Button
                   type="button"
                   variant="outline"
                   size="icon-sm"
-                  onClick={onDeleteCategory}
-                  disabled={creatingCat}
-                  aria-label={t("documents.deleteCategory")}
+                  onClick={() => setShowTypeForm((s) => !s)}
+                  aria-label={t("documents.addCustomType")}
                 >
-                  <Trash2 className="size-4 text-destructive" />
+                  <Plus className="size-4" />
                 </Button>
+                {watched.custom_type_id ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={onDeleteType}
+                    disabled={creatingType}
+                    aria-label={t("documents.deleteCustomType")}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                ) : null}
+              </div>
+              {err(errors.custom_type_id?.message)}
+              {showTypeForm ? (
+                <div className="mt-2 grid gap-2 rounded-xl p-3 ring-1 ring-foreground/10 sm:grid-cols-[1fr_110px_auto]">
+                  <Input
+                    placeholder={t("documents.customTypeNamePlaceholder")}
+                    value={newTypeName}
+                    onChange={(e) => setNewTypeName(e.target.value)}
+                  />
+                  <Input
+                    placeholder={t("documents.customTypePrefixPlaceholder")}
+                    value={newTypePrefix}
+                    maxLength={6}
+                    onChange={(e) => setNewTypePrefix(e.target.value)}
+                  />
+                  <Button type="button" onClick={onCreateType} disabled={creatingType}>
+                    {creatingType ? t("common.saving") : t("categories.add")}
+                  </Button>
+                </div>
               ) : null}
             </div>
-            {showCatForm ? (
-              <div className="mt-2 grid gap-2 rounded-xl p-3 ring-1 ring-foreground/10 sm:grid-cols-[1fr_auto]">
-                <Input
-                  placeholder={t("documents.categoryNamePlaceholder")}
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                />
-                <Button type="button" onClick={onCreateCategory} disabled={creatingCat}>
-                  {creatingCat ? t("common.saving") : t("categories.add")}
+            <div>
+              <Label htmlFor="d-category">{t("documents.category")}</Label>
+              <div className="mt-1 flex gap-2">
+                <Select
+                  id="d-category"
+                  value={watched.category_id ?? ""}
+                  onChange={(e) => setValue("category_id", e.target.value)}
+                >
+                  <option value="">{t("documents.noCategory")}</option>
+                  {categories
+                    .filter((c) => c.active)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name_fr}
+                      </option>
+                    ))}
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setShowCatForm((s) => !s)}
+                  aria-label={t("documents.addCategory")}
+                >
+                  <Plus className="size-4" />
                 </Button>
+                {watched.category_id ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={onDeleteCategory}
+                    disabled={creatingCat}
+                    aria-label={t("documents.deleteCategory")}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                ) : null}
+              </div>
+              {showCatForm ? (
+                <div className="mt-2 grid gap-2 rounded-xl p-3 ring-1 ring-foreground/10 sm:grid-cols-[1fr_auto]">
+                  <Input
+                    placeholder={t("documents.categoryNamePlaceholder")}
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                  />
+                  <Button type="button" onClick={onCreateCategory} disabled={creatingCat}>
+                    {creatingCat ? t("common.saving") : t("categories.add")}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+            <div>
+              <Label htmlFor="d-issue">
+                {t("documents.issueDate")}
+                {reqMark}
+              </Label>
+              <Input
+                id="d-issue"
+                type="date"
+                className="mt-1"
+                aria-invalid={errors.issue_date ? true : undefined}
+                {...register("issue_date")}
+              />
+              {err(errors.issue_date?.message)}
+            </div>
+            {showSubjectField ? (
+              <div>
+                <Label htmlFor="d-validity">{t("documents.validityDate")}</Label>
+                <Input id="d-validity" type="date" className="mt-1" {...register("validity_date")} />
+              </div>
+            ) : null}
+            <div className="sm:col-span-2">
+              <Label htmlFor="d-title">{t("documents.docTitle")}</Label>
+              <Input id="d-title" className="mt-1" placeholder={t("documents.titlePlaceholder")} {...register("title")} />
+              {err(errors.title?.message)}
+            </div>
+            {showSubjectField ? (
+              <div className="sm:col-span-2">
+                <Label htmlFor="d-subject">{t("documents.subject")}</Label>
+                <Input id="d-subject" className="mt-1" placeholder={t("documents.subjectPlaceholder")} {...register("subject")} />
               </div>
             ) : null}
           </div>
+        </section>
+
+        {/* Étape 2 — Client (commune) */}
+        <section hidden={step !== 1} className="space-y-4">
           <div>
-            <Label htmlFor="d-issue">
-              {t("documents.issueDate")}
+            <Label htmlFor="d-client">
+              {t("documents.client")}
               {reqMark}
             </Label>
-            <Input
-              id="d-issue"
-              type="date"
-              className="mt-1"
-              aria-invalid={errors.issue_date ? true : undefined}
-              {...register("issue_date")}
-            />
-            {err(errors.issue_date?.message)}
-          </div>
-          <div>
-            <Label htmlFor="d-validity">{t("documents.validityDate")}</Label>
-            <Input id="d-validity" type="date" className="mt-1" {...register("validity_date")} />
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="d-title">{t("documents.docTitle")}</Label>
-            <Input id="d-title" className="mt-1" placeholder={t("documents.titlePlaceholder")} {...register("title")} />
-            {err(errors.title?.message)}
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="d-subject">{t("documents.subject")}</Label>
-            <Input id="d-subject" className="mt-1" placeholder={t("documents.subjectPlaceholder")} {...register("subject")} />
-          </div>
-        </div>
-      </section>
+            <Select
+              id="d-client"
+              className="mt-1 max-w-md"
+              aria-invalid={errors.client_id ? true : undefined}
+              {...register("client_id")}
+            >
+              <option value="">{t("documents.chooseClient")}</option>
+              {props.clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.ref ? `${c.ref} — ${c.name}` : c.name}
+                </option>
+              ))}
+            </Select>
+            {err(errors.client_id?.message)}
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t("documents.clientHint")}{" "}
+              <Link
+                href="/admin/billing/clients/nouveau"
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                {t("documents.createClientLink")}
+              </Link>
+            </p>
 
-      {/* Étape 2 — Client */}
-      <section hidden={step !== 1} className="space-y-4">
-        <div>
-          <Label htmlFor="d-client">
-            {t("documents.client")}
-            {reqMark}
-          </Label>
-          <Select
-            id="d-client"
-            className="mt-1 max-w-md"
-            aria-invalid={errors.client_id ? true : undefined}
-            {...register("client_id")}
+            <div className="mt-4 max-w-md">
+              <Label htmlFor="d-clientref">{t("documents.clientRef")}</Label>
+              <Input
+                id="d-clientref"
+                className="mt-1"
+                placeholder={t("documents.clientRefPlaceholder")}
+                {...register("client_ref")}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ───────────── Parcours RAPPORT (étapes 3-5) ───────────── */}
+        {isReport ? (
+          <>
+            <section hidden={step !== 2}>
+              <ReportFields step="intervention" />
+            </section>
+            <section hidden={step !== 3}>
+              <ReportFields step="travaux" />
+            </section>
+            <section hidden={step !== 4} className="space-y-4">
+              <ReportFields step="conclusion" />
+              <div>
+                <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
+                <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />
+              </div>
+            </section>
+          </>
+        ) : (
+          <>
+            {/* Étape 3 — Corps (commercial) */}
+            <section hidden={step !== 2} className="space-y-4">
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" value="table" {...register("body_mode")} />
+                  {t("documents.modeTable")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" value="text" {...register("body_mode")} />
+                  {t("documents.modeText")}
+                </label>
+              </div>
+
+              {bodyMode === "table" ? (
+                <div className="space-y-3">
+                  {/* Défilement horizontal sur mobile : la saisie reste confortable
+                      sans écraser les colonnes (largeur mini garantie). */}
+                  <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
+                    <table className="w-full min-w-[640px] text-sm">
+                      <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 font-medium">
+                            {t("documents.designation")}
+                            {reqMark}
+                          </th>
+                          <th className="w-24 px-3 py-2 font-medium">{t("documents.unit")}</th>
+                          <th className="w-20 px-3 py-2 font-medium">{t("documents.quantity")}</th>
+                          <th className="w-32 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
+                          <th className="w-32 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
+                          <th className="w-10 px-3 py-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fields.map((field, i) => {
+                          const qty = Number(watched.lines?.[i]?.quantity) || 0;
+                          const pu = Number(watched.lines?.[i]?.unit_price) || 0;
+                          return (
+                            <tr key={field.id} className="border-t border-border align-top">
+                              <td className="px-3 py-2">
+                                <Input
+                                  aria-invalid={
+                                    errors.lines?.[i]?.designation ? true : undefined
+                                  }
+                                  {...register(`lines.${i}.designation` as const)}
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  placeholder={t("documents.unitPlaceholder")}
+                                  {...register(`lines.${i}.unit` as const)}
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  {...register(`lines.${i}.quantity` as const, { valueAsNumber: true })}
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  {...register(`lines.${i}.unit_price` as const, { valueAsNumber: true })}
+                                />
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums">
+                                {formatMoney(lineTotal(qty, pu))}
+                              </td>
+                              <td className="px-3 py-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => remove(i)}
+                                  disabled={fields.length <= 1}
+                                  aria-label={t("documents.removeLine")}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {err(errors.lines?.message)}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ designation: "", unit: "", quantity: 1, unit_price: 0 })}
+                  >
+                    <Plus className="size-4" />
+                    {t("documents.addLine")}
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="d-body">
+                    {t("documents.bodyText")}
+                    {reqMark}
+                  </Label>
+                  <Textarea
+                    id="d-body"
+                    className="mt-1 min-h-48"
+                    placeholder={t("documents.bodyTextPlaceholder")}
+                    aria-invalid={errors.body_text ? true : undefined}
+                    {...register("body_text")}
+                  />
+                  {err(errors.body_text?.message)}
+                </div>
+              )}
+            </section>
+
+            {/* Étape 4 — Totaux (commercial) */}
+            <section hidden={step !== 3} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <Label htmlFor="d-labor">{t("documents.laborAmount")}</Label>
+                  <Input id="d-labor" type="number" min="0" className="mt-1" aria-invalid={errors.labor_amount ? true : undefined} {...register("labor_amount", { valueAsNumber: true })} />
+                  {err(errors.labor_amount?.message)}
+                </div>
+                <div>
+                  <Label htmlFor="d-discount">{t("documents.discountAmount")}</Label>
+                  <Input id="d-discount" type="number" min="0" className="mt-1" aria-invalid={errors.discount_amount ? true : undefined} {...register("discount_amount", { valueAsNumber: true })} />
+                  {err(errors.discount_amount?.message)}
+                </div>
+                <div>
+                  <Label htmlFor="d-tax">{t("documents.taxRate")}</Label>
+                  <Input id="d-tax" type="number" step="0.01" min="0" max="100" className="mt-1" aria-invalid={errors.tax_rate ? true : undefined} {...register("tax_rate", { valueAsNumber: true })} />
+                  {err(errors.tax_rate?.message)}
+                  <p className="mt-1 text-xs text-muted-foreground">{t("documents.taxHint")}</p>
+                </div>
+              </div>
+
+              <div className="ml-auto max-w-xs space-y-1.5 rounded-xl bg-muted/40 p-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("documents.materialsSubtotal")}</span>
+                  <span className="tabular-nums">{formatMoney(totals.materialsSubtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("documents.laborAmount")}</span>
+                  <span className="tabular-nums">{formatMoney(totals.laborAmount)}</span>
+                </div>
+                {totals.discountAmount > 0 ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t("documents.discountAmount")}</span>
+                    <span className="tabular-nums text-destructive">- {formatMoney(totals.discountAmount)}</span>
+                  </div>
+                ) : null}
+                {totals.taxRate > 0 ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      {t("documents.tax")} ({totals.taxRate} %)
+                    </span>
+                    <span className="tabular-nums">{formatMoney(totals.taxAmount)}</span>
+                  </div>
+                ) : null}
+                <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
+                  <span>{t("documents.totalAmount")}</span>
+                  <span className="tabular-nums">{formatMoney(totals.totalAmount)}</span>
+                </div>
+              </div>
+            </section>
+
+            {/* Étape 5 — Conditions (commercial) */}
+            <section hidden={step !== 4} className="space-y-4">
+              {DOCUMENT_TEMPLATES[watched.type] ? (
+                <Button type="button" variant="outline" size="sm" onClick={applyBillingTemplate}>
+                  <FileText className="size-4" />
+                  {t("documents.applyTemplate", { type: DOCUMENT_TYPE_LABELS[watched.type] })}
+                </Button>
+              ) : null}
+              <div>
+                <Label htmlFor="d-payterms">
+                  {t("documents.paymentTerms")}
+                  {conditionsForced ? reqMark : null}
+                </Label>
+                <Textarea
+                  id="d-payterms"
+                  className="mt-1"
+                  aria-invalid={errors.payment_terms ? true : undefined}
+                  {...register("payment_terms")}
+                />
+                {err(errors.payment_terms?.message)}
+              </div>
+              <div>
+                <Label htmlFor="d-delterms">
+                  {t("documents.deliveryTerms")}
+                  {conditionsForced ? reqMark : null}
+                </Label>
+                <Textarea id="d-delterms" className="mt-1" {...register("delivery_terms")} />
+              </div>
+              <label className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  disabled={conditionsForced}
+                  {...register("include_conditions")}
+                />
+                <span>
+                  <span className="font-medium">{t("documents.includeConditions")}</span>
+                  <span className="mt-0.5 block text-muted-foreground">
+                    {conditionsForced
+                      ? t("documents.includeConditionsForced")
+                      : t("documents.includeConditionsHint")}
+                  </span>
+                </span>
+              </label>
+              <div>
+                <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
+                <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* Navigation + soumission */}
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            disabled={step === 0}
           >
-            <option value="">{t("documents.chooseClient")}</option>
-            {props.clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.ref ? `${c.ref} — ${c.name}` : c.name}
-              </option>
-            ))}
-          </Select>
-          {err(errors.client_id?.message)}
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t("documents.clientHint")}{" "}
-            <Link
-              href="/admin/billing/clients/nouveau"
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              {t("documents.createClientLink")}
-            </Link>
-          </p>
+            {t("common.previous")}
+          </Button>
 
-          <div className="mt-4 max-w-md">
-            <Label htmlFor="d-clientref">{t("documents.clientRef")}</Label>
-            <Input
-              id="d-clientref"
-              className="mt-1"
-              placeholder={t("documents.clientRefPlaceholder")}
-              {...register("client_ref")}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Étape 3 — Corps */}
-      <section hidden={step !== 2} className="space-y-4">
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" value="table" {...register("body_mode")} />
-            {t("documents.modeTable")}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" value="text" {...register("body_mode")} />
-            {t("documents.modeText")}
-          </label>
-        </div>
-
-        {bodyMode === "table" ? (
-          <div className="space-y-3">
-            {/* Défilement horizontal sur mobile : la saisie reste confortable
-                sans écraser les colonnes (largeur mini garantie). */}
-            <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">
-                      {t("documents.designation")}
-                      {reqMark}
-                    </th>
-                    <th className="w-24 px-3 py-2 font-medium">{t("documents.unit")}</th>
-                    <th className="w-20 px-3 py-2 font-medium">{t("documents.quantity")}</th>
-                    <th className="w-32 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
-                    <th className="w-32 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
-                    <th className="w-10 px-3 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fields.map((field, i) => {
-                    const qty = Number(watched.lines?.[i]?.quantity) || 0;
-                    const pu = Number(watched.lines?.[i]?.unit_price) || 0;
-                    return (
-                      <tr key={field.id} className="border-t border-border align-top">
-                        <td className="px-3 py-2">
-                          <Input
-                            aria-invalid={
-                              errors.lines?.[i]?.designation ? true : undefined
-                            }
-                            {...register(`lines.${i}.designation` as const)}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            placeholder={t("documents.unitPlaceholder")}
-                            {...register(`lines.${i}.unit` as const)}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            step="any"
-                            min="0"
-                            {...register(`lines.${i}.quantity` as const, { valueAsNumber: true })}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            step="1"
-                            min="0"
-                            {...register(`lines.${i}.unit_price` as const, { valueAsNumber: true })}
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {formatMoney(lineTotal(qty, pu))}
-                        </td>
-                        <td className="px-3 py-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => remove(i)}
-                            disabled={fields.length <= 1}
-                            aria-label={t("documents.removeLine")}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {err(errors.lines?.message)}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => append({ designation: "", unit: "", quantity: 1, unit_price: 0 })}
-            >
-              <Plus className="size-4" />
-              {t("documents.addLine")}
+          {step < STEPS.length - 1 ? (
+            <Button type="button" onClick={() => goToStep(step + 1)}>
+              {t("common.next")}
             </Button>
-          </div>
-        ) : (
-          <div>
-            <Label htmlFor="d-body">
-              {t("documents.bodyText")}
-              {reqMark}
-            </Label>
-            <Textarea
-              id="d-body"
-              className="mt-1 min-h-48"
-              placeholder={t("documents.bodyTextPlaceholder")}
-              aria-invalid={errors.body_text ? true : undefined}
-              {...register("body_text")}
-            />
-            {err(errors.body_text?.message)}
-          </div>
-        )}
-      </section>
-
-      {/* Étape 4 — Totaux */}
-      <section hidden={step !== 3} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <Label htmlFor="d-labor">{t("documents.laborAmount")}</Label>
-            <Input id="d-labor" type="number" min="0" className="mt-1" aria-invalid={errors.labor_amount ? true : undefined} {...register("labor_amount", { valueAsNumber: true })} />
-            {err(errors.labor_amount?.message)}
-          </div>
-          <div>
-            <Label htmlFor="d-discount">{t("documents.discountAmount")}</Label>
-            <Input id="d-discount" type="number" min="0" className="mt-1" aria-invalid={errors.discount_amount ? true : undefined} {...register("discount_amount", { valueAsNumber: true })} />
-            {err(errors.discount_amount?.message)}
-          </div>
-          <div>
-            <Label htmlFor="d-tax">{t("documents.taxRate")}</Label>
-            <Input id="d-tax" type="number" step="0.01" min="0" max="100" className="mt-1" aria-invalid={errors.tax_rate ? true : undefined} {...register("tax_rate", { valueAsNumber: true })} />
-            {err(errors.tax_rate?.message)}
-            <p className="mt-1 text-xs text-muted-foreground">{t("documents.taxHint")}</p>
-          </div>
+          ) : (
+            <Button type="button" onClick={onSaveClick} disabled={pending}>
+              {pending ? t("common.saving") : t("documents.saveDraft")}
+            </Button>
+          )}
         </div>
-
-        <div className="ml-auto max-w-xs space-y-1.5 rounded-xl bg-muted/40 p-4 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">{t("documents.materialsSubtotal")}</span>
-            <span className="tabular-nums">{formatMoney(totals.materialsSubtotal)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">{t("documents.laborAmount")}</span>
-            <span className="tabular-nums">{formatMoney(totals.laborAmount)}</span>
-          </div>
-          {totals.discountAmount > 0 ? (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("documents.discountAmount")}</span>
-              <span className="tabular-nums text-destructive">- {formatMoney(totals.discountAmount)}</span>
-            </div>
-          ) : null}
-          {totals.taxRate > 0 ? (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                {t("documents.tax")} ({totals.taxRate} %)
-              </span>
-              <span className="tabular-nums">{formatMoney(totals.taxAmount)}</span>
-            </div>
-          ) : null}
-          <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
-            <span>{t("documents.totalAmount")}</span>
-            <span className="tabular-nums">{formatMoney(totals.totalAmount)}</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Étape 5 — Conditions */}
-      <section hidden={step !== 4} className="space-y-4">
-        <div>
-          <Label htmlFor="d-payterms">
-            {t("documents.paymentTerms")}
-            {conditionsForced ? reqMark : null}
-          </Label>
-          <Textarea
-            id="d-payterms"
-            className="mt-1"
-            aria-invalid={errors.payment_terms ? true : undefined}
-            {...register("payment_terms")}
-          />
-          {err(errors.payment_terms?.message)}
-        </div>
-        <div>
-          <Label htmlFor="d-delterms">
-            {t("documents.deliveryTerms")}
-            {conditionsForced ? reqMark : null}
-          </Label>
-          <Textarea id="d-delterms" className="mt-1" {...register("delivery_terms")} />
-        </div>
-        <label className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            disabled={conditionsForced}
-            {...register("include_conditions")}
-          />
-          <span>
-            <span className="font-medium">{t("documents.includeConditions")}</span>
-            <span className="mt-0.5 block text-muted-foreground">
-              {conditionsForced
-                ? t("documents.includeConditionsForced")
-                : t("documents.includeConditionsHint")}
-            </span>
-          </span>
-        </label>
-        <div>
-          <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
-          <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />
-        </div>
-      </section>
-
-      {/* Navigation + soumission */}
-      <div className="flex items-center justify-between border-t border-border pt-4">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
-        >
-          {t("common.previous")}
-        </Button>
-
-        {step < STEPS.length - 1 ? (
-          <Button type="button" onClick={() => goToStep(step + 1)}>
-            {t("common.next")}
-          </Button>
-        ) : (
-          <Button type="button" onClick={onSaveClick} disabled={pending}>
-            {pending ? t("common.saving") : t("documents.saveDraft")}
-          </Button>
-        )}
-      </div>
-    </form>
+      </form>
+    </FormProvider>
   );
 }

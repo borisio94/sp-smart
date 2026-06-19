@@ -9,6 +9,7 @@ export const PDF_COLORS = {
   corporateLight: "#5b9bd5", // bleu clair (filet d'en-tête)
   navy: "#0a2a6b", // bleu nuit (bon de commande)
   green: "#15803d", // vert (reçu)
+  teal: "#0f766e", // sarcelle (rapport de maintenance)
   redDiscount: "#b91c1c", // rouge remise
   footerBg: "#f1f5f9", // gris pied de page
   gray475: "#475569",
@@ -27,6 +28,7 @@ export const PDF_COLORS = {
 export function bandColor(type: DocumentType): string {
   if (type === "bon_commande") return PDF_COLORS.navy;
   if (type === "recu") return PDF_COLORS.green;
+  if (type === "rapport_maintenance") return PDF_COLORS.teal;
   return PDF_COLORS.corporate; // devis, proforma, facture
 }
 
