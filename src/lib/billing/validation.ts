@@ -79,7 +79,9 @@ export type CustomDocumentTypeInput = z.infer<typeof customDocumentTypeSchema>;
 
 // ───────────── Documents ─────────────
 export const documentLineSchema = z.object({
-  designation: z.string().trim().min(1, "Désignation requise").max(400),
+  // Désignation exigée uniquement en mode tableau (cf. superRefine du document) :
+  // en mode texte / rapport, la ligne par défaut reste vide et n'est pas envoyée.
+  designation: z.string().trim().max(400),
   unit: z.string().trim().max(40).optional().or(z.literal("")),
   quantity: z.number({ message: "Quantité invalide" }).min(0, "Quantité invalide").max(1_000_000),
   unit_price: z.number({ message: "Prix invalide" }).min(0, "Prix invalide").max(1_000_000_000),
@@ -206,6 +208,20 @@ export const documentSchema = z
       path: ["custom_type_id"],
     },
   )
+  .superRefine((d, ctx) => {
+    // En mode tableau (hors rapport), chaque ligne doit avoir une désignation.
+    // En mode texte / rapport, les lignes par défaut vides sont tolérées.
+    if (d.body_mode !== "table" || d.type === "rapport_maintenance") return;
+    d.lines.forEach((l, i) => {
+      if (!l.designation || l.designation.trim() === "") {
+        ctx.addIssue({
+          code: "custom",
+          message: "Désignation requise",
+          path: ["lines", i, "designation"],
+        });
+      }
+    });
+  })
   .superRefine((d, ctx) => {
     // Champs obligatoires d'un rapport de maintenance (sinon ignorés).
     if (d.type !== "rapport_maintenance") return;
