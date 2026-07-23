@@ -212,10 +212,12 @@ export interface DocumentLine {
   id: string;
   document_id: string;
   position: number;
+  section: string | null; // intitulé du compartiment (NULL = hors section)
   designation: string;
   unit: string | null; // « pièce », « barre », « m », « paire »…
   quantity: number;
   unit_price: number;
+  is_amount_only: boolean; // ligne forfaitaire (montant direct, sans qté/PU)
   line_total: number;
 }
 

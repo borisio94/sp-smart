@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -10,7 +11,7 @@ import {
   formatDate,
   formatNumber,
 } from "@/lib/billing/format";
-import { deductionsTotal } from "@/lib/billing/compute";
+import { deductionsTotal, groupSections, hasNamedSections } from "@/lib/billing/compute";
 import { INTERVENTION_TYPE_LABELS } from "@/lib/billing/templates";
 import { deleteDocument } from "../actions";
 import { PageHeader } from "@/components/billing/page-header";
@@ -43,6 +44,10 @@ export default async function DocumentDetailPage({
   // Un rapport de maintenance affiche ses sections techniques (pas de totaux).
   const isReport = doc.type === "rapport_maintenance";
   const r = doc.report_data;
+
+  // Sections (« compartiments ») du tableau.
+  const docSections = groupSections(doc.lines);
+  const docSectioned = hasNamedSections(doc.lines);
 
   // Facture : nature (acompte / définitive) et montants de règlement.
   const isFacture = doc.type === "facture";
@@ -230,14 +235,38 @@ export default async function DocumentDetailPage({
                         </tr>
                       </thead>
                       <tbody>
-                        {doc.lines.map((l) => (
-                          <tr key={l.id} className="border-b border-border/60">
-                            <td className="py-2">{l.designation}</td>
-                            <td className="py-2 text-right tabular-nums">{formatNumber(l.quantity)}</td>
-                            <td className="py-2 text-right tabular-nums">{formatMoney(l.unit_price)}</td>
-                            <td className="py-2 text-right tabular-nums">{formatMoney(l.line_total)}</td>
-                          </tr>
-                        ))}
+                        {docSectioned
+                          ? docSections.map((group, gi) => (
+                              <Fragment key={gi}>
+                                {group.title ? (
+                                  <tr className="bg-muted/50">
+                                    <td colSpan={4} className="py-1.5 text-center text-xs font-semibold uppercase">
+                                      {group.title}
+                                    </td>
+                                  </tr>
+                                ) : null}
+                                {group.lines.map((l) => (
+                                  <tr key={l.id} className="border-b border-border/60">
+                                    <td className="py-2">{l.designation}</td>
+                                    <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatNumber(l.quantity)}</td>
+                                    <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatMoney(l.unit_price)}</td>
+                                    <td className="py-2 text-right tabular-nums">{formatMoney(l.line_total)}</td>
+                                  </tr>
+                                ))}
+                                <tr className="border-b border-border bg-muted/30 font-medium">
+                                  <td colSpan={3} className="py-1.5">{`Total ${gi + 1}`}</td>
+                                  <td className="py-1.5 text-right tabular-nums">{formatMoney(group.subtotal)}</td>
+                                </tr>
+                              </Fragment>
+                            ))
+                          : doc.lines.map((l) => (
+                              <tr key={l.id} className="border-b border-border/60">
+                                <td className="py-2">{l.designation}</td>
+                                <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatNumber(l.quantity)}</td>
+                                <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatMoney(l.unit_price)}</td>
+                                <td className="py-2 text-right tabular-nums">{formatMoney(l.line_total)}</td>
+                              </tr>
+                            ))}
                       </tbody>
                     </table>
                   ) : (

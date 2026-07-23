@@ -15,7 +15,12 @@ import { toast } from "sonner";
 import { Plus, Trash2, FileText } from "lucide-react";
 
 import { documentSchema, type DocumentInput } from "@/lib/billing/validation";
-import { computeTotals, lineTotal } from "@/lib/billing/compute";
+import {
+  computeTotals,
+  resolveLineTotal,
+  groupSections,
+  hasNamedSections,
+} from "@/lib/billing/compute";
 import {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_LABELS,
@@ -70,6 +75,18 @@ function emptyInvoice(): NonNullable<DocumentInput["invoice"]> {
   };
 }
 
+/** Ligne de tableau vierge (éventuellement rattachée à une section). */
+function emptyLine(section = ""): DocumentInput["lines"][number] {
+  return {
+    section,
+    designation: "",
+    unit: "",
+    quantity: 1,
+    unit_price: 0,
+    is_amount_only: false,
+  };
+}
+
 /** Construit les valeurs initiales du formulaire (création ou édition). */
 function buildDefaults(props: Props): DocumentInput {
   const d = props.document;
@@ -89,12 +106,14 @@ function buildDefaults(props: Props): DocumentInput {
       lines:
         d.lines.length > 0
           ? d.lines.map((l) => ({
+              section: l.section ?? "",
               designation: l.designation,
               unit: l.unit ?? "",
               quantity: l.quantity,
               unit_price: l.unit_price,
+              is_amount_only: l.is_amount_only ?? false,
             }))
-          : [{ designation: "", unit: "", quantity: 1, unit_price: 0 }],
+          : [emptyLine()],
       labor_amount: d.labor_amount,
       discount_amount: d.discount_amount,
       tax_rate: d.tax_rate ?? 0,
@@ -118,7 +137,7 @@ function buildDefaults(props: Props): DocumentInput {
     client_ref: "",
     body_mode: "table",
     body_text: "",
-    lines: [{ designation: "", unit: "", quantity: 1, unit_price: 0 }],
+    lines: [emptyLine()],
     labor_amount: 0,
     discount_amount: 0,
     tax_rate: props.defaultTaxRate ?? 0,
@@ -213,6 +232,12 @@ export function DocumentForm(props: Props) {
     discount_amount: watched.discount_amount ?? 0,
     tax_rate: watched.tax_rate ?? 0,
   });
+
+  // Sections (« compartiments ») : sous-totaux par section + total cumulé.
+  const lineList = watched.lines ?? [];
+  const hasSections = hasNamedSections(lineList);
+  const sectionGroups = groupSections(lineList);
+  const sectionsSubtotal = sectionGroups.reduce((s, g) => s + g.subtotal, 0);
 
   // Parcours actif : un rapport de maintenance a ses propres étapes 3-5.
   const isReport = watched.type === "rapport_maintenance";
@@ -705,29 +730,45 @@ export function DocumentForm(props: Props) {
 
               {bodyMode === "table" ? (
                 <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    {t("documents.sectionsHint")}
+                  </p>
                   {/* Défilement horizontal sur mobile : la saisie reste confortable
                       sans écraser les colonnes (largeur mini garantie). */}
                   <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
-                    <table className="w-full min-w-[640px] text-sm">
+                    <table className="w-full min-w-[820px] text-sm">
                       <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                         <tr>
+                          <th className="w-40 px-3 py-2 font-medium">{t("documents.section")}</th>
                           <th className="px-3 py-2 font-medium">
                             {t("documents.designation")}
                             {reqMark}
                           </th>
-                          <th className="w-24 px-3 py-2 font-medium">{t("documents.unit")}</th>
-                          <th className="w-20 px-3 py-2 font-medium">{t("documents.quantity")}</th>
-                          <th className="w-32 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
-                          <th className="w-32 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
+                          <th className="w-20 px-3 py-2 font-medium">{t("documents.unit")}</th>
+                          <th className="w-16 px-3 py-2 font-medium">{t("documents.quantity")}</th>
+                          <th className="w-28 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
+                          <th className="w-28 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
+                          <th className="w-16 px-3 py-2 text-center font-medium">{t("documents.flatLine")}</th>
                           <th className="w-10 px-3 py-2"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {fields.map((field, i) => {
-                          const qty = Number(watched.lines?.[i]?.quantity) || 0;
-                          const pu = Number(watched.lines?.[i]?.unit_price) || 0;
+                          const line = watched.lines?.[i];
+                          const flat = Boolean(line?.is_amount_only);
+                          const total = resolveLineTotal({
+                            quantity: Number(line?.quantity) || 0,
+                            unit_price: Number(line?.unit_price) || 0,
+                            is_amount_only: flat,
+                          });
                           return (
                             <tr key={field.id} className="border-t border-border align-top">
+                              <td className="px-3 py-2">
+                                <Input
+                                  placeholder={t("documents.sectionPlaceholder")}
+                                  {...register(`lines.${i}.section` as const)}
+                                />
+                              </td>
                               <td className="px-3 py-2">
                                 <Input
                                   aria-invalid={
@@ -739,6 +780,7 @@ export function DocumentForm(props: Props) {
                               <td className="px-3 py-2">
                                 <Input
                                   placeholder={t("documents.unitPlaceholder")}
+                                  disabled={flat}
                                   {...register(`lines.${i}.unit` as const)}
                                 />
                               </td>
@@ -747,6 +789,7 @@ export function DocumentForm(props: Props) {
                                   type="number"
                                   step="any"
                                   min="0"
+                                  disabled={flat}
                                   {...register(`lines.${i}.quantity` as const, { valueAsNumber: true })}
                                 />
                               </td>
@@ -755,11 +798,19 @@ export function DocumentForm(props: Props) {
                                   type="number"
                                   step="1"
                                   min="0"
+                                  placeholder={flat ? t("documents.flatAmountPlaceholder") : undefined}
                                   {...register(`lines.${i}.unit_price` as const, { valueAsNumber: true })}
                                 />
                               </td>
                               <td className="px-3 py-2 text-right tabular-nums">
-                                {formatMoney(lineTotal(qty, pu))}
+                                {formatMoney(total)}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <input
+                                  type="checkbox"
+                                  aria-label={t("documents.flatLine")}
+                                  {...register(`lines.${i}.is_amount_only` as const)}
+                                />
                               </td>
                               <td className="px-3 py-2">
                                 <Button
@@ -780,15 +831,47 @@ export function DocumentForm(props: Props) {
                     </table>
                   </div>
                   {err(errors.lines?.message)}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => append({ designation: "", unit: "", quantity: 1, unit_price: 0 })}
-                  >
-                    <Plus className="size-4" />
-                    {t("documents.addLine")}
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const last = watched.lines?.[fields.length - 1];
+                        append(emptyLine((last?.section ?? "").trim()));
+                      }}
+                    >
+                      <Plus className="size-4" />
+                      {t("documents.addLine")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => append(emptyLine(""))}
+                    >
+                      <Plus className="size-4" />
+                      {t("documents.addSection")}
+                    </Button>
+                  </div>
+
+                  {/* Aperçu des sous-totaux par section + total cumulé */}
+                  {hasSections ? (
+                    <div className="ml-auto max-w-sm space-y-1 rounded-xl bg-muted/40 p-4 text-sm">
+                      {sectionGroups.map((g, gi) => (
+                        <div key={gi} className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            {g.title || t("documents.sectionUntitled")}
+                          </span>
+                          <span className="tabular-nums">{formatMoney(g.subtotal)}</span>
+                        </div>
+                      ))}
+                      <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
+                        <span>{t("documents.grandTotal")}</span>
+                        <span className="tabular-nums">{formatMoney(sectionsSubtotal)}</span>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div>

@@ -18,6 +18,70 @@ export function lineTotal(quantity: number, unitPrice: number): number {
   return Math.round((Number(quantity) || 0) * (Number(unitPrice) || 0));
 }
 
+/** Forme minimale d'une ligne pour le calcul de son total. */
+export interface LineLike {
+  quantity: number;
+  unit_price: number;
+  is_amount_only?: boolean | null;
+}
+
+/**
+ * Total effectif d'une ligne : montant direct si forfaitaire (unit_price),
+ * sinon quantité × prix unitaire.
+ */
+export function resolveLineTotal(line: LineLike): number {
+  return line.is_amount_only
+    ? Math.round(Number(line.unit_price) || 0)
+    : lineTotal(line.quantity, line.unit_price);
+}
+
+/** Ligne minimale pour le regroupement en sections. */
+export interface SectionLineLike extends LineLike {
+  section?: string | null;
+  line_total?: number;
+}
+
+/** Section (compartiment) d'un document : intitulé, lignes et sous-total. */
+export interface DocumentSectionGroup<T extends SectionLineLike> {
+  title: string;
+  lines: T[];
+  subtotal: number;
+}
+
+/**
+ * Regroupe des lignes en sections consécutives (même intitulé). Le sous-total
+ * utilise `line_total` s'il est fourni (lecture BD), sinon il est recalculé.
+ */
+export function groupSections<T extends SectionLineLike>(
+  lines: T[],
+): DocumentSectionGroup<T>[] {
+  const groups: DocumentSectionGroup<T>[] = [];
+  for (const line of lines) {
+    const title = (line.section ?? "").trim();
+    const last = groups[groups.length - 1];
+    if (last && last.title === title) {
+      last.lines.push(line);
+    } else {
+      groups.push({ title, lines: [line], subtotal: 0 });
+    }
+  }
+  for (const group of groups) {
+    group.subtotal = group.lines.reduce(
+      (sum, l) =>
+        sum + (typeof l.line_total === "number" ? l.line_total : resolveLineTotal(l)),
+      0,
+    );
+  }
+  return groups;
+}
+
+/** Indique si un jeu de lignes utilise au moins une section nommée. */
+export function hasNamedSections(
+  lines: { section?: string | null }[],
+): boolean {
+  return lines.some((l) => (l.section ?? "").trim() !== "");
+}
+
 /** Somme (entière, positive) des acomptes déduits d'une facture définitive. */
 export function deductionsTotal(
   deductions: { amount: number }[] | null | undefined,
@@ -42,10 +106,7 @@ export function computeTotals(
 ): DocumentTotals {
   const materialsSubtotal =
     input.body_mode === "table"
-      ? input.lines.reduce(
-          (sum, l) => sum + lineTotal(l.quantity, l.unit_price),
-          0,
-        )
+      ? input.lines.reduce((sum, l) => sum + resolveLineTotal(l), 0)
       : 0;
 
   const laborAmount = Math.round(Number(input.labor_amount) || 0);

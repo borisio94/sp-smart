@@ -9,7 +9,7 @@ import {
   customDocumentTypeSchema,
   type DocumentInput,
 } from "@/lib/billing/validation";
-import { computeTotals, lineTotal } from "@/lib/billing/compute";
+import { computeTotals, resolveLineTotal } from "@/lib/billing/compute";
 import { formatDate } from "@/lib/billing/format";
 import { canTransition, timestampField } from "@/lib/billing/status-machine";
 import type { DocumentStatus, CustomDocumentType } from "@/lib/billing/types";
@@ -66,11 +66,13 @@ function buildLines(documentId: string, input: DocumentInput) {
   return input.lines.map((l, index) => ({
     document_id: documentId,
     position: index,
+    section: nz(l.section),
     designation: l.designation.trim(),
-    unit: nz(l.unit),
-    quantity: Number(l.quantity) || 0,
+    unit: l.is_amount_only ? null : nz(l.unit),
+    quantity: l.is_amount_only ? 1 : Number(l.quantity) || 0,
     unit_price: Math.round(Number(l.unit_price) || 0),
-    line_total: lineTotal(l.quantity, l.unit_price),
+    is_amount_only: Boolean(l.is_amount_only),
+    line_total: resolveLineTotal(l),
   }));
 }
 

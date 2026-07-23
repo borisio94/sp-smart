@@ -80,12 +80,17 @@ export type CustomDocumentTypeInput = z.infer<typeof customDocumentTypeSchema>;
 
 // ───────────── Documents ─────────────
 export const documentLineSchema = z.object({
+  // Intitulé de la section / compartiment (optionnel). Les lignes de même
+  // section consécutives sont regroupées avec un sous-total.
+  section: z.string().trim().max(120).optional().or(z.literal("")),
   // Désignation exigée uniquement en mode tableau (cf. superRefine du document) :
   // en mode texte / rapport, la ligne par défaut reste vide et n'est pas envoyée.
   designation: z.string().trim().max(400),
   unit: z.string().trim().max(40).optional().or(z.literal("")),
   quantity: z.number({ message: "Quantité invalide" }).min(0, "Quantité invalide").max(1_000_000),
   unit_price: z.number({ message: "Prix invalide" }).min(0, "Prix invalide").max(1_000_000_000),
+  // Ligne forfaitaire : montant direct (unit_price), sans quantité ni PU.
+  is_amount_only: z.boolean().optional(),
 });
 
 export type DocumentLineInput = z.infer<typeof documentLineSchema>;

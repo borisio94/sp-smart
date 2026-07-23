@@ -14,7 +14,7 @@ import type {
   Client,
 } from "../types";
 import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, factureTitleLabel } from "../format";
-import { deductionsTotal } from "../compute";
+import { deductionsTotal, groupSections, hasNamedSections } from "../compute";
 import { amountToWords } from "../amountToWords";
 import {
   PDF_COLORS,
@@ -160,6 +160,44 @@ const styles = StyleSheet.create({
   },
   tRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: PDF_COLORS.hairline },
   tCell: { fontSize: 10.5, paddingVertical: 5.5, paddingHorizontal: 6, color: PDF_COLORS.bodyBlack },
+  // Bande de titre de section (compartiment) et ligne de sous-total.
+  sectionBandRow: {
+    backgroundColor: PDF_COLORS.bandBg,
+    borderBottomWidth: 0.5,
+    borderBottomColor: PDF_COLORS.hairline,
+  },
+  sectionBandText: {
+    fontSize: 10.5,
+    fontFamily: "Times-Bold",
+    color: PDF_COLORS.corporate,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+  subtotalRow: {
+    flexDirection: "row",
+    backgroundColor: PDF_COLORS.tableAltRow,
+    borderBottomWidth: 0.5,
+    borderBottomColor: PDF_COLORS.hairline,
+  },
+  subtotalLabel: {
+    flex: 1,
+    fontSize: 10.5,
+    fontFamily: "Times-Bold",
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    color: PDF_COLORS.text,
+  },
+  subtotalValue: {
+    width: 84,
+    fontSize: 10.5,
+    fontFamily: "Times-Bold",
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    textAlign: "right",
+    color: PDF_COLORS.bodyBlack,
+  },
   colDesignation: { flex: 1 },
   colUnit: { width: 58 },
   colQty: { width: 38, textAlign: "center" },
@@ -429,6 +467,10 @@ export function DocumentPDF(data: DocumentPDFData) {
   const { document: doc, lines, organization: org, client } = data;
   const band = bandColor(doc.type);
 
+  // Sections (« compartiments ») : regroupement des lignes + sous-totaux.
+  const sectionGroups = groupSections(lines);
+  const sectioned = hasNamedSections(lines);
+
   // ── Facture : deux dispositions (acompte / définitive) ──
   const isFacture = doc.type === "facture";
   const inv = isFacture ? doc.invoice_data : null;
@@ -473,9 +515,11 @@ export function DocumentPDF(data: DocumentPDFData) {
   const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
   const grandLabel = hasInvoice
     ? `MONTANT TOTAL (${ttcSuffix})`
-    : doc.tax_rate > 0
-      ? "Total TTC"
-      : "Total HT";
+    : sectioned
+      ? "TOTAL GÉNÉRAL"
+      : doc.tax_rate > 0
+        ? "Total TTC"
+        : "Total HT";
 
   // Montant en lettres : base et formulation dépendent de la nature.
   //  - acompte avec acompte versé → montant de l'acompte
@@ -651,31 +695,78 @@ export function DocumentPDF(data: DocumentPDFData) {
                 <Text style={[styles.tHeadCell, styles.colPrice]}>PU (FCFA)</Text>
                 <Text style={[styles.tHeadCell, styles.colTotal]}>PT (FCFA)</Text>
               </View>
-              {lines.map((l, i) => (
-                <View
-                  key={l.id}
-                  style={[
-                    styles.tRow,
-                    { backgroundColor: i % 2 === 1 ? PDF_COLORS.tableAltRow : PDF_COLORS.white },
-                  ]}
-                  wrap={false}
-                >
-                  <Text style={[styles.tCell, styles.colDesignation]}>{l.designation}</Text>
-                  <Text style={[styles.tCell, styles.colUnit]}>{cleanField(l.unit) ?? ""}</Text>
-                  <Text style={[styles.tCell, styles.colQty]}>{pdfNumber(l.quantity)}</Text>
-                  <Text style={[styles.tCell, styles.colPrice]}>{pdfNumber(l.unit_price)}</Text>
-                  <Text style={[styles.tCell, styles.colTotal]}>{pdfNumber(l.line_total)}</Text>
-                </View>
-              ))}
+              {sectioned
+                ? sectionGroups.map((group, gi) => (
+                    <View key={gi}>
+                      {group.title ? (
+                        <View style={styles.sectionBandRow} wrap={false}>
+                          <Text style={styles.sectionBandText}>
+                            {group.title.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {group.lines.map((l, li) => (
+                        <View
+                          key={l.id}
+                          style={[
+                            styles.tRow,
+                            { backgroundColor: li % 2 === 1 ? PDF_COLORS.tableAltRow : PDF_COLORS.white },
+                          ]}
+                          wrap={false}
+                        >
+                          <Text style={[styles.tCell, styles.colDesignation]}>{l.designation}</Text>
+                          <Text style={[styles.tCell, styles.colUnit]}>
+                            {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
+                          </Text>
+                          <Text style={[styles.tCell, styles.colQty]}>
+                            {l.is_amount_only ? "" : pdfNumber(l.quantity)}
+                          </Text>
+                          <Text style={[styles.tCell, styles.colPrice]}>
+                            {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
+                          </Text>
+                          <Text style={[styles.tCell, styles.colTotal]}>{pdfNumber(l.line_total)}</Text>
+                        </View>
+                      ))}
+                      <View style={styles.subtotalRow} wrap={false}>
+                        <Text style={styles.subtotalLabel}>Total {gi + 1}</Text>
+                        <Text style={styles.subtotalValue}>{pdfNumber(group.subtotal)}</Text>
+                      </View>
+                    </View>
+                  ))
+                : lines.map((l, i) => (
+                    <View
+                      key={l.id}
+                      style={[
+                        styles.tRow,
+                        { backgroundColor: i % 2 === 1 ? PDF_COLORS.tableAltRow : PDF_COLORS.white },
+                      ]}
+                      wrap={false}
+                    >
+                      <Text style={[styles.tCell, styles.colDesignation]}>{l.designation}</Text>
+                      <Text style={[styles.tCell, styles.colUnit]}>
+                        {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
+                      </Text>
+                      <Text style={[styles.tCell, styles.colQty]}>
+                        {l.is_amount_only ? "" : pdfNumber(l.quantity)}
+                      </Text>
+                      <Text style={[styles.tCell, styles.colPrice]}>
+                        {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
+                      </Text>
+                      <Text style={[styles.tCell, styles.colTotal]}>{pdfNumber(l.line_total)}</Text>
+                    </View>
+                  ))}
             </View>
 
             {/* Totaux : bloc étroit aligné à droite */}
             <View style={styles.totalsWrap}>
             <View style={styles.totalsTable}>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabelCell}>Total matériel</Text>
-                <Text style={styles.totalValueCell}>{pdfNumber(doc.materials_subtotal)}</Text>
-              </View>
+              {/* Sous-total matériel : masqué en mode sectionné (déjà cumulé par section). */}
+              {sectioned ? null : (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabelCell}>Total matériel</Text>
+                  <Text style={styles.totalValueCell}>{pdfNumber(doc.materials_subtotal)}</Text>
+                </View>
+              )}
               {doc.labor_amount > 0 ? (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabelCell}>Main d&apos;œuvre</Text>
