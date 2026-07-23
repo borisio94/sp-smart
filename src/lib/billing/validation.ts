@@ -280,33 +280,15 @@ export const documentSchema = z
     }
   })
   .superRefine((d, ctx) => {
-    // Règles propres à une facture (acompte / définitive).
+    // Règles propres à une facture : la nature (acompte / définitive) est
+    // requise. Le montant est porté par l'unique ligne du tableau (généré
+    // automatiquement à partir du champ « Montant » de la page facture).
     if (d.type !== "facture") return;
-    const inv = d.invoice;
-    if (!inv) {
+    if (!d.invoice) {
       ctx.addIssue({
         code: "custom",
         message: "Nature de la facture requise (acompte ou définitive).",
         path: ["invoice", "kind"],
-      });
-      return;
-    }
-    if (inv.kind === "acompte" && (!inv.advance_amount || inv.advance_amount <= 0)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Montant de l'acompte versé requis.",
-        path: ["invoice", "advance_amount"],
-      });
-    }
-    if (inv.kind === "definitive") {
-      inv.deductions.forEach((ded, i) => {
-        if (!ded.reference || ded.reference.trim() === "") {
-          ctx.addIssue({
-            code: "custom",
-            message: "Référence de l'acompte requise.",
-            path: ["invoice", "deductions", i, "reference"],
-          });
-        }
       });
     }
   });

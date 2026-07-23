@@ -15,17 +15,14 @@ import { toast } from "sonner";
 import { Plus, Trash2, FileText } from "lucide-react";
 
 import { documentSchema, type DocumentInput } from "@/lib/billing/validation";
-import { computeTotals, lineTotal, deductionsTotal } from "@/lib/billing/compute";
+import { computeTotals, lineTotal } from "@/lib/billing/compute";
 import {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_LABELS,
-  PAYMENT_METHOD_LABELS,
   formatMoney,
-  formatDate,
 } from "@/lib/billing/format";
 import {
   DOCUMENT_TEMPLATES,
-  FACTURE_TEMPLATES,
   emptyReport,
   reportSkeleton,
   isReportEmpty,
@@ -40,13 +37,8 @@ import {
   createCategoryQuick,
   deleteCategory,
 } from "@/app/(admin)/admin/billing/(protected)/parametres/categories/actions";
-import type {
-  Client,
-  Category,
-  CustomDocumentType,
-  PaymentMethod,
-} from "@/lib/billing/types";
-import type { DocumentWithLines, AdvanceInvoiceOption } from "@/lib/billing/queries";
+import type { Client, Category, CustomDocumentType } from "@/lib/billing/types";
+import type { DocumentWithLines } from "@/lib/billing/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +50,6 @@ interface Props {
   clients: Client[];
   categories: Category[];
   customTypes: CustomDocumentType[];
-  advanceInvoices: AdvanceInvoiceOption[];
   defaultIssueDate: string;
   defaultPaymentTerms?: string | null;
   defaultDeliveryTerms?: string | null;
@@ -196,11 +187,6 @@ export function DocumentForm(props: Props) {
   } = methods;
 
   const { fields, append, remove } = useFieldArray({ control, name: "lines" });
-  const {
-    fields: deductionFields,
-    append: appendDeduction,
-    remove: removeDeduction,
-  } = useFieldArray({ control, name: "invoice.deductions" });
 
   // Report automatique de la réf client : à la sélection d'un client, on
   // pré-remplit la « Réf client » avec son code (CLI-2026-0001) si le champ
@@ -233,46 +219,6 @@ export function DocumentForm(props: Props) {
   const STEPS = isReport ? REPORT_STEPS : BILLING_STEPS;
   const stepFields = isReport ? REPORT_STEP_FIELDS : BILLING_STEP_FIELDS;
 
-  // ── Facture : disposition acompte / définitive ──
-  const isFacture = watched.type === "facture";
-  const factureKind = watched.invoice?.kind ?? "acompte";
-  // Total TTC courant (base des calculs d'acompte / net à payer).
-  const invoiceTotal = totals.totalAmount;
-  const advanceAmount = Number(watched.invoice?.advance_amount) || 0;
-  const soldeRestant = Math.max(0, invoiceTotal - advanceAmount);
-  const deductedTotal = deductionsTotal(watched.invoice?.deductions ?? []);
-  const netAPayer = Math.max(0, invoiceTotal - deductedTotal);
-  // Factures d'acompte du client sélectionné (déductions), hors document courant.
-  const clientAdvanceInvoices = props.advanceInvoices.filter(
-    (a) =>
-      a.client_id === watched.client_id &&
-      a.id !== props.document?.id &&
-      a.advance_amount > 0,
-  );
-  const [selectedAdvanceId, setSelectedAdvanceId] = useState("");
-
-  /** Met à jour le montant de l'acompte à partir d'un pourcentage du marché. */
-  function onAdvancePercentChange(raw: string) {
-    const pct = raw === "" ? null : Number(raw);
-    setValue("invoice.advance_percent", pct, { shouldDirty: true });
-    if (pct !== null && Number.isFinite(pct)) {
-      setValue("invoice.advance_amount", Math.round((invoiceTotal * pct) / 100), {
-        shouldDirty: true,
-      });
-    }
-  }
-
-  /** Ajoute une déduction depuis une facture d'acompte existante du client. */
-  function onAddAdvanceDeduction() {
-    const adv = clientAdvanceInvoices.find((a) => a.id === selectedAdvanceId);
-    if (!adv) return;
-    appendDeduction({
-      reference: adv.number ?? "",
-      date: formatDate(adv.issue_date),
-      amount: adv.advance_amount,
-    });
-    setSelectedAdvanceId("");
-  }
 
   function onSubmit(values: DocumentInput) {
     startTransition(async () => {
@@ -335,21 +281,12 @@ export function DocumentForm(props: Props) {
     setStep(target);
   }
 
-  // Une facture est toujours en mode tableau (mise en page dédiée).
-  const bodyMode = isFacture ? "table" : watched.body_mode;
-  // L'encadré « conditions » est obligatoire (et verrouillé) pour un bon de
-  // commande et pour une facture (CONDITIONS ET MODALITÉS / RÉCEPTION).
-  const conditionsForced = watched.type === "bon_commande" || isFacture;
+  const bodyMode = watched.body_mode;
+  // L'encadré « conditions » est obligatoire (et verrouillé) pour un bon de commande.
+  const conditionsForced = watched.type === "bon_commande";
   useEffect(() => {
     if (conditionsForced) setValue("include_conditions", true);
   }, [conditionsForced, setValue]);
-  // Garde-fou : si le type facture est sélectionné en mode texte (héritage),
-  // on rétablit le tableau.
-  useEffect(() => {
-    if (isFacture && watched.body_mode !== "table") {
-      setValue("body_mode", "table");
-    }
-  }, [isFacture, watched.body_mode, setValue]);
 
   // ── Types de documents personnalisés (liste enrichie par les créations) ──
   const [customTypes, setCustomTypes] = useState<CustomDocumentType[]>(
@@ -375,6 +312,11 @@ export function DocumentForm(props: Props) {
     : watched.type;
 
   function onTypeChange(value: string) {
+    // Une facture a sa propre page de saisie (simplifiée) : on y redirige.
+    if (value === "facture") {
+      router.push("/admin/billing/documents/nouvelle-facture");
+      return;
+    }
     if (value.startsWith("custom:")) {
       setValue("custom_type_id", value.slice(7));
       setValue("type", "autre");
@@ -391,10 +333,6 @@ export function DocumentForm(props: Props) {
         setValue("report", reportSkeleton());
       }
       setStep(0);
-    } else if (next === "facture") {
-      // Une facture a une mise en page dédiée : toujours en mode tableau.
-      setValue("body_mode", "table");
-      setStep(0);
     } else if (previous === "rapport_maintenance") {
       // On quitte le rapport → on repasse au mode tableau commercial.
       setValue("body_mode", "table");
@@ -404,10 +342,7 @@ export function DocumentForm(props: Props) {
 
   /** Insère le modèle professionnel du type commercial courant (objet + conditions). */
   function applyBillingTemplate() {
-    // Une facture a deux trames (acompte / définitive) ; les autres types une seule.
-    const tpl = isFacture
-      ? FACTURE_TEMPLATES[factureKind]
-      : DOCUMENT_TEMPLATES[watched.type];
+    const tpl = DOCUMENT_TEMPLATES[watched.type];
     if (!tpl) return;
     const hasContent = [
       getValues("subject"),
@@ -757,19 +692,16 @@ export function DocumentForm(props: Props) {
           <>
             {/* Étape 3 — Corps (commercial) */}
             <section hidden={step !== 2} className="space-y-4">
-              {/* Le choix tableau/texte est masqué pour une facture (toujours tableau). */}
-              {isFacture ? null : (
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" value="table" {...register("body_mode")} />
-                    {t("documents.modeTable")}
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" value="text" {...register("body_mode")} />
-                    {t("documents.modeText")}
-                  </label>
-                </div>
-              )}
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" value="table" {...register("body_mode")} />
+                  {t("documents.modeTable")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" value="text" {...register("body_mode")} />
+                  {t("documents.modeText")}
+                </label>
+              </div>
 
               {bodyMode === "table" ? (
                 <div className="space-y-3">
@@ -890,9 +822,7 @@ export function DocumentForm(props: Props) {
                   {err(errors.discount_amount?.message)}
                 </div>
                 <div>
-                  <Label htmlFor="d-tax">
-                    {isFacture ? t("documents.taxRateVat") : t("documents.taxRate")}
-                  </Label>
+                  <Label htmlFor="d-tax">{t("documents.taxRate")}</Label>
                   <Input id="d-tax" type="number" step="0.01" min="0" max="100" className="mt-1" aria-invalid={errors.tax_rate ? true : undefined} {...register("tax_rate", { valueAsNumber: true })} />
                   {err(errors.tax_rate?.message)}
                   <p className="mt-1 text-xs text-muted-foreground">{t("documents.taxHint")}</p>
@@ -917,7 +847,7 @@ export function DocumentForm(props: Props) {
                 {totals.taxRate > 0 ? (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      {isFacture ? t("documents.vat") : t("documents.tax")} ({totals.taxRate} %)
+                      {t("documents.tax")} ({totals.taxRate} %)
                     </span>
                     <span className="tabular-nums">{formatMoney(totals.taxAmount)}</span>
                   </div>
@@ -928,215 +858,6 @@ export function DocumentForm(props: Props) {
                 </div>
               </div>
 
-              {/* ── Panneau facture : acompte / définitive ── */}
-              {isFacture ? (
-                <div className="space-y-4 rounded-xl border border-border p-4">
-                  <div>
-                    <p className="text-sm font-semibold">{t("documents.invoiceSection")}</p>
-                  </div>
-
-                  {/* Nature de la facture */}
-                  <div>
-                    <Label>{t("documents.invoiceKind")}</Label>
-                    <div className="mt-1 flex flex-wrap gap-4">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="radio" value="acompte" {...register("invoice.kind")} />
-                        {t("documents.invoiceKindAcompte")}
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="radio" value="definitive" {...register("invoice.kind")} />
-                        {t("documents.invoiceKindDefinitive")}
-                      </label>
-                    </div>
-                    {err(errors.invoice?.kind?.message)}
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <Label htmlFor="inv-method">{t("documents.paymentMethod")}</Label>
-                      <Select
-                        id="inv-method"
-                        className="mt-1"
-                        {...register("invoice.payment_method")}
-                      >
-                        <option value="">{t("documents.paymentMethodNone")}</option>
-                        {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
-                          <option key={m} value={m}>
-                            {PAYMENT_METHOD_LABELS[m]}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="inv-devisref">{t("documents.devisRef")}</Label>
-                      <Input
-                        id="inv-devisref"
-                        className="mt-1"
-                        placeholder={t("documents.devisRefPlaceholder")}
-                        {...register("invoice.devis_ref")}
-                      />
-                    </div>
-                  </div>
-
-                  {factureKind === "acompte" ? (
-                    /* ── Disposition ACOMPTE ── */
-                    <div className="space-y-3">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <Label htmlFor="inv-pct">{t("documents.advancePercent")}</Label>
-                          <Input
-                            id="inv-pct"
-                            type="number"
-                            step="1"
-                            min="0"
-                            max="100"
-                            className="mt-1"
-                            value={watched.invoice?.advance_percent ?? ""}
-                            onChange={(e) => onAdvancePercentChange(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="inv-amount">
-                            {t("documents.advanceAmount")}
-                            {reqMark}
-                          </Label>
-                          <Input
-                            id="inv-amount"
-                            type="number"
-                            step="1"
-                            min="0"
-                            className="mt-1"
-                            aria-invalid={errors.invoice?.advance_amount ? true : undefined}
-                            {...register("invoice.advance_amount", { valueAsNumber: true })}
-                          />
-                          {err(errors.invoice?.advance_amount?.message)}
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{t("documents.advanceHint")}</p>
-                      <div className="ml-auto max-w-xs space-y-1.5 rounded-xl bg-muted/40 p-4 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">{t("documents.marketTotal")}</span>
-                          <span className="tabular-nums">{formatMoney(invoiceTotal)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">{t("documents.advanceAmount")}</span>
-                          <span className="tabular-nums text-destructive">- {formatMoney(advanceAmount)}</span>
-                        </div>
-                        <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
-                          <span>{t("documents.soldeRestant")}</span>
-                          <span className="tabular-nums">{formatMoney(soldeRestant)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* ── Disposition DÉFINITIVE ── */
-                    <div className="space-y-3">
-                      <Label>{t("documents.deductionsTitle")}</Label>
-
-                      {/* Sélecteur de facture d'acompte du client */}
-                      <div className="flex flex-wrap items-end gap-2">
-                        <div className="min-w-56 flex-1">
-                          <Select
-                            aria-label={t("documents.deductionPick")}
-                            value={selectedAdvanceId}
-                            onChange={(e) => setSelectedAdvanceId(e.target.value)}
-                            disabled={clientAdvanceInvoices.length === 0}
-                          >
-                            <option value="">
-                              {clientAdvanceInvoices.length === 0
-                                ? t("documents.deductionNoInvoices")
-                                : t("documents.deductionPick")}
-                            </option>
-                            {clientAdvanceInvoices.map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.number} — {formatDate(a.issue_date)} — {formatMoney(a.advance_amount)}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={onAddAdvanceDeduction}
-                          disabled={!selectedAdvanceId}
-                        >
-                          <Plus className="size-4" />
-                          {t("documents.deductionAdd")}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            appendDeduction({ reference: "", date: "", amount: 0 })
-                          }
-                        >
-                          {t("documents.deductionAddManual")}
-                        </Button>
-                      </div>
-
-                      {deductionFields.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">{t("documents.deductionEmpty")}</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {deductionFields.map((field, i) => (
-                            <div
-                              key={field.id}
-                              className="grid gap-2 rounded-lg ring-1 ring-foreground/10 p-2 sm:grid-cols-[1fr_120px_130px_auto]"
-                            >
-                              <Input
-                                placeholder={t("documents.deductionReference")}
-                                aria-invalid={
-                                  errors.invoice?.deductions?.[i]?.reference ? true : undefined
-                                }
-                                {...register(`invoice.deductions.${i}.reference` as const)}
-                              />
-                              <Input
-                                placeholder={t("documents.deductionDate")}
-                                {...register(`invoice.deductions.${i}.date` as const)}
-                              />
-                              <Input
-                                type="number"
-                                step="1"
-                                min="0"
-                                placeholder={t("documents.deductionAmount")}
-                                {...register(`invoice.deductions.${i}.amount` as const, {
-                                  valueAsNumber: true,
-                                })}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => removeDeduction(i)}
-                                aria-label={t("documents.removeLine")}
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="ml-auto max-w-xs space-y-1.5 rounded-xl bg-muted/40 p-4 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">{t("documents.chantierTotal")}</span>
-                          <span className="tabular-nums">{formatMoney(invoiceTotal)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">{t("documents.deductionsTitle")}</span>
-                          <span className="tabular-nums text-destructive">- {formatMoney(deductedTotal)}</span>
-                        </div>
-                        <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
-                          <span>{t("documents.netAPayer")}</span>
-                          <span className="tabular-nums">{formatMoney(netAPayer)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : null}
             </section>
 
             {/* Étape 5 — Conditions (commercial) */}

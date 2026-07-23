@@ -54,6 +54,17 @@ export default async function DocumentsPage({
         actionHref="/admin/billing/documents/nouveau"
       />
 
+      {/* Raccourci facture (page dédiée, saisie simplifiée) */}
+      <div className="mb-4">
+        <AdminLink
+          href="/admin/billing/documents/nouvelle-facture"
+          variant="secondary"
+          size="sm"
+        >
+          {t("documents.factureNew")}
+        </AdminLink>
+      </div>
+
       {/* Filtres (GET, sans JS) */}
       <form
         action="/admin/billing/documents"

@@ -339,29 +339,27 @@ export default async function DocumentDetailPage({
                 <span className="tabular-nums">{formatMoney(doc.total_amount)}</span>
               </div>
 
-              {/* Récapitulatif de règlement (facture d'acompte / définitive) */}
-              {isFacture && inv ? (
-                inv.kind === "acompte" ? (
-                  <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-                    <Row label={t("documents.advanceAmount")}>
-                      <span className="tabular-nums text-destructive">- {formatMoney(inv.advance_amount)}</span>
-                    </Row>
-                    <div className="flex justify-between font-semibold">
-                      <span>{t("documents.soldeRestant")}</span>
-                      <span className="tabular-nums">{formatMoney(invSoldeRestant)}</span>
-                    </div>
+              {/* Récapitulatif de règlement, seulement si des acomptes le justifient */}
+              {isFacture && inv && inv.kind === "acompte" && inv.advance_amount > 0 ? (
+                <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                  <Row label={t("documents.advanceAmount")}>
+                    <span className="tabular-nums text-destructive">- {formatMoney(inv.advance_amount)}</span>
+                  </Row>
+                  <div className="flex justify-between font-semibold">
+                    <span>{t("documents.soldeRestant")}</span>
+                    <span className="tabular-nums">{formatMoney(invSoldeRestant)}</span>
                   </div>
-                ) : (
-                  <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-                    <Row label={t("documents.deductionsTitle")}>
-                      <span className="tabular-nums text-destructive">- {formatMoney(invDeducted)}</span>
-                    </Row>
-                    <div className="flex justify-between font-semibold">
-                      <span>{t("documents.netAPayer")}</span>
-                      <span className="tabular-nums">{formatMoney(invNet)}</span>
-                    </div>
+                </div>
+              ) : isFacture && inv && inv.kind === "definitive" && invDeducted > 0 ? (
+                <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                  <Row label={t("documents.deductionsTitle")}>
+                    <span className="tabular-nums text-destructive">- {formatMoney(invDeducted)}</span>
+                  </Row>
+                  <div className="flex justify-between font-semibold">
+                    <span>{t("documents.netAPayer")}</span>
+                    <span className="tabular-nums">{formatMoney(invNet)}</span>
                   </div>
-                )
+                </div>
               ) : null}
             </CardContent>
           </Card>

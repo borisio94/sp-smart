@@ -245,6 +245,13 @@
       "deductionEmpty": "No deposit deducted.",
       "deductionNoInvoices": "— No deposit invoice for this client —",
       "netAPayer": "Net amount due (final balance)",
+      "factureNew": "New invoice",
+      "factureNewSubtitle": "Deposit or final invoice, on a single page.",
+      "factureEdit": "Edit invoice",
+      "factureAmountAcompte": "Deposit amount (FCFA)",
+      "factureAmountSolde": "Balance amount to pay (FCFA)",
+      "factureAmountHint": "This amount automatically generates the invoice's single line.",
+      "amountInWords": "Amount in words",
       "report": {
         "cardTitle": "Service report",
         "applySkeleton": "Insert standard structure",

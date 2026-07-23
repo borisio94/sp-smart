@@ -459,25 +459,33 @@ export function DocumentPDF(data: DocumentPDFData) {
         : DOCUMENT_TYPE_LABELS[doc.type];
   const typeLabel = docLabel.toUpperCase();
 
+  // Le récapitulatif de règlement (acompte versé / déduction des acomptes) ne
+  // s'affiche que si des données le justifient. La saisie simplifiée génère une
+  // facture à ligne unique sans récapitulatif ; il reste disponible dès qu'un
+  // acompte versé ou des acomptes à déduire sont renseignés.
+  const showAcompteRecap =
+    hasInvoice && factureKind === "acompte" && (inv?.advance_amount ?? 0) > 0;
+  const showDeductionRecap =
+    hasInvoice && factureKind === "definitive" && invDeductions.length > 0;
+  const showRecap = showAcompteRecap || showDeductionRecap;
+
   // Libellé du grand total (bandeau vert) selon le type/nature.
   const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
   const grandLabel = hasInvoice
-    ? factureKind === "acompte"
-      ? `MONTANT TOTAL DU PROJET (${ttcSuffix})`
-      : `MONTANT TOTAL DE LA PRESTATION (${ttcSuffix})`
+    ? `MONTANT TOTAL (${ttcSuffix})`
     : doc.tax_rate > 0
       ? "Total TTC"
       : "Total HT";
 
   // Montant en lettres : base et formulation dépendent de la nature.
-  //  - acompte    → montant de l'acompte versé
-  //  - définitive → net à payer (solde final)
-  //  - autres     → total du document
-  const wordsAmount = hasInvoice
-    ? factureKind === "acompte"
-      ? (inv?.advance_amount ?? 0)
-      : invNet
-    : doc.total_amount;
+  //  - acompte avec acompte versé → montant de l'acompte
+  //  - définitive avec déductions → net à payer (solde final)
+  //  - sinon                      → total du document
+  const wordsAmount = showAcompteRecap
+    ? (inv?.advance_amount ?? 0)
+    : showDeductionRecap
+      ? invNet
+      : doc.total_amount;
   const amountWords =
     !hasInvoice && doc.amount_in_words?.trim()
       ? doc.amount_in_words.trim()
@@ -702,7 +710,7 @@ export function DocumentPDF(data: DocumentPDFData) {
         )}
 
         {/* Récapitulatif de règlement (facture d'acompte / facture définitive) */}
-        {isFacture && inv ? (
+        {showRecap && inv ? (
           <View style={[styles.recapBox, { borderColor: band }]}>
             <View style={[styles.recapHeader, { borderBottomColor: band }]}>
               <Text style={[styles.recapHeaderText, { color: band }]}>

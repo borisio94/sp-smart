@@ -1,16 +1,11 @@
 import { getTranslations } from "next-intl/server";
 
-import {
-  listClients,
-  listCategories,
-  getOrganization,
-  listCustomDocumentTypes,
-} from "@/lib/billing/queries";
+import { listClients, listCategories, getOrganization } from "@/lib/billing/queries";
 import { PageHeader } from "@/components/billing/page-header";
-import { DocumentForm } from "@/components/billing/document-form";
+import { FactureForm } from "@/components/billing/facture-form";
 
-/** Création d'un nouveau document (parcours multi-étapes). */
-export default async function NewDocumentPage({
+/** Création d'une facture (page dédiée, saisie simplifiée en une vue). */
+export default async function NewFacturePage({
   searchParams,
 }: {
   searchParams: Promise<{ client?: string }>;
@@ -18,22 +13,23 @@ export default async function NewDocumentPage({
   const t = await getTranslations("Admin");
   const { client } = await searchParams;
 
-  const [clients, categories, organization, customTypes] = await Promise.all([
+  const [clients, categories, organization] = await Promise.all([
     listClients(),
     listCategories(true),
     getOrganization(),
-    listCustomDocumentTypes(true),
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div>
-      <PageHeader title={t("documents.new")} subtitle={t("documents.newSubtitle")} />
-      <DocumentForm
+      <PageHeader
+        title={t("documents.factureNew")}
+        subtitle={t("documents.factureNewSubtitle")}
+      />
+      <FactureForm
         clients={clients}
         categories={categories}
-        customTypes={customTypes}
         defaultIssueDate={today}
         defaultPaymentTerms={organization?.default_payment_terms}
         defaultDeliveryTerms={organization?.default_delivery_terms}

@@ -114,11 +114,8 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       total_amount: totals.totalAmount,
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
-      // Encadré de conditions forcé pour un bon de commande et une facture.
-      include_conditions:
-        v.type === "bon_commande" || v.type === "facture"
-          ? true
-          : v.include_conditions,
+      // Forcé côté serveur pour un bon de commande (zone non désactivable).
+      include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
       notes_internes: nz(v.notes_internes),
       status: "brouillon",
     })
@@ -182,11 +179,8 @@ export async function updateDocument(
       total_amount: totals.totalAmount,
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
-      // Encadré de conditions forcé pour un bon de commande et une facture.
-      include_conditions:
-        v.type === "bon_commande" || v.type === "facture"
-          ? true
-          : v.include_conditions,
+      // Forcé côté serveur pour un bon de commande (zone non désactivable).
+      include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
       notes_internes: nz(v.notes_internes),
     })
     .eq("id", id);

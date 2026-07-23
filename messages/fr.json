@@ -245,6 +245,13 @@
       "deductionEmpty": "Aucun acompte déduit.",
       "deductionNoInvoices": "— Aucune facture d'acompte pour ce client —",
       "netAPayer": "Net à payer (solde final)",
+      "factureNew": "Nouvelle facture",
+      "factureNewSubtitle": "Facture d'acompte ou définitive, en une seule page.",
+      "factureEdit": "Modifier la facture",
+      "factureAmountAcompte": "Montant de l'acompte (FCFA)",
+      "factureAmountSolde": "Montant du solde à payer (FCFA)",
+      "factureAmountHint": "Ce montant génère automatiquement l'unique ligne de la facture.",
+      "amountInWords": "Montant en toutes lettres",
       "report": {
         "cardTitle": "Rapport d'intervention",
         "applySkeleton": "Insérer la structure type",

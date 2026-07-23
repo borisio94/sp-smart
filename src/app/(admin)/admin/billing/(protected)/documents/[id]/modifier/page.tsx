@@ -7,10 +7,10 @@ import {
   listCategories,
   getOrganization,
   listCustomDocumentTypes,
-  listAdvanceInvoices,
 } from "@/lib/billing/queries";
 import { PageHeader } from "@/components/billing/page-header";
 import { DocumentForm } from "@/components/billing/document-form";
+import { FactureForm } from "@/components/billing/facture-form";
 
 /** Édition d'un document existant. */
 export default async function EditDocumentPage({
@@ -21,35 +21,49 @@ export default async function EditDocumentPage({
   const t = await getTranslations("Admin");
   const { id } = await params;
 
-  const [document, clients, categories, organization, customTypes, advanceInvoices] =
+  const [document, clients, categories, organization, customTypes] =
     await Promise.all([
       getDocument(id),
       listClients(),
       listCategories(false),
       getOrganization(),
       listCustomDocumentTypes(false),
-      listAdvanceInvoices(),
     ]);
 
   if (!document) notFound();
 
+  // Une facture utilise la page dédiée (saisie simplifiée) ; les autres types
+  // gardent le formulaire multi-étapes générique.
+  const isFacture = document.type === "facture";
+
   return (
     <div>
       <PageHeader
-        title={t("documents.edit")}
+        title={isFacture ? t("documents.factureEdit") : t("documents.edit")}
         subtitle={document.number ?? undefined}
       />
-      <DocumentForm
-        clients={clients}
-        categories={categories}
-        customTypes={customTypes}
-        advanceInvoices={advanceInvoices}
-        defaultIssueDate={document.issue_date}
-        defaultPaymentTerms={organization?.default_payment_terms}
-        defaultDeliveryTerms={organization?.default_delivery_terms}
-        defaultTaxRate={organization?.default_tax_rate ?? 0}
-        document={document}
-      />
+      {isFacture ? (
+        <FactureForm
+          clients={clients}
+          categories={categories}
+          defaultIssueDate={document.issue_date}
+          defaultPaymentTerms={organization?.default_payment_terms}
+          defaultDeliveryTerms={organization?.default_delivery_terms}
+          defaultTaxRate={organization?.default_tax_rate ?? 0}
+          document={document}
+        />
+      ) : (
+        <DocumentForm
+          clients={clients}
+          categories={categories}
+          customTypes={customTypes}
+          defaultIssueDate={document.issue_date}
+          defaultPaymentTerms={organization?.default_payment_terms}
+          defaultDeliveryTerms={organization?.default_delivery_terms}
+          defaultTaxRate={organization?.default_tax_rate ?? 0}
+          document={document}
+        />
+      )}
     </div>
   );
 }
