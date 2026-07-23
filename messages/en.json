@@ -252,6 +252,9 @@
       "factureAmountSolde": "Balance amount to pay (FCFA)",
       "factureAmountHint": "This amount automatically generates the invoice's single line.",
       "amountInWords": "Amount in words",
+      "linkedQuotation": "Linked quote / proforma",
+      "linkedQuotationAuto": "Create a quote automatically",
+      "linkedQuotationHint": "An invoice is always linked to a quotation. Pick one of the client's quotes/proformas, or leave “Create a quote automatically” (new client).",
       "report": {
         "cardTitle": "Service report",
         "applySkeleton": "Insert standard structure",

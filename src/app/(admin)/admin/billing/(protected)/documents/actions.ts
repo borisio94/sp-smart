@@ -10,8 +10,12 @@ import {
   type DocumentInput,
 } from "@/lib/billing/validation";
 import { computeTotals, lineTotal } from "@/lib/billing/compute";
+import { formatDate } from "@/lib/billing/format";
 import { canTransition, timestampField } from "@/lib/billing/status-machine";
 import type { DocumentStatus, CustomDocumentType } from "@/lib/billing/types";
+
+/** Client Supabase serveur (type retourné par le helper). */
+type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
 export type ActionResult =
   | { ok: true; id?: string }
@@ -195,6 +199,221 @@ export async function updateDocument(
     if (linesError) return { ok: false, error: linesError.message };
   }
 
+  revalidatePath("/admin/billing/documents");
+  revalidatePath(`/admin/billing/documents/${id}`);
+  return { ok: true, id };
+}
+
+// ───────────── Factures (page dédiée) ─────────────
+/** Réf. lisible d'une cotation : « DEV-2026-0001 du 12/03/2026 ». */
+function buildDevisRef(number: string | null, issueDate: string | null): string {
+  const num = (number ?? "").trim();
+  const date = issueDate ? formatDate(issueDate) : "";
+  if (num && date) return `${num} du ${date}`;
+  return num || date || "";
+}
+
+/**
+ * Résout la cotation liée à une facture. Si une cotation existante est
+ * sélectionnée on l'utilise ; sinon on crée automatiquement un devis (même
+ * client / objet / montant) et on lie la facture à ce devis. Une facture est
+ * ainsi TOUJOURS rattachée à une pièce de cotation.
+ */
+async function resolveLinkedQuotation(
+  supabase: ServerClient,
+  profile: { id: string; organization_id: string },
+  v: DocumentInput,
+  totals: ReturnType<typeof computeTotals>,
+): Promise<{ linkedId: string; devisRef: string } | { error: string }> {
+  const existingId = nz(v.linked_document_id);
+  if (existingId) {
+    const { data: q, error } = await supabase
+      .from("documents")
+      .select("id, number, issue_date")
+      .eq("id", existingId)
+      .maybeSingle();
+    if (error) return { error: error.message };
+    if (!q) return { error: "Cotation liée introuvable." };
+    return { linkedId: q.id, devisRef: buildDevisRef(q.number, q.issue_date) };
+  }
+
+  // Aucune cotation existante → création automatique d'un devis lié.
+  const { data: devis, error } = await supabase
+    .from("documents")
+    .insert({
+      organization_id: profile.organization_id,
+      created_by: profile.id,
+      client_id: v.client_id,
+      category_id: nz(v.category_id),
+      type: "devis",
+      issue_date: v.issue_date,
+      title: nz(v.title),
+      subject: nz(v.subject),
+      client_ref: nz(v.client_ref),
+      body_mode: "table",
+      materials_subtotal: totals.materialsSubtotal,
+      labor_amount: totals.laborAmount,
+      discount_amount: totals.discountAmount,
+      tax_rate: totals.taxRate,
+      tax_amount: totals.taxAmount,
+      total_amount: totals.totalAmount,
+      status: "brouillon",
+    })
+    .select("id, number, issue_date")
+    .single();
+  if (error) return { error: error.message };
+
+  const lines = buildLines(devis.id, v);
+  if (lines.length > 0) {
+    const { error: linesError } = await supabase.from("document_lines").insert(lines);
+    if (linesError) return { error: linesError.message };
+  }
+  return { linkedId: devis.id, devisRef: buildDevisRef(devis.number, devis.issue_date) };
+}
+
+/** Crée une facture (rattachée à une cotation existante ou auto-créée). */
+export async function createFacture(values: DocumentInput): Promise<ActionResult> {
+  const parsed = documentSchema.safeParse(values);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Données invalides." };
+  }
+  const profile = await requireProfile();
+  const supabase = await createSupabaseServerClient();
+  const v = parsed.data;
+  if (v.type !== "facture") return { ok: false, error: "Type de document invalide." };
+  const totals = computeTotals(v);
+
+  const linked = await resolveLinkedQuotation(supabase, profile, v, totals);
+  if ("error" in linked) return { ok: false, error: linked.error };
+
+  const invoiceData = buildInvoiceData(v);
+  if (invoiceData) invoiceData.devis_ref = linked.devisRef;
+
+  const { data, error } = await supabase
+    .from("documents")
+    .insert({
+      organization_id: profile.organization_id,
+      created_by: profile.id,
+      client_id: v.client_id,
+      category_id: nz(v.category_id),
+      type: "facture",
+      issue_date: v.issue_date,
+      title: nz(v.title),
+      subject: nz(v.subject),
+      client_ref: nz(v.client_ref),
+      body_mode: "table",
+      invoice_data: invoiceData,
+      materials_subtotal: totals.materialsSubtotal,
+      labor_amount: totals.laborAmount,
+      discount_amount: totals.discountAmount,
+      tax_rate: totals.taxRate,
+      tax_amount: totals.taxAmount,
+      total_amount: totals.totalAmount,
+      payment_terms: nz(v.payment_terms),
+      delivery_terms: nz(v.delivery_terms),
+      include_conditions: v.include_conditions,
+      notes_internes: nz(v.notes_internes),
+      linked_document_id: linked.linkedId,
+      status: "brouillon",
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+
+  const lines = buildLines(data.id, v);
+  if (lines.length > 0) {
+    const { error: linesError } = await supabase.from("document_lines").insert(lines);
+    if (linesError) return { ok: false, error: linesError.message };
+  }
+  revalidatePath("/admin/billing/documents");
+  return { ok: true, id: data.id };
+}
+
+/** Met à jour une facture (relie une cotation, conserve le lien existant sinon). */
+export async function updateFacture(
+  id: string,
+  values: DocumentInput,
+): Promise<ActionResult> {
+  const parsed = documentSchema.safeParse(values);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Données invalides." };
+  }
+  const profile = await requireProfile();
+  const supabase = await createSupabaseServerClient();
+  const v = parsed.data;
+  if (v.type !== "facture") return { ok: false, error: "Type de document invalide." };
+  const totals = computeTotals(v);
+
+  let linkedId = nz(v.linked_document_id);
+  let devisRef = "";
+  if (linkedId) {
+    const { data: q } = await supabase
+      .from("documents")
+      .select("id, number, issue_date")
+      .eq("id", linkedId)
+      .maybeSingle();
+    if (!q) return { ok: false, error: "Cotation liée introuvable." };
+    devisRef = buildDevisRef(q.number, q.issue_date);
+  } else {
+    // Aucune cotation sélectionnée : on garde le lien courant s'il existe,
+    // sinon on crée un devis (évite d'en générer un à chaque édition).
+    const { data: cur } = await supabase
+      .from("documents")
+      .select("linked_document_id")
+      .eq("id", id)
+      .maybeSingle();
+    const currentLink = (cur?.linked_document_id as string | null) ?? null;
+    if (currentLink) {
+      const { data: q } = await supabase
+        .from("documents")
+        .select("id, number, issue_date")
+        .eq("id", currentLink)
+        .maybeSingle();
+      linkedId = currentLink;
+      devisRef = q ? buildDevisRef(q.number, q.issue_date) : "";
+    } else {
+      const linked = await resolveLinkedQuotation(supabase, profile, v, totals);
+      if ("error" in linked) return { ok: false, error: linked.error };
+      linkedId = linked.linkedId;
+      devisRef = linked.devisRef;
+    }
+  }
+
+  const invoiceData = buildInvoiceData(v);
+  if (invoiceData) invoiceData.devis_ref = devisRef;
+
+  const { error } = await supabase
+    .from("documents")
+    .update({
+      client_id: v.client_id,
+      category_id: nz(v.category_id),
+      issue_date: v.issue_date,
+      title: nz(v.title),
+      subject: nz(v.subject),
+      client_ref: nz(v.client_ref),
+      body_mode: "table",
+      invoice_data: invoiceData,
+      materials_subtotal: totals.materialsSubtotal,
+      labor_amount: totals.laborAmount,
+      discount_amount: totals.discountAmount,
+      tax_rate: totals.taxRate,
+      tax_amount: totals.taxAmount,
+      total_amount: totals.totalAmount,
+      payment_terms: nz(v.payment_terms),
+      delivery_terms: nz(v.delivery_terms),
+      include_conditions: v.include_conditions,
+      notes_internes: nz(v.notes_internes),
+      linked_document_id: linkedId || null,
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  await supabase.from("document_lines").delete().eq("document_id", id);
+  const lines = buildLines(id, v);
+  if (lines.length > 0) {
+    const { error: linesError } = await supabase.from("document_lines").insert(lines);
+    if (linesError) return { ok: false, error: linesError.message };
+  }
   revalidatePath("/admin/billing/documents");
   revalidatePath(`/admin/billing/documents/${id}`);
   return { ok: true, id };

@@ -7,6 +7,7 @@ import {
   listCategories,
   getOrganization,
   listCustomDocumentTypes,
+  listQuotations,
 } from "@/lib/billing/queries";
 import { PageHeader } from "@/components/billing/page-header";
 import { DocumentForm } from "@/components/billing/document-form";
@@ -21,13 +22,14 @@ export default async function EditDocumentPage({
   const t = await getTranslations("Admin");
   const { id } = await params;
 
-  const [document, clients, categories, organization, customTypes] =
+  const [document, clients, categories, organization, customTypes, quotations] =
     await Promise.all([
       getDocument(id),
       listClients(),
       listCategories(false),
       getOrganization(),
       listCustomDocumentTypes(false),
+      listQuotations(),
     ]);
 
   if (!document) notFound();
@@ -46,6 +48,7 @@ export default async function EditDocumentPage({
         <FactureForm
           clients={clients}
           categories={categories}
+          quotations={quotations}
           defaultIssueDate={document.issue_date}
           defaultPaymentTerms={organization?.default_payment_terms}
           defaultDeliveryTerms={organization?.default_delivery_terms}

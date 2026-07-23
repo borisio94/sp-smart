@@ -252,6 +252,9 @@
       "factureAmountSolde": "Montant du solde à payer (FCFA)",
       "factureAmountHint": "Ce montant génère automatiquement l'unique ligne de la facture.",
       "amountInWords": "Montant en toutes lettres",
+      "linkedQuotation": "Devis / proforma lié",
+      "linkedQuotationAuto": "Créer un devis automatiquement",
+      "linkedQuotationHint": "Une facture est toujours rattachée à une cotation. Choisissez un devis/proforma du client, ou laissez « Créer un devis automatiquement » (nouveau client).",
       "report": {
         "cardTitle": "Rapport d'intervention",
         "applySkeleton": "Insérer la structure type",

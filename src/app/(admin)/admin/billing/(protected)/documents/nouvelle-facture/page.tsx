@@ -1,6 +1,11 @@
 import { getTranslations } from "next-intl/server";
 
-import { listClients, listCategories, getOrganization } from "@/lib/billing/queries";
+import {
+  listClients,
+  listCategories,
+  getOrganization,
+  listQuotations,
+} from "@/lib/billing/queries";
 import { PageHeader } from "@/components/billing/page-header";
 import { FactureForm } from "@/components/billing/facture-form";
 
@@ -13,10 +18,11 @@ export default async function NewFacturePage({
   const t = await getTranslations("Admin");
   const { client } = await searchParams;
 
-  const [clients, categories, organization] = await Promise.all([
+  const [clients, categories, organization, quotations] = await Promise.all([
     listClients(),
     listCategories(true),
     getOrganization(),
+    listQuotations(),
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -30,6 +36,7 @@ export default async function NewFacturePage({
       <FactureForm
         clients={clients}
         categories={categories}
+        quotations={quotations}
         defaultIssueDate={today}
         defaultPaymentTerms={organization?.default_payment_terms}
         defaultDeliveryTerms={organization?.default_delivery_terms}

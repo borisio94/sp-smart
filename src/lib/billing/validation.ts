@@ -184,6 +184,9 @@ export const documentSchema = z
     client_id: z.string().uuid("Client requis"),
     category_id: z.string().uuid("Catégorie requise").optional().or(z.literal("")),
     custom_type_id: z.string().uuid().optional().or(z.literal("")),
+    // Cotation liée (devis / proforma / bon de commande) — utilisée par une
+    // facture. Vide = création automatique d'un devis lié à l'enregistrement.
+    linked_document_id: z.string().uuid().optional().or(z.literal("")),
     issue_date: z.string().trim().min(1, "Date d'émission requise"),
     validity_date: z.string().trim().optional().or(z.literal("")),
     title: z.string().trim().max(200).optional().or(z.literal("")),

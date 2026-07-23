@@ -12,14 +12,19 @@ import { FileText } from "lucide-react";
 import { documentSchema, type DocumentInput } from "@/lib/billing/validation";
 import { computeTotals } from "@/lib/billing/compute";
 import { amountToWords } from "@/lib/billing/amountToWords";
-import { PAYMENT_METHOD_LABELS, formatMoney } from "@/lib/billing/format";
+import {
+  PAYMENT_METHOD_LABELS,
+  DOCUMENT_TYPE_LABELS,
+  formatMoney,
+  formatDate,
+} from "@/lib/billing/format";
 import { FACTURE_TEMPLATES, emptyReport } from "@/lib/billing/templates";
 import {
-  createDocument,
-  updateDocument,
+  createFacture,
+  updateFacture,
 } from "@/app/(admin)/admin/billing/(protected)/documents/actions";
 import type { Client, Category, PaymentMethod } from "@/lib/billing/types";
-import type { DocumentWithLines } from "@/lib/billing/queries";
+import type { DocumentWithLines, QuotationOption } from "@/lib/billing/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface Props {
   clients: Client[];
   categories: Category[];
+  quotations: QuotationOption[];
   defaultIssueDate: string;
   defaultPaymentTerms?: string | null;
   defaultDeliveryTerms?: string | null;
@@ -50,6 +56,7 @@ function buildFactureDefaults(props: Props): DocumentInput {
     custom_type_id: "",
     client_id: d?.client_id ?? props.defaultClientId ?? "",
     category_id: d?.category_id ?? "",
+    linked_document_id: d?.linked_document_id ?? "",
     issue_date: d?.issue_date ?? props.defaultIssueDate,
     validity_date: "",
     title: d?.title ?? "",
@@ -114,6 +121,12 @@ export function FactureForm(props: Props) {
   const watched = watch();
   const kind = watched.invoice?.kind ?? "acompte";
 
+  // Cotations (devis / proforma / bon de commande) du client sélectionné,
+  // proposées à lier. Vide = un devis sera créé automatiquement.
+  const clientQuotations = props.quotations.filter(
+    (q) => q.client_id === watched.client_id && q.id !== props.document?.id,
+  );
+
   // Report automatique de la « Réf client » (code CLI-…) à la sélection.
   const selectedClientId = watched.client_id;
   useEffect(() => {
@@ -163,8 +176,8 @@ export function FactureForm(props: Props) {
   function onSubmit(values: DocumentInput) {
     startTransition(async () => {
       const res = props.document
-        ? await updateDocument(props.document.id, values)
-        : await createDocument(values);
+        ? await updateFacture(props.document.id, values)
+        : await createFacture(values);
       if (res.ok) {
         toast.success(isEdit ? t("documents.updated") : t("documents.created"));
         router.push(
@@ -340,13 +353,22 @@ export function FactureForm(props: Props) {
             </Select>
           </div>
           <div>
-            <Label htmlFor="f-devisref">{t("documents.devisRef")}</Label>
-            <Input
-              id="f-devisref"
+            <Label htmlFor="f-quotation">{t("documents.linkedQuotation")}</Label>
+            <Select
+              id="f-quotation"
               className="mt-1"
-              placeholder={t("documents.devisRefPlaceholder")}
-              {...register("invoice.devis_ref")}
-            />
+              {...register("linked_document_id")}
+            >
+              <option value="">{t("documents.linkedQuotationAuto")}</option>
+              {clientQuotations.map((q) => (
+                <option key={q.id} value={q.id}>
+                  {q.number} — {DOCUMENT_TYPE_LABELS[q.type]} — {formatDate(q.issue_date)}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("documents.linkedQuotationHint")}
+            </p>
           </div>
         </div>
 

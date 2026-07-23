@@ -176,6 +176,30 @@ export async function listRecentPayments(limit = 50): Promise<PaymentListItem[]>
   return (data as PaymentListItem[] | null) ?? [];
 }
 
+/** Pièce de cotation (devis / proforma / bon de commande) liable à une facture. */
+export interface QuotationOption {
+  id: string;
+  number: string | null;
+  type: BillingDocument["type"];
+  client_id: string | null;
+  issue_date: string;
+}
+
+/**
+ * Cotations existantes (devis, proforma, bon de commande), toutes clients
+ * confondus. Le formulaire facture filtre ensuite par client pour proposer la
+ * référence à lier.
+ */
+export async function listQuotations(): Promise<QuotationOption[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("documents")
+    .select("id, number, type, client_id, issue_date")
+    .in("type", ["devis", "proforma", "bon_commande"])
+    .order("issue_date", { ascending: false });
+  return (data as QuotationOption[] | null) ?? [];
+}
+
 /** Facture d'acompte candidate à la déduction sur une facture définitive. */
 export interface AdvanceInvoiceOption {
   id: string;
