@@ -19,7 +19,6 @@ import {
   computeTotals,
   resolveLineTotal,
   groupSections,
-  hasNamedSections,
 } from "@/lib/billing/compute";
 import {
   DOCUMENT_TYPES,
@@ -205,7 +204,7 @@ export function DocumentForm(props: Props) {
     formState: { errors },
   } = methods;
 
-  const { fields, append, remove } = useFieldArray({ control, name: "lines" });
+  const { fields, append, insert, remove } = useFieldArray({ control, name: "lines" });
 
   // Report automatique de la réf client : à la sélection d'un client, on
   // pré-remplit la « Réf client » avec son code (CLI-2026-0001) si le champ
@@ -233,11 +232,40 @@ export function DocumentForm(props: Props) {
     tax_rate: watched.tax_rate ?? 0,
   });
 
-  // Sections (« compartiments ») : sous-totaux par section + total cumulé.
+  // Sections (« compartiments ») : total cumulé (aperçu bas de tableau).
   const lineList = watched.lines ?? [];
-  const hasSections = hasNamedSections(lineList);
-  const sectionGroups = groupSections(lineList);
-  const sectionsSubtotal = sectionGroups.reduce((s, g) => s + g.subtotal, 0);
+  const sectionsSubtotal = groupSections(lineList).reduce((s, g) => s + g.subtotal, 0);
+
+  // Regroupement des lignes (par index) en blocs de section consécutifs, pour
+  // l'éditeur : un titre par bloc, les lignes du bloc, un sous-total.
+  const editorGroups: {
+    key: string;
+    section: string;
+    indices: number[];
+    subtotal: number;
+  }[] = [];
+  fields.forEach((field, index) => {
+    const section = watched.lines?.[index]?.section ?? "";
+    const last = editorGroups[editorGroups.length - 1];
+    if (last && last.section === section) {
+      last.indices.push(index);
+    } else {
+      editorGroups.push({ key: field.id, section, indices: [index], subtotal: 0 });
+    }
+  });
+  editorGroups.forEach((g) => {
+    g.subtotal = g.indices.reduce((sum, idx) => {
+      const l = watched.lines?.[idx];
+      return (
+        sum +
+        resolveLineTotal({
+          quantity: Number(l?.quantity) || 0,
+          unit_price: Number(l?.unit_price) || 0,
+          is_amount_only: Boolean(l?.is_amount_only),
+        })
+      );
+    }, 0);
+  });
 
   // Parcours actif : un rapport de maintenance a ses propres étapes 3-5.
   const isReport = watched.type === "rapport_maintenance";
@@ -729,149 +757,177 @@ export function DocumentForm(props: Props) {
               </div>
 
               {bodyMode === "table" ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
                     {t("documents.sectionsHint")}
                   </p>
-                  {/* Défilement horizontal sur mobile : la saisie reste confortable
-                      sans écraser les colonnes (largeur mini garantie). */}
-                  <div className="overflow-x-auto rounded-xl ring-1 ring-foreground/10">
-                    <table className="w-full min-w-[820px] text-sm">
-                      <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                        <tr>
-                          <th className="w-40 px-3 py-2 font-medium">{t("documents.section")}</th>
-                          <th className="px-3 py-2 font-medium">
-                            {t("documents.designation")}
-                            {reqMark}
-                          </th>
-                          <th className="w-20 px-3 py-2 font-medium">{t("documents.unit")}</th>
-                          <th className="w-16 px-3 py-2 font-medium">{t("documents.quantity")}</th>
-                          <th className="w-28 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
-                          <th className="w-28 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
-                          <th className="w-16 px-3 py-2 text-center font-medium">{t("documents.flatLine")}</th>
-                          <th className="w-10 px-3 py-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {fields.map((field, i) => {
-                          const line = watched.lines?.[i];
-                          const flat = Boolean(line?.is_amount_only);
-                          const total = resolveLineTotal({
-                            quantity: Number(line?.quantity) || 0,
-                            unit_price: Number(line?.unit_price) || 0,
-                            is_amount_only: flat,
-                          });
-                          return (
-                            <tr key={field.id} className="border-t border-border align-top">
-                              <td className="px-3 py-2">
-                                <Input
-                                  placeholder={t("documents.sectionPlaceholder")}
-                                  {...register(`lines.${i}.section` as const)}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                <Input
-                                  aria-invalid={
-                                    errors.lines?.[i]?.designation ? true : undefined
-                                  }
-                                  {...register(`lines.${i}.designation` as const)}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                <Input
-                                  placeholder={t("documents.unitPlaceholder")}
-                                  disabled={flat}
-                                  {...register(`lines.${i}.unit` as const)}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                <Input
-                                  type="number"
-                                  step="any"
-                                  min="0"
-                                  disabled={flat}
-                                  {...register(`lines.${i}.quantity` as const, { valueAsNumber: true })}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                <Input
-                                  type="number"
-                                  step="1"
-                                  min="0"
-                                  placeholder={flat ? t("documents.flatAmountPlaceholder") : undefined}
-                                  {...register(`lines.${i}.unit_price` as const, { valueAsNumber: true })}
-                                />
-                              </td>
-                              <td className="px-3 py-2 text-right tabular-nums">
-                                {formatMoney(total)}
-                              </td>
-                              <td className="px-3 py-2 text-center">
-                                <input
-                                  type="checkbox"
-                                  aria-label={t("documents.flatLine")}
-                                  {...register(`lines.${i}.is_amount_only` as const)}
-                                />
-                              </td>
-                              <td className="px-3 py-2">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={() => remove(i)}
-                                  disabled={fields.length <= 1}
-                                  aria-label={t("documents.removeLine")}
-                                >
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {err(errors.lines?.message)}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const last = watched.lines?.[fields.length - 1];
-                        append(emptyLine((last?.section ?? "").trim()));
-                      }}
-                    >
-                      <Plus className="size-4" />
-                      {t("documents.addLine")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => append(emptyLine(""))}
-                    >
-                      <Plus className="size-4" />
-                      {t("documents.addSection")}
-                    </Button>
-                  </div>
 
-                  {/* Aperçu des sous-totaux par section + total cumulé */}
-                  {hasSections ? (
-                    <div className="ml-auto max-w-sm space-y-1 rounded-xl bg-muted/40 p-4 text-sm">
-                      {sectionGroups.map((g, gi) => (
-                        <div key={gi} className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            {g.title || t("documents.sectionUntitled")}
-                          </span>
-                          <span className="tabular-nums">{formatMoney(g.subtotal)}</span>
+                  {editorGroups.map((group) => {
+                    const lastIdx = group.indices[group.indices.length - 1];
+                    return (
+                      <div
+                        key={group.key}
+                        className="space-y-2 rounded-xl ring-1 ring-foreground/10 p-3"
+                      >
+                        {/* Titre de la section (un seul par compartiment) */}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            className="max-w-sm font-medium"
+                            placeholder={t("documents.sectionTitlePlaceholder")}
+                            value={group.section}
+                            onChange={(e) =>
+                              group.indices.forEach((idx) =>
+                                setValue(`lines.${idx}.section`, e.target.value, {
+                                  shouldDirty: true,
+                                }),
+                              )
+                            }
+                          />
+                          {editorGroups.length > 1 ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => remove(group.indices)}
+                              aria-label={t("documents.removeSection")}
+                            >
+                              <Trash2 className="size-4 text-destructive" />
+                            </Button>
+                          ) : null}
                         </div>
-                      ))}
-                      <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
-                        <span>{t("documents.grandTotal")}</span>
-                        <span className="tabular-nums">{formatMoney(sectionsSubtotal)}</span>
+
+                        <div className="overflow-x-auto rounded-lg ring-1 ring-foreground/10">
+                          <table className="w-full min-w-[680px] text-sm">
+                            <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                              <tr>
+                                <th className="px-3 py-2 font-medium">
+                                  {t("documents.designation")}
+                                  {reqMark}
+                                </th>
+                                <th className="w-20 px-3 py-2 font-medium">{t("documents.unit")}</th>
+                                <th className="w-16 px-3 py-2 font-medium">{t("documents.quantity")}</th>
+                                <th className="w-28 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
+                                <th className="w-28 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
+                                <th className="w-16 px-3 py-2 text-center font-medium">{t("documents.flatLine")}</th>
+                                <th className="w-10 px-3 py-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.indices.map((i) => {
+                                const line = watched.lines?.[i];
+                                const flat = Boolean(line?.is_amount_only);
+                                const total = resolveLineTotal({
+                                  quantity: Number(line?.quantity) || 0,
+                                  unit_price: Number(line?.unit_price) || 0,
+                                  is_amount_only: flat,
+                                });
+                                return (
+                                  <tr key={fields[i].id} className="border-t border-border align-top">
+                                    <td className="px-3 py-2">
+                                      <Input
+                                        aria-invalid={
+                                          errors.lines?.[i]?.designation ? true : undefined
+                                        }
+                                        {...register(`lines.${i}.designation` as const)}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <Input
+                                        placeholder={t("documents.unitPlaceholder")}
+                                        disabled={flat}
+                                        {...register(`lines.${i}.unit` as const)}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <Input
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        disabled={flat}
+                                        {...register(`lines.${i}.quantity` as const, { valueAsNumber: true })}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <Input
+                                        type="number"
+                                        step="1"
+                                        min="0"
+                                        placeholder={flat ? t("documents.flatAmountPlaceholder") : undefined}
+                                        {...register(`lines.${i}.unit_price` as const, { valueAsNumber: true })}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2 text-right tabular-nums">
+                                      {formatMoney(total)}
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <input
+                                        type="checkbox"
+                                        aria-label={t("documents.flatLine")}
+                                        {...register(`lines.${i}.is_amount_only` as const)}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        onClick={() => remove(i)}
+                                        disabled={fields.length <= 1}
+                                        aria-label={t("documents.removeLine")}
+                                      >
+                                        <Trash2 className="size-4" />
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => insert(lastIdx + 1, emptyLine(group.section))}
+                          >
+                            <Plus className="size-4" />
+                            {t("documents.addLine")}
+                          </Button>
+                          <span className="text-sm">
+                            <span className="text-muted-foreground">
+                              {t("documents.sectionSubtotal")} :{" "}
+                            </span>
+                            <span className="tabular-nums font-medium">
+                              {formatMoney(group.subtotal)}
+                            </span>
+                          </span>
+                        </div>
                       </div>
+                    );
+                  })}
+
+                  {err(errors.lines?.message)}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      append(emptyLine(`${t("documents.sectionWord")} ${editorGroups.length + 1}`))
+                    }
+                  >
+                    <Plus className="size-4" />
+                    {t("documents.addSection")}
+                  </Button>
+
+                  <div className="ml-auto max-w-sm rounded-xl bg-muted/40 p-4 text-sm">
+                    <div className="flex justify-between font-semibold">
+                      <span>{t("documents.grandTotal")}</span>
+                      <span className="tabular-nums">{formatMoney(sectionsSubtotal)}</span>
                     </div>
-                  ) : null}
+                  </div>
                 </div>
               ) : (
                 <div>
