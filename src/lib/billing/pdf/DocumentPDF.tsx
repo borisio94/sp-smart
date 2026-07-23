@@ -13,7 +13,8 @@ import type {
   Organization,
   Client,
 } from "../types";
-import { DOCUMENT_TYPE_LABELS } from "../format";
+import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, factureTitleLabel } from "../format";
+import { deductionsTotal } from "../compute";
 import { amountToWords } from "../amountToWords";
 import {
   PDF_COLORS,
@@ -98,6 +99,14 @@ const styles = StyleSheet.create({
   dateLine: {
     paddingHorizontal: 28,
     marginTop: 12,
+    fontSize: 10.5,
+    textAlign: "right",
+    color: PDF_COLORS.gray475,
+  },
+  // Ligne « Mode de règlement » sous la date (factures).
+  payMethodLine: {
+    paddingHorizontal: 28,
+    marginTop: 2,
     fontSize: 10.5,
     textAlign: "right",
     color: PDF_COLORS.gray475,
@@ -208,6 +217,40 @@ const styles = StyleSheet.create({
     textAlign: "right",
     color: PDF_COLORS.white,
   },
+
+  // ── Récapitulatif facture (acompte / déduction des acomptes) ──
+  recapBox: {
+    marginHorizontal: 28,
+    marginTop: 14,
+    borderWidth: 1,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  recapHeader: {
+    backgroundColor: PDF_COLORS.bandBg,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+  },
+  recapHeaderText: { fontSize: 10.5, fontFamily: "Times-Bold", letterSpacing: 0.8 },
+  recapBody: { backgroundColor: PDF_COLORS.white },
+  recapRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: PDF_COLORS.hairline,
+  },
+  recapLabel: { flex: 1, fontSize: 10.5, color: PDF_COLORS.text, paddingRight: 8 },
+  recapValue: {
+    width: 120,
+    textAlign: "right",
+    fontSize: 10.5,
+    color: PDF_COLORS.bodyBlack,
+  },
+  recapStrongRow: { borderBottomWidth: 0, paddingVertical: 7 },
+  recapStrongText: { fontFamily: "Times-Bold", color: PDF_COLORS.white, fontSize: 11.5 },
 
   // ── Free text ──
   freeText: { marginHorizontal: 28, marginTop: 14, fontSize: 10.5, lineHeight: 1.5 },
@@ -337,19 +380,113 @@ function toItems(text: string | null): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Ligne du récapitulatif de règlement d'une facture.
+ *  - `strong` : ligne de synthèse (solde / net à payer), bandeau vert plein.
+ *  - `negative` : montant déduit (affiché en rouge).
+ */
+function RecapRow({
+  label,
+  value,
+  strong,
+  negative,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  negative?: boolean;
+}) {
+  return (
+    <View
+      style={[
+        styles.recapRow,
+        strong
+          ? { ...styles.recapStrongRow, backgroundColor: PDF_COLORS.totalGreen }
+          : {},
+      ]}
+    >
+      <Text style={[styles.recapLabel, strong ? styles.recapStrongText : {}]}>
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.recapValue,
+          strong
+            ? styles.recapStrongText
+            : negative
+              ? { color: PDF_COLORS.redDiscount }
+              : {},
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 /** Composant principal du document PDF (mise en page « devis.docx »). */
 export function DocumentPDF(data: DocumentPDFData) {
   const { document: doc, lines, organization: org, client } = data;
   const band = bandColor(doc.type);
+
+  // ── Facture : deux dispositions (acompte / définitive) ──
+  const isFacture = doc.type === "facture";
+  const inv = isFacture ? doc.invoice_data : null;
+  // Une facture « historique » saisie sans invoice_data retombe sur la mise en
+  // page générique (pas de récapitulatif ni de libellés spécifiques).
+  const hasInvoice = isFacture && inv !== null;
+  const factureKind = inv?.kind ?? null;
+  const invDeductions = inv?.deductions ?? [];
+  const invDeducted = deductionsTotal(invDeductions);
+  const invNet = Math.max(0, doc.total_amount - invDeducted); // net à payer (solde final)
+  const invSoldeRestant = Math.max(0, doc.total_amount - (inv?.advance_amount ?? 0));
+  // Taxe : les factures affichent « TVA », les autres documents « IR ».
+  const taxLabel = isFacture ? "TVA" : "IR";
+  // payment_method vaut "" quand non précisé ("" est falsy → écarté ici).
+  const payMethod = inv?.payment_method
+    ? PAYMENT_METHOD_LABELS[inv.payment_method]
+    : null;
+
   // Libellé du document : pour un type « autre », on utilise l'intitulé libre
-  // saisi dans le champ « Titre » ; sinon le libellé standard du type.
+  // saisi dans le champ « Titre » ; une facture précise sa nature ; sinon le
+  // libellé standard du type.
   const docLabel = data.customTypeName?.trim()
     ? data.customTypeName.trim()
     : doc.type === "autre"
       ? doc.title?.trim() || DOCUMENT_TYPE_LABELS.autre
-      : DOCUMENT_TYPE_LABELS[doc.type];
+      : isFacture
+        ? factureTitleLabel(factureKind)
+        : DOCUMENT_TYPE_LABELS[doc.type];
   const typeLabel = docLabel.toUpperCase();
-  const amountWords = doc.amount_in_words?.trim() || amountToWords(doc.total_amount);
+
+  // Libellé du grand total (bandeau vert) selon le type/nature.
+  const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
+  const grandLabel = hasInvoice
+    ? factureKind === "acompte"
+      ? `MONTANT TOTAL DU PROJET (${ttcSuffix})`
+      : `MONTANT TOTAL DE LA PRESTATION (${ttcSuffix})`
+    : doc.tax_rate > 0
+      ? "Total TTC"
+      : "Total HT";
+
+  // Montant en lettres : base et formulation dépendent de la nature.
+  //  - acompte    → montant de l'acompte versé
+  //  - définitive → net à payer (solde final)
+  //  - autres     → total du document
+  const wordsAmount = hasInvoice
+    ? factureKind === "acompte"
+      ? (inv?.advance_amount ?? 0)
+      : invNet
+    : doc.total_amount;
+  const amountWords =
+    !hasInvoice && doc.amount_in_words?.trim()
+      ? doc.amount_in_words.trim()
+      : amountToWords(wordsAmount);
+  const wordsIntro = hasInvoice
+    ? factureKind === "acompte"
+      ? "Arrêtée la présente facture d'acompte à la somme de :"
+      : "Arrêtée la présente facture définitive à la somme de :"
+    : "Arrêté le présent document à la somme de :";
 
   // Champs nettoyés (jamais "A_REMPLIR" ni vide affiché sur un document client).
   const orgSlogan = cleanField(org.slogan);
@@ -359,6 +496,8 @@ export function DocumentPDF(data: DocumentPDFData) {
   const clPhone = cleanField(client?.phone);
   const clEmail = cleanField(client?.email);
   const clWhatsapp = cleanField(client?.whatsapp);
+  const clNiu = cleanField(client?.niu);
+  const devisRef = cleanField(inv?.devis_ref);
   // Contact = téléphone et/ou WhatsApp (regroupés sur une ligne).
   const clContact = [clPhone, clWhatsapp].filter(Boolean).join(" / ");
 
@@ -419,6 +558,11 @@ export function DocumentPDF(data: DocumentPDFData) {
         {/* Date */}
         <Text style={styles.dateLine}>{pdfDate(doc.issue_date)}</Text>
 
+        {/* Mode de règlement (factures) */}
+        {payMethod ? (
+          <Text style={styles.payMethodLine}>Mode de règlement : {payMethod}</Text>
+        ) : null}
+
         {/* Bloc client */}
         <View style={styles.clientBlock}>
           <View style={styles.clientRow}>
@@ -449,6 +593,12 @@ export function DocumentPDF(data: DocumentPDFData) {
               <Text style={styles.clientValue}>{clEmail}</Text>
             </View>
           ) : null}
+          {clNiu ? (
+            <View style={styles.clientRow}>
+              <Text style={styles.clientLabel}>NIU :</Text>
+              <Text style={styles.clientValue}>{clNiu}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Bandeau titre : type à gauche, numéro à droite (fond clair + bordure) */}
@@ -468,6 +618,16 @@ export function DocumentPDF(data: DocumentPDFData) {
             <Text style={styles.subjectText}>
               <Text style={styles.subjectLabel}>Objet : </Text>
               {subject}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Référence du devis d'origine (factures) */}
+        {devisRef ? (
+          <View style={styles.subjectRow}>
+            <Text style={styles.subjectText}>
+              <Text style={styles.subjectLabel}>Réf. devis : </Text>
+              {devisRef}
             </Text>
           </View>
         ) : null}
@@ -524,14 +684,14 @@ export function DocumentPDF(data: DocumentPDFData) {
               ) : null}
               {doc.tax_rate > 0 ? (
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabelCell}>IR</Text>
+                  <Text style={styles.totalLabelCell}>{taxLabel}</Text>
                   <Text style={styles.totalRateCell}>{doc.tax_rate} %</Text>
                   <Text style={styles.totalValueCell}>{pdfNumber(doc.tax_amount)}</Text>
                 </View>
               ) : null}
               <View style={[styles.grandRow, { backgroundColor: PDF_COLORS.totalGreen }]}>
-                {/* IR = 0 → total hors taxe (HT) ; IR > 0 → total toutes taxes (TTC) */}
-                <Text style={styles.grandLabelCell}>{doc.tax_rate > 0 ? "Total TTC" : "Total HT"}</Text>
+                {/* taux = 0 → total hors taxe (HT) ; taux > 0 → total toutes taxes (TTC) */}
+                <Text style={styles.grandLabelCell}>{grandLabel}</Text>
                 <Text style={styles.grandValueCell}>{pdfMoney(doc.total_amount)}</Text>
               </View>
             </View>
@@ -541,9 +701,66 @@ export function DocumentPDF(data: DocumentPDFData) {
           <Text style={styles.freeText}>{doc.body_text || ""}</Text>
         )}
 
+        {/* Récapitulatif de règlement (facture d'acompte / facture définitive) */}
+        {isFacture && inv ? (
+          <View style={[styles.recapBox, { borderColor: band }]}>
+            <View style={[styles.recapHeader, { borderBottomColor: band }]}>
+              <Text style={[styles.recapHeaderText, { color: band }]}>
+                {factureKind === "acompte"
+                  ? "RÉCAPITULATIF DU PAIEMENT"
+                  : "DÉDUCTION DES ACOMPTES ET NET À PAYER"}
+              </Text>
+            </View>
+            <View style={styles.recapBody}>
+              {factureKind === "acompte" ? (
+                <>
+                  <RecapRow
+                    label="Montant Total du Marché (TTC)"
+                    value={pdfMoney(doc.total_amount)}
+                  />
+                  <RecapRow
+                    label={`Acompte versé ce jour${
+                      inv.advance_percent ? ` (${pdfNumber(inv.advance_percent)} %)` : ""
+                    }`}
+                    value={`- ${pdfMoney(inv.advance_amount)}`}
+                    negative
+                  />
+                  <RecapRow
+                    label="SOLDE RESTANT À PAYER"
+                    value={pdfMoney(invSoldeRestant)}
+                    strong
+                  />
+                </>
+              ) : (
+                <>
+                  <RecapRow
+                    label="Montant Total du Chantier (TTC)"
+                    value={pdfMoney(doc.total_amount)}
+                  />
+                  {invDeductions.map((d, i) => (
+                    <RecapRow
+                      key={i}
+                      label={`Moins Acompte N° ${i + 1}${
+                        d.date ? ` (versé le ${d.date})` : ""
+                      }${d.reference ? ` — ${d.reference}` : ""}`}
+                      value={`- ${pdfMoney(d.amount)}`}
+                      negative
+                    />
+                  ))}
+                  <RecapRow
+                    label="NET À PAYER (SOLDE FINAL)"
+                    value={pdfMoney(invNet)}
+                    strong
+                  />
+                </>
+              )}
+            </View>
+          </View>
+        ) : null}
+
         {/* Montant en lettres (gras, en minuscules) */}
         <Text style={styles.words}>
-          Arrêté le présent document à la somme de :{" "}
+          {wordsIntro}{" "}
           <Text style={styles.wordsStrong}>{amountWords.toLowerCase()}</Text>.
         </Text>
 

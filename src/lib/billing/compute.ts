@@ -18,6 +18,16 @@ export function lineTotal(quantity: number, unitPrice: number): number {
   return Math.round((Number(quantity) || 0) * (Number(unitPrice) || 0));
 }
 
+/** Somme (entière, positive) des acomptes déduits d'une facture définitive. */
+export function deductionsTotal(
+  deductions: { amount: number }[] | null | undefined,
+): number {
+  return (deductions ?? []).reduce(
+    (sum, d) => sum + Math.max(0, Math.round(Number(d.amount) || 0)),
+    0,
+  );
+}
+
 /**
  * Calcule les totaux d'un document.
  * En mode « texte », le sous-total matériel est 0 (pas de tableau de lignes).

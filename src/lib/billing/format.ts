@@ -4,6 +4,7 @@ import type {
   PaymentStatus,
   ClientType,
   PaymentMethod,
+  FactureKind,
 } from "./types";
 
 /**
@@ -69,6 +70,23 @@ export function documentTypeLabel(doc: {
 }): string {
   const custom = doc.custom_type?.name?.trim();
   return custom && custom.length > 0 ? custom : DOCUMENT_TYPE_LABELS[doc.type];
+}
+
+/** Libellé lisible de la nature d'une facture (acompte / définitive). */
+export const FACTURE_KIND_LABELS: Record<FactureKind, string> = {
+  acompte: "Facture d'acompte",
+  definitive: "Facture définitive",
+};
+
+/**
+ * Intitulé complet d'un document facture selon sa nature.
+ * Une facture définitive sans acompte déduit est présentée « Facture »
+ * (pas de nuance nécessaire), sinon on précise « d'acompte » / « définitive ».
+ */
+export function factureTitleLabel(kind: FactureKind | null | undefined): string {
+  if (kind === "acompte") return "Facture d'acompte";
+  if (kind === "definitive") return "Facture définitive";
+  return DOCUMENT_TYPE_LABELS.facture;
 }
 
 /** Libellé lisible d'un statut de document. */

@@ -5,10 +5,12 @@ import { getDocument } from "@/lib/billing/queries";
 import { canReceivePayment } from "@/lib/billing/payments";
 import {
   documentTypeLabel,
+  factureTitleLabel,
   formatMoney,
   formatDate,
   formatNumber,
 } from "@/lib/billing/format";
+import { deductionsTotal } from "@/lib/billing/compute";
 import { INTERVENTION_TYPE_LABELS } from "@/lib/billing/templates";
 import { deleteDocument } from "../actions";
 import { PageHeader } from "@/components/billing/page-header";
@@ -42,12 +44,19 @@ export default async function DocumentDetailPage({
   const isReport = doc.type === "rapport_maintenance";
   const r = doc.report_data;
 
+  // Facture : nature (acompte / définitive) et montants de règlement.
+  const isFacture = doc.type === "facture";
+  const inv = isFacture ? doc.invoice_data : null;
+  const invDeducted = deductionsTotal(inv?.deductions ?? []);
+  const invNet = Math.max(0, doc.total_amount - invDeducted);
+  const invSoldeRestant = Math.max(0, doc.total_amount - (inv?.advance_amount ?? 0));
+  const headTitle = isFacture
+    ? `${factureTitleLabel(inv?.kind)} ${doc.number ?? ""}`.trim()
+    : `${documentTypeLabel(doc)} ${doc.number ?? ""}`.trim();
+
   return (
     <div>
-      <PageHeader
-        title={`${documentTypeLabel(doc)} ${doc.number ?? ""}`.trim()}
-        subtitle={doc.title ?? undefined}
-      />
+      <PageHeader title={headTitle} subtitle={doc.title ?? undefined} />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <StatusBadge status={doc.status} />
@@ -295,6 +304,9 @@ export default async function DocumentDetailPage({
                 )}
               </Row>
               <Row label={t("documents.category")}>{doc.category?.name_fr ?? "—"}</Row>
+              {doc.client?.niu ? (
+                <Row label={t("clients.niu")}>{doc.client.niu}</Row>
+              ) : null}
               <Row label={t("documents.subject")}>{doc.subject ?? "—"}</Row>
               <Row label={t("documents.issueDate")}>{formatDate(doc.issue_date)}</Row>
               <Row label={t("documents.validityDate")}>{formatDate(doc.validity_date)}</Row>
@@ -322,10 +334,35 @@ export default async function DocumentDetailPage({
                 </Row>
               ) : null}
               <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
-                {/* IR = 0 → total hors taxe (HT) ; IR > 0 → total toutes taxes (TTC) */}
+                {/* taux = 0 → total hors taxe (HT) ; taux > 0 → total toutes taxes (TTC) */}
                 <span>{doc.tax_rate > 0 ? t("documents.totalTTC") : t("documents.totalHT")}</span>
                 <span className="tabular-nums">{formatMoney(doc.total_amount)}</span>
               </div>
+
+              {/* Récapitulatif de règlement (facture d'acompte / définitive) */}
+              {isFacture && inv ? (
+                inv.kind === "acompte" ? (
+                  <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                    <Row label={t("documents.advanceAmount")}>
+                      <span className="tabular-nums text-destructive">- {formatMoney(inv.advance_amount)}</span>
+                    </Row>
+                    <div className="flex justify-between font-semibold">
+                      <span>{t("documents.soldeRestant")}</span>
+                      <span className="tabular-nums">{formatMoney(invSoldeRestant)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                    <Row label={t("documents.deductionsTitle")}>
+                      <span className="tabular-nums text-destructive">- {formatMoney(invDeducted)}</span>
+                    </Row>
+                    <div className="flex justify-between font-semibold">
+                      <span>{t("documents.netAPayer")}</span>
+                      <span className="tabular-nums">{formatMoney(invNet)}</span>
+                    </div>
+                  </div>
+                )
+              ) : null}
             </CardContent>
           </Card>
           ) : null}

@@ -22,9 +22,43 @@ function nz(value: string | undefined | null): string | null {
   return v === "" ? null : v;
 }
 
+/** Mode d'affichage effectif : une facture utilise toujours le tableau. */
+function effectiveBodyMode(input: DocumentInput): "table" | "text" {
+  return input.type === "facture" ? "table" : input.body_mode;
+}
+
+/**
+ * Construit le JSONB `invoice_data` (facture uniquement). Les montants sont des
+ * entiers FCFA ; le calcul du solde/net est refait au rendu (source unique).
+ */
+function buildInvoiceData(input: DocumentInput) {
+  if (input.type !== "facture") return null;
+  const inv = input.invoice;
+  if (!inv) return null;
+  const round = (n: number | null | undefined) => Math.round(Number(n) || 0);
+  return {
+    kind: inv.kind,
+    payment_method: inv.payment_method ?? "",
+    devis_ref: (inv.devis_ref ?? "").trim(),
+    advance_percent:
+      inv.advance_percent === null || inv.advance_percent === undefined
+        ? null
+        : Number(inv.advance_percent),
+    advance_amount: inv.kind === "acompte" ? round(inv.advance_amount) : 0,
+    deductions:
+      inv.kind === "definitive"
+        ? inv.deductions.map((d) => ({
+            reference: d.reference.trim(),
+            date: (d.date ?? "").trim(),
+            amount: round(d.amount),
+          }))
+        : [],
+  };
+}
+
 /** Construit les lignes à insérer (mode tableau uniquement). */
 function buildLines(documentId: string, input: DocumentInput) {
-  if (input.body_mode !== "table") return [];
+  if (effectiveBodyMode(input) !== "table") return [];
   return input.lines.map((l, index) => ({
     document_id: documentId,
     position: index,
@@ -66,10 +100,12 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       title: nz(v.title),
       subject: nz(v.subject),
       client_ref: nz(v.client_ref),
-      body_mode: v.body_mode,
-      body_text: v.body_mode === "text" ? nz(v.body_text) : null,
+      body_mode: effectiveBodyMode(v),
+      body_text: effectiveBodyMode(v) === "text" ? nz(v.body_text) : null,
       // Sections du rapport (uniquement pour un rapport de maintenance).
       report_data: v.type === "rapport_maintenance" ? (v.report ?? null) : null,
+      // Partie règlement/acompte (uniquement pour une facture).
+      invoice_data: buildInvoiceData(v),
       materials_subtotal: totals.materialsSubtotal,
       labor_amount: totals.laborAmount,
       discount_amount: totals.discountAmount,
@@ -78,8 +114,11 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       total_amount: totals.totalAmount,
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
-      // Forcé côté serveur pour un bon de commande (zone non désactivable).
-      include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
+      // Encadré de conditions forcé pour un bon de commande et une facture.
+      include_conditions:
+        v.type === "bon_commande" || v.type === "facture"
+          ? true
+          : v.include_conditions,
       notes_internes: nz(v.notes_internes),
       status: "brouillon",
     })
@@ -129,10 +168,12 @@ export async function updateDocument(
       title: nz(v.title),
       subject: nz(v.subject),
       client_ref: nz(v.client_ref),
-      body_mode: v.body_mode,
-      body_text: v.body_mode === "text" ? nz(v.body_text) : null,
+      body_mode: effectiveBodyMode(v),
+      body_text: effectiveBodyMode(v) === "text" ? nz(v.body_text) : null,
       // Sections du rapport (uniquement pour un rapport de maintenance).
       report_data: v.type === "rapport_maintenance" ? (v.report ?? null) : null,
+      // Partie règlement/acompte (uniquement pour une facture).
+      invoice_data: buildInvoiceData(v),
       materials_subtotal: totals.materialsSubtotal,
       labor_amount: totals.laborAmount,
       discount_amount: totals.discountAmount,
@@ -141,8 +182,11 @@ export async function updateDocument(
       total_amount: totals.totalAmount,
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
-      // Forcé côté serveur pour un bon de commande (zone non désactivable).
-      include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
+      // Encadré de conditions forcé pour un bon de commande et une facture.
+      include_conditions:
+        v.type === "bon_commande" || v.type === "facture"
+          ? true
+          : v.include_conditions,
       notes_internes: nz(v.notes_internes),
     })
     .eq("id", id);

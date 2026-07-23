@@ -32,6 +32,7 @@ export async function createClient(values: ClientInput): Promise<ActionResult> {
       organization_id: profile.organization_id,
       name: v.name,
       type: v.type,
+      niu: nz(v.niu),
       email: nz(v.email),
       phone: nz(v.phone),
       whatsapp: nz(v.whatsapp),
@@ -64,6 +65,7 @@ export async function updateClient(
     .update({
       name: v.name,
       type: v.type,
+      niu: nz(v.niu),
       email: nz(v.email),
       phone: nz(v.phone),
       whatsapp: nz(v.whatsapp),

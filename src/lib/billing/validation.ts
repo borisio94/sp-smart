@@ -37,6 +37,7 @@ export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 export const clientSchema = z.object({
   name: z.string().trim().min(2, "Nom trop court").max(160),
   type: z.enum(["particulier", "entreprise", "institution"]),
+  niu: z.string().trim().max(40).optional().or(z.literal("")),
   email: z.union([z.string().trim().email("Email invalide").max(160), z.literal("")]),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   whatsapp: z.string().trim().max(40).optional().or(z.literal("")),
@@ -135,6 +136,40 @@ export const reportDataSchema = z.object({
 
 export type ReportDataInput = z.infer<typeof reportDataSchema>;
 
+// ───────────── Facture (acompte / définitive) ─────────────
+// Mode de règlement optionnel (réutilise l'énumération des paiements).
+const paymentMethodOptional = z
+  .enum(["especes", "momo_mtn", "momo_orange", "virement", "cheque", "carte"])
+  .or(z.literal(""));
+
+const invoiceDeductionSchema = z.object({
+  reference: z.string().trim().max(60),
+  date: z.string().trim().max(40).optional().or(z.literal("")),
+  amount: z
+    .number({ message: "Montant invalide" })
+    .min(0, "Montant invalide")
+    .max(1_000_000_000),
+});
+
+export const invoiceDataSchema = z.object({
+  kind: z.enum(["acompte", "definitive"]),
+  payment_method: paymentMethodOptional,
+  devis_ref: z.string().trim().max(120).optional().or(z.literal("")),
+  advance_percent: z
+    .number()
+    .min(0, "Pourcentage invalide")
+    .max(100, "Pourcentage invalide")
+    .nullable()
+    .optional(),
+  advance_amount: z
+    .number({ message: "Montant invalide" })
+    .min(0, "Montant invalide")
+    .max(1_000_000_000),
+  deductions: z.array(invoiceDeductionSchema).max(20),
+});
+
+export type InvoiceDataInput = z.infer<typeof invoiceDataSchema>;
+
 export const documentSchema = z
   .object({
     type: z.enum([
@@ -172,6 +207,8 @@ export const documentSchema = z
     notes_internes: z.string().trim().max(2000).optional().or(z.literal("")),
     // Sections du rapport de maintenance (requises seulement si type = rapport).
     report: reportDataSchema.optional(),
+    // Partie règlement/acompte (requise seulement si type = facture).
+    invoice: invoiceDataSchema.optional(),
   })
   .refine(
     // Le tableau de lignes ne concerne pas un rapport (corps = sections dédiées).
@@ -240,6 +277,37 @@ export const documentSchema = z
           path: ["report", field],
         });
       }
+    }
+  })
+  .superRefine((d, ctx) => {
+    // Règles propres à une facture (acompte / définitive).
+    if (d.type !== "facture") return;
+    const inv = d.invoice;
+    if (!inv) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Nature de la facture requise (acompte ou définitive).",
+        path: ["invoice", "kind"],
+      });
+      return;
+    }
+    if (inv.kind === "acompte" && (!inv.advance_amount || inv.advance_amount <= 0)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Montant de l'acompte versé requis.",
+        path: ["invoice", "advance_amount"],
+      });
+    }
+    if (inv.kind === "definitive") {
+      inv.deductions.forEach((ded, i) => {
+        if (!ded.reference || ded.reference.trim() === "") {
+          ctx.addIssue({
+            code: "custom",
+            message: "Référence de l'acompte requise.",
+            path: ["invoice", "deductions", i, "reference"],
+          });
+        }
+      });
     }
   });
 

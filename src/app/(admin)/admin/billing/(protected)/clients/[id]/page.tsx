@@ -36,6 +36,7 @@ export default async function ClientDetailPage({
 
   const rows: { label: string; value: string | null }[] = [
     { label: t("clients.contactPerson"), value: client.contact_person },
+    { label: t("clients.niu"), value: client.niu },
     { label: t("clients.email"), value: client.email },
     { label: t("clients.phone"), value: client.phone },
     { label: t("clients.whatsapp"), value: client.whatsapp },

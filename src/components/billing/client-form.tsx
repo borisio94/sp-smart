@@ -35,6 +35,7 @@ export function ClientForm({ client }: { client?: Client }) {
     defaultValues: {
       name: client?.name ?? "",
       type: client?.type ?? "particulier",
+      niu: client?.niu ?? "",
       email: client?.email ?? "",
       phone: client?.phone ?? "",
       whatsapp: client?.whatsapp ?? "",
@@ -83,6 +84,17 @@ export function ClientForm({ client }: { client?: Client }) {
         <div>
           <Label htmlFor="cl-contact">{t("clients.contactPerson")}</Label>
           <Input id="cl-contact" className="mt-1" {...register("contact_person")} />
+        </div>
+
+        <div className="sm:col-span-2">
+          <Label htmlFor="cl-niu">{t("clients.niu")}</Label>
+          <Input
+            id="cl-niu"
+            className="mt-1"
+            placeholder={t("clients.niuPlaceholder")}
+            {...register("niu")}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">{t("clients.niuHint")}</p>
         </div>
 
         <div>

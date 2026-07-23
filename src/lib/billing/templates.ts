@@ -1,4 +1,4 @@
-import type { DocumentType, MaintenanceReportData } from "./types";
+import type { DocumentType, FactureKind, MaintenanceReportData } from "./types";
 
 /**
  * Modèles professionnels pré-remplis du module Billing.
@@ -72,6 +72,31 @@ export const DOCUMENT_TEMPLATES: Partial<Record<DocumentType, DocumentTemplate>>
       "Le présent reçu atteste du paiement mentionné ci-dessus.\n" +
       "À conserver comme justificatif.",
     delivery_terms: "",
+    include_conditions: true,
+  },
+};
+
+/**
+ * Modèle de facture selon sa nature (acompte / définitive). La facture a une
+ * mise en page dédiée : ces trames alimentent l'objet et l'encadré de
+ * conditions (« CONDITIONS ET MODALITÉS » / « CONDITIONS ET RÉCEPTION »).
+ */
+export const FACTURE_TEMPLATES: Record<FactureKind, DocumentTemplate> = {
+  acompte: {
+    subject: "Acompte sur travaux de…",
+    payment_terms:
+      "Solde : payable à la livraison / à la fin des travaux (selon le calendrier convenu).\n" +
+      "Règlement accepté : espèces, Mobile Money (MTN / Orange), virement ou chèque.",
+    delivery_terms: "",
+    include_conditions: true,
+  },
+  definitive: {
+    subject: "Solde et clôture des travaux de…",
+    payment_terms:
+      "Procès-verbal valant livraison et réception des travaux, sous réserve du règlement intégral du solde.\n" +
+      "Mention « Pour acquit » apposée une fois le solde payé.",
+    delivery_terms:
+      "Garantie : équipements garantis 12 mois à compter de ce jour.",
     include_conditions: true,
   },
 };

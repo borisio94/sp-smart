@@ -96,6 +96,37 @@ export type PaymentMethod =
   | "cheque"
   | "carte";
 
+// ───────────── Facture (acompte / définitive) ─────────────
+/**
+ * Nature d'une facture :
+ *  - « acompte »    : facture d'acompte (avance sur travaux, avec récapitulatif
+ *                     marché / acompte versé / solde restant).
+ *  - « definitive » : facture définitive ou de solde (déduction des acomptes
+ *                     déjà versés → net à payer).
+ */
+export type FactureKind = "acompte" | "definitive";
+
+/** Acompte déduit sur une facture définitive (référence de la facture d'acompte). */
+export interface InvoiceDeduction {
+  reference: string; // n° de la facture d'acompte (ex. « FAC-2026-0001 »)
+  date: string; // date de versement (libre, ex. « 12/03/2026 »)
+  amount: number; // montant déduit (positif, affiché en négatif)
+}
+
+/**
+ * Contenu spécifique d'une facture (stocké en JSONB `documents.invoice_data`).
+ * Le corps commercial (tableau, totaux, taxe) reste porté par les colonnes
+ * habituelles ; `invoice_data` ne décrit que la partie règlement/acompte.
+ */
+export interface InvoiceData {
+  kind: FactureKind;
+  payment_method: PaymentMethod | ""; // mode de règlement affiché ("" = non précisé)
+  devis_ref: string; // référence du devis d'origine (texte libre)
+  advance_percent: number | null; // acompte : pourcentage du marché (affichage/calcul)
+  advance_amount: number; // acompte : montant versé ce jour (FCFA)
+  deductions: InvoiceDeduction[]; // facture définitive : acomptes déduits
+}
+
 // ───────────── Tables ─────────────
 export interface Organization {
   id: string;
@@ -140,6 +171,7 @@ export interface Client {
   ref: string | null; // code client auto-généré (CLI-2026-0001)
   name: string;
   type: ClientType;
+  niu: string | null; // numéro identifiant unique fiscal (si entreprise)
   email: string | null;
   phone: string | null;
   whatsapp: string | null;
@@ -206,6 +238,7 @@ export interface BillingDocument {
   body_mode: BodyMode;
   body_text: string | null;
   report_data: MaintenanceReportData | null; // sections du rapport (type rapport_maintenance)
+  invoice_data: InvoiceData | null; // partie règlement/acompte (type facture)
   materials_subtotal: number;
   labor_amount: number;
   discount_amount: number;

@@ -5,6 +5,7 @@ import {
   listCategories,
   getOrganization,
   listCustomDocumentTypes,
+  listAdvanceInvoices,
 } from "@/lib/billing/queries";
 import { PageHeader } from "@/components/billing/page-header";
 import { DocumentForm } from "@/components/billing/document-form";
@@ -18,12 +19,14 @@ export default async function NewDocumentPage({
   const t = await getTranslations("Admin");
   const { client } = await searchParams;
 
-  const [clients, categories, organization, customTypes] = await Promise.all([
-    listClients(),
-    listCategories(true),
-    getOrganization(),
-    listCustomDocumentTypes(true),
-  ]);
+  const [clients, categories, organization, customTypes, advanceInvoices] =
+    await Promise.all([
+      listClients(),
+      listCategories(true),
+      getOrganization(),
+      listCustomDocumentTypes(true),
+      listAdvanceInvoices(),
+    ]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -34,6 +37,7 @@ export default async function NewDocumentPage({
         clients={clients}
         categories={categories}
         customTypes={customTypes}
+        advanceInvoices={advanceInvoices}
         defaultIssueDate={today}
         defaultPaymentTerms={organization?.default_payment_terms}
         defaultDeliveryTerms={organization?.default_delivery_terms}

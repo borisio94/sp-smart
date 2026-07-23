@@ -176,6 +176,50 @@ export async function listRecentPayments(limit = 50): Promise<PaymentListItem[]>
   return (data as PaymentListItem[] | null) ?? [];
 }
 
+/** Facture d'acompte candidate à la déduction sur une facture définitive. */
+export interface AdvanceInvoiceOption {
+  id: string;
+  number: string | null;
+  client_id: string | null;
+  issue_date: string;
+  advance_amount: number; // montant de l'acompte versé (invoice_data.advance_amount)
+}
+
+/**
+ * Factures d'acompte existantes (toutes clients confondus), utilisées par le
+ * sélecteur de déduction d'une facture définitive. Le formulaire filtre ensuite
+ * par client. On ne renvoie que les factures dont invoice_data.kind = acompte.
+ */
+export async function listAdvanceInvoices(): Promise<AdvanceInvoiceOption[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("documents")
+    .select("id, number, client_id, issue_date, invoice_data")
+    .eq("type", "facture")
+    .order("issue_date", { ascending: false });
+
+  const rows =
+    (data as
+      | {
+          id: string;
+          number: string | null;
+          client_id: string | null;
+          issue_date: string;
+          invoice_data: { kind?: string; advance_amount?: number } | null;
+        }[]
+      | null) ?? [];
+
+  return rows
+    .filter((r) => r.invoice_data?.kind === "acompte")
+    .map((r) => ({
+      id: r.id,
+      number: r.number,
+      client_id: r.client_id,
+      issue_date: r.issue_date,
+      advance_amount: Number(r.invoice_data?.advance_amount ?? 0),
+    }));
+}
+
 /** Factures non soldées (statut de paiement ≠ payé/remboursé). */
 export async function listUnpaidInvoices(): Promise<DocumentListItem[]> {
   const supabase = await createSupabaseServerClient();
