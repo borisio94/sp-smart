@@ -38,6 +38,45 @@ export function formatDate(iso: string | null | undefined): string {
   }).format(d);
 }
 
+/**
+ * Unités courantes proposées à la saisie d'une ligne (datalist). L'utilisateur
+ * peut choisir dans la liste ou saisir une unité libre.
+ */
+export const COMMON_UNITS: string[] = [
+  // Longueur
+  "m",
+  "ml",
+  "cm",
+  "mm",
+  // Surface
+  "m²",
+  // Volume
+  "m³",
+  "litre",
+  "L",
+  // Unités / lots
+  "unité",
+  "pièce",
+  "paire",
+  "jeu",
+  "ensemble",
+  "lot",
+  // Matériaux
+  "barre",
+  "rouleau",
+  "sac",
+  "brouette",
+  "plaque",
+  "botte",
+  // Poids
+  "kg",
+  "tonne",
+  // Temps / prestation
+  "heure",
+  "jour",
+  "forfait",
+];
+
 /** Libellé lisible d'un type de document. */
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   devis: "Devis",

@@ -23,6 +23,7 @@ import {
 import {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_LABELS,
+  COMMON_UNITS,
   formatMoney,
 } from "@/lib/billing/format";
 import {
@@ -72,6 +73,50 @@ function emptyInvoice(): NonNullable<DocumentInput["invoice"]> {
     advance_amount: 0,
     deductions: [],
   };
+}
+
+/** Largeurs par défaut (px) des colonnes redimensionnables du tableau. */
+const DEFAULT_COL_WIDTHS = {
+  designation: 260,
+  unit: 130,
+  quantity: 120,
+  price: 150,
+};
+// Colonnes fixes (non redimensionnables) : total, forfait, action.
+const FIXED_COLS = { total: 140, flat: 72, action: 48 };
+
+/**
+ * Poignée de redimensionnement de colonne : glisser horizontalement met à jour
+ * la largeur de la colonne (rendue via <colgroup> en table-layout: fixed).
+ */
+function ColumnResizer({
+  getWidth,
+  setWidth,
+}: {
+  getWidth: () => number;
+  setWidth: (w: number) => void;
+}) {
+  function onMouseDown(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startW = getWidth();
+    const move = (ev: MouseEvent) => setWidth(Math.max(60, startW + (ev.clientX - startX)));
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  }
+  return (
+    <span
+      onMouseDown={onMouseDown}
+      role="separator"
+      aria-orientation="vertical"
+      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none hover:bg-primary/40"
+    />
+  );
 }
 
 /** Ligne de tableau vierge (éventuellement rattachée à une section). */
@@ -187,6 +232,17 @@ export function DocumentForm(props: Props) {
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(0);
   const isEdit = Boolean(props.document);
+
+  // Largeurs (px) des colonnes redimensionnables, partagées par tous les blocs.
+  const [colWidths, setColWidths] = useState(DEFAULT_COL_WIDTHS);
+  const tableMinWidth =
+    colWidths.designation +
+    colWidths.unit +
+    colWidths.quantity +
+    colWidths.price +
+    FIXED_COLS.total +
+    FIXED_COLS.flat +
+    FIXED_COLS.action;
 
   const methods = useForm<DocumentInput>({
     resolver: zodResolver(documentSchema),
@@ -762,6 +818,13 @@ export function DocumentForm(props: Props) {
                     {t("documents.sectionsHint")}
                   </p>
 
+                  {/* Liste d'unités proposées (partagée par tous les champs Unité) */}
+                  <datalist id="unit-options">
+                    {COMMON_UNITS.map((u) => (
+                      <option key={u} value={u} />
+                    ))}
+                  </datalist>
+
                   {editorGroups.map((group) => {
                     const lastIdx = group.indices[group.indices.length - 1];
                     return (
@@ -803,19 +866,57 @@ export function DocumentForm(props: Props) {
                         </div>
 
                         <div className="overflow-x-auto rounded-lg ring-1 ring-foreground/10">
-                          <table className="w-full min-w-[680px] text-sm">
+                          <table
+                            className="w-full text-sm"
+                            style={{ tableLayout: "fixed", minWidth: tableMinWidth }}
+                          >
+                            <colgroup>
+                              <col style={{ width: colWidths.designation }} />
+                              <col style={{ width: colWidths.unit }} />
+                              <col style={{ width: colWidths.quantity }} />
+                              <col style={{ width: colWidths.price }} />
+                              <col style={{ width: FIXED_COLS.total }} />
+                              <col style={{ width: FIXED_COLS.flat }} />
+                              <col style={{ width: FIXED_COLS.action }} />
+                            </colgroup>
                             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                               <tr>
-                                <th className="px-3 py-2 font-medium">
+                                <th className="relative px-3 py-2 font-medium">
                                   {t("documents.designation")}
                                   {reqMark}
+                                  <ColumnResizer
+                                    getWidth={() => colWidths.designation}
+                                    setWidth={(w) => setColWidths((c) => ({ ...c, designation: w }))}
+                                  />
                                 </th>
-                                <th className="w-20 px-3 py-2 font-medium">{t("documents.unit")}</th>
-                                <th className="w-16 px-3 py-2 font-medium">{t("documents.quantity")}</th>
-                                <th className="w-28 px-3 py-2 font-medium">{t("documents.unitPrice")}</th>
-                                <th className="w-28 px-3 py-2 text-right font-medium">{t("documents.lineTotal")}</th>
-                                <th className="w-16 px-3 py-2 text-center font-medium">{t("documents.flatLine")}</th>
-                                <th className="w-10 px-3 py-2"></th>
+                                <th className="relative px-3 py-2 font-medium">
+                                  {t("documents.unit")}
+                                  <ColumnResizer
+                                    getWidth={() => colWidths.unit}
+                                    setWidth={(w) => setColWidths((c) => ({ ...c, unit: w }))}
+                                  />
+                                </th>
+                                <th className="relative px-3 py-2 font-medium">
+                                  {t("documents.quantity")}
+                                  <ColumnResizer
+                                    getWidth={() => colWidths.quantity}
+                                    setWidth={(w) => setColWidths((c) => ({ ...c, quantity: w }))}
+                                  />
+                                </th>
+                                <th className="relative px-3 py-2 font-medium">
+                                  {t("documents.unitPrice")}
+                                  <ColumnResizer
+                                    getWidth={() => colWidths.price}
+                                    setWidth={(w) => setColWidths((c) => ({ ...c, price: w }))}
+                                  />
+                                </th>
+                                <th className="px-3 py-2 text-right font-medium">
+                                  {t("documents.lineTotal")}
+                                </th>
+                                <th className="px-3 py-2 text-center font-medium">
+                                  {t("documents.flatLine")}
+                                </th>
+                                <th className="px-3 py-2"></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -839,6 +940,7 @@ export function DocumentForm(props: Props) {
                                     </td>
                                     <td className="px-3 py-2">
                                       <Input
+                                        list="unit-options"
                                         placeholder={t("documents.unitPlaceholder")}
                                         disabled={flat}
                                         {...register(`lines.${i}.unit` as const)}
