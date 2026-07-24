@@ -771,17 +771,23 @@ export function DocumentForm(props: Props) {
                       >
                         {/* Titre de la section (un seul par compartiment) */}
                         <div className="flex items-center gap-2">
+                          {/* Champ non contrôlé (register) pour préserver le focus ;
+                              la saisie est recopiée sur les autres lignes du bloc. */}
                           <Input
                             className="max-w-sm font-medium"
                             placeholder={t("documents.sectionTitlePlaceholder")}
-                            value={group.section}
-                            onChange={(e) =>
-                              group.indices.forEach((idx) =>
-                                setValue(`lines.${idx}.section`, e.target.value, {
-                                  shouldDirty: true,
-                                }),
-                              )
-                            }
+                            {...register(`lines.${group.indices[0]}.section` as const, {
+                              onChange: (e) => {
+                                const value = e.target.value;
+                                group.indices
+                                  .slice(1)
+                                  .forEach((idx) =>
+                                    setValue(`lines.${idx}.section`, value, {
+                                      shouldDirty: true,
+                                    }),
+                                  );
+                              },
+                            })}
                           />
                           {editorGroups.length > 1 ? (
                             <Button
