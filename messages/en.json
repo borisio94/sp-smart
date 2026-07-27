@@ -227,6 +227,7 @@
       "signatureHash": "Integrity reference",
       "signaturePending": "Awaiting the client's signature.",
       "signatureNone": "No signature requested for this document.",
+      "signatureVoidWarning": "This document has already been signed by the client. Saving it will void the signature: the client will have to sign the updated version again.",
       "saveDraft": "Save draft",
       "content": "Content",
       "conditions": "Terms",

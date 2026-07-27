@@ -1163,6 +1163,12 @@ export function DocumentForm(props: Props) {
                   </span>
                 </span>
               </label>
+              {/* Le document a déjà été signé : l'enregistrer annulera la signature. */}
+              {props.document?.signed_at ? (
+                <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+                  {t("documents.signatureVoidWarning")}
+                </p>
+              ) : null}
               <div>
                 <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
                 <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />

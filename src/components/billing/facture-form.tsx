@@ -457,6 +457,12 @@ export function FactureForm(props: Props) {
               </span>
             </span>
           </label>
+          {/* Le document a déjà été signé : l'enregistrer annulera la signature. */}
+          {props.document?.signed_at ? (
+            <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+              {t("documents.signatureVoidWarning")}
+            </p>
+          ) : null}
           <div>
             <Label htmlFor="f-notes">{t("documents.internalNotes")}</Label>
             <Textarea

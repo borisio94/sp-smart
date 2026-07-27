@@ -227,6 +227,7 @@
       "signatureHash": "Référence d'intégrité",
       "signaturePending": "En attente de la signature du client.",
       "signatureNone": "Signature non demandée pour ce document.",
+      "signatureVoidWarning": "Ce document a déjà été signé par le client. L'enregistrer annulera la signature : le client devra signer à nouveau la version modifiée.",
       "saveDraft": "Enregistrer le brouillon",
       "content": "Contenu",
       "conditions": "Conditions",
