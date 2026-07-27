@@ -1,18 +1,12 @@
-import type { DocumentType } from "./types";
-
 /**
  * Règles partagées de la signature électronique du client.
  * Module volontairement « pur » (aucun import Node) : il est utilisé aussi bien
  * par les formulaires client que par le route handler serveur.
+ *
+ * Aucun type de document n'est exclu : c'est l'émetteur qui décide, document
+ * par document, via la case « Demander la signature électronique du client »
+ * (colonne `signature_required`).
  */
-
-/**
- * Types de documents que le client peut signer depuis son lien privé.
- * Le rapport de maintenance est exclu : il est signé sur site, pas en ligne.
- */
-export function isSignableType(type: DocumentType | string): boolean {
-  return type !== "rapport_maintenance";
-}
 
 /** Taille maximale acceptée pour le PNG du tracé (data URL brute). */
 export const MAX_SIGNATURE_DATA_URL = 400_000; // ~300 Ko de PNG après base64

@@ -1,6 +1,5 @@
 import { getPublicDocument } from "@/lib/billing/public-stats";
 import { DOCUMENT_TYPE_LABELS, formatMoney, formatDate, formatNumber } from "@/lib/billing/format";
-import { isSignableType } from "@/lib/billing/signature";
 import { PUBLIC_DOC_LABELS as L } from "@/lib/billing/public-labels";
 import { ClientSignatureBlock } from "@/components/billing/client-signature-block";
 import type { DocumentType } from "@/lib/billing/types";
@@ -32,14 +31,15 @@ export default async function PublicInvoicePage({
   const { document: doc, lines } = result;
   const typeLabel = DOCUMENT_TYPE_LABELS[doc.type as DocumentType] ?? doc.type;
   const amountWords = doc.amount_in_words?.trim();
+  const isReport = doc.type === "rapport_maintenance";
 
-  // Signature : proposée si l'émetteur l'a demandée, que le type s'y prête, que
-  // le document est finalisé (un brouillon n'engage pas) et qu'il n'est pas
-  // déjà signé. Mêmes conditions que celles revérifiées par l'endpoint.
+  // Signature : proposée si l'émetteur l'a demandée (quel que soit le type de
+  // document), que le document est finalisé (un brouillon n'engage pas) et
+  // qu'il n'est pas déjà signé. Mêmes conditions que celles revérifiées par
+  // l'endpoint.
   const alreadySigned = Boolean(doc.signed_at);
   const canSign =
     Boolean(doc.signature_required) &&
-    isSignableType(doc.type) &&
     doc.status !== "brouillon" &&
     !alreadySigned;
 
@@ -103,14 +103,20 @@ export default async function PublicInvoicePage({
             <p className="whitespace-pre-wrap text-sm">{doc.body_text}</p>
           ) : null}
 
-          {/* Net à payer */}
-          <div className="flex items-center justify-between rounded-lg bg-primary px-4 py-3 text-primary-foreground">
-            <span className="font-semibold">{L.netToPay}</span>
-            <span className="text-lg font-bold tabular-nums">{formatMoney(doc.total_amount)}</span>
-          </div>
-          {amountWords ? (
-            <p className="text-xs italic text-muted-foreground">{amountWords}.</p>
-          ) : null}
+          {/* Net à payer — sans objet pour un rapport de maintenance. */}
+          {isReport ? null : (
+            <>
+              <div className="flex items-center justify-between rounded-lg bg-primary px-4 py-3 text-primary-foreground">
+                <span className="font-semibold">{L.netToPay}</span>
+                <span className="text-lg font-bold tabular-nums">
+                  {formatMoney(doc.total_amount)}
+                </span>
+              </div>
+              {amountWords ? (
+                <p className="text-xs italic text-muted-foreground">{amountWords}.</p>
+              ) : null}
+            </>
+          )}
 
           {doc.payment_terms ? (
             <div className="text-sm">
@@ -132,7 +138,9 @@ export default async function PublicInvoicePage({
       </div>
 
       {/* Signature électronique du client */}
-      {canSign ? <ClientSignatureBlock token={token} /> : null}
+      {canSign ? (
+        <ClientSignatureBlock token={token} defaultName={doc.client_name ?? ""} />
+      ) : null}
 
       {alreadySigned ? (
         <div className="mt-6 rounded-2xl bg-background p-5 ring-1 ring-foreground/10">

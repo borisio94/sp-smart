@@ -368,6 +368,12 @@ export default async function DocumentDetailPage({
                       <span className="font-mono">{shortHash(doc.signature_doc_hash)}</span>
                     </Row>
                   </>
+                ) : doc.status === "brouillon" ? (
+                  /* Un brouillon n'engage pas : la page publique n'affiche pas
+                     le bloc de signature tant que le document n'est pas envoyé. */
+                  <p className="rounded-lg bg-destructive/10 p-3 text-destructive">
+                    {t("documents.signatureDraftBlocked")}
+                  </p>
                 ) : (
                   <p className="text-muted-foreground">{t("documents.signaturePending")}</p>
                 )}

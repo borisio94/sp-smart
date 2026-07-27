@@ -1,14 +1,6 @@
-import { renderToBuffer } from "@react-pdf/renderer";
-
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDocument, getOrganization } from "@/lib/billing/queries";
-import { DocumentPDF } from "@/lib/billing/pdf/DocumentPDF";
-import { ReportPDF } from "@/lib/billing/pdf/ReportPDF";
-import {
-  fetchBrandingDataUri,
-  fetchClientSignatureDataUri,
-} from "@/lib/billing/pdf/branding";
-import { fetchSiteLogoDataUri } from "@/lib/billing/pdf/site-logo";
+import { renderDocumentPdf } from "@/lib/billing/pdf/render";
 import { pdfFilename } from "@/lib/billing/pdf/filename";
 
 // react-pdf nécessite le runtime Node.js (pas Edge).
@@ -39,48 +31,14 @@ export async function GET(
     return new Response("Document introuvable", { status: 404 });
   }
 
-  // Charge les images de marque (signature, cachet) en base64.
-  const [uploadedLogo, signatureData, stampData, clientSignatureData] =
-    await Promise.all([
-      fetchBrandingDataUri(organization.logo_url),
-      fetchBrandingDataUri(organization.signature_url),
-      fetchBrandingDataUri(organization.stamp_url),
-      // Tracé apposé par le client depuis son lien privé (le cas échéant).
-      fetchClientSignatureDataUri(doc.client_signature_url),
-    ]);
-  // En-tête : logo uploadé en priorité, sinon repli sur le logo du site (Sanity).
-  const logoData = uploadedLogo ?? (await fetchSiteLogoDataUri());
-  // Filigrane : logo uploadé dans le bucket uniquement (sinon monogramme "SP").
-  const watermarkData = uploadedLogo;
-
-  // Un rapport de maintenance utilise une mise en page dédiée (sections
-  // techniques) ; les autres types gardent la mise en page commerciale.
-  const element =
-    doc.type === "rapport_maintenance"
-      ? ReportPDF({
-          document: doc,
-          organization,
-          client: doc.client,
-          logoData,
-          watermarkData,
-          signatureData,
-          stampData,
-        })
-      : DocumentPDF({
-          document: doc,
-          lines: doc.lines,
-          organization,
-          client: doc.client,
-          categoryName: doc.category?.name_fr ?? null,
-          customTypeName: doc.custom_type?.name ?? null,
-          logoData,
-          watermarkData,
-          signatureData,
-          stampData,
-          clientSignatureData,
-        });
-
-  const buffer = await renderToBuffer(element);
+  const buffer = await renderDocumentPdf({
+    document: doc,
+    lines: doc.lines,
+    organization,
+    client: doc.client,
+    categoryName: doc.category?.name_fr ?? null,
+    customTypeName: doc.custom_type?.name ?? null,
+  });
 
   const url = new URL(request.url);
   const download = url.searchParams.get("dl") === "1";

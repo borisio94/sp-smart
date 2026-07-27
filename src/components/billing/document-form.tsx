@@ -50,6 +50,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ReportFields } from "@/components/billing/report-fields";
+import { SignatureRequiredField } from "@/components/billing/signature-required-field";
 
 interface Props {
   clients: Client[];
@@ -793,6 +794,14 @@ export function DocumentForm(props: Props) {
             </section>
             <section hidden={step !== 4} className="space-y-4">
               <ReportFields step="conclusion" />
+              {/* Signature électronique du client sur son lien privé : proposée
+                  aussi pour le rapport, à cocher selon le cas (signature sur
+                  site ou à distance). */}
+              <SignatureRequiredField
+                field={register("signature_required")}
+                signedAt={props.document?.signed_at}
+                className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm"
+              />
               <div>
                 <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
                 <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />
@@ -1154,21 +1163,11 @@ export function DocumentForm(props: Props) {
                 </span>
               </label>
               {/* Signature électronique du client sur son lien privé. */}
-              <label className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm">
-                <input type="checkbox" className="mt-0.5" {...register("signature_required")} />
-                <span>
-                  <span className="font-medium">{t("documents.signatureRequired")}</span>
-                  <span className="mt-0.5 block text-muted-foreground">
-                    {t("documents.signatureRequiredHint")}
-                  </span>
-                </span>
-              </label>
-              {/* Le document a déjà été signé : l'enregistrer annulera la signature. */}
-              {props.document?.signed_at ? (
-                <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-                  {t("documents.signatureVoidWarning")}
-                </p>
-              ) : null}
+              <SignatureRequiredField
+                field={register("signature_required")}
+                signedAt={props.document?.signed_at}
+                className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm"
+              />
               <div>
                 <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
                 <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />

@@ -4,15 +4,19 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyCaptcha } from "@/lib/captcha";
-import { sendEmail, emailTemplate } from "@/lib/email";
+import { sendEmail, emailTemplate, type MailAttachment } from "@/lib/email";
+import { renderDocumentPdf } from "@/lib/billing/pdf/render";
+import { pdfFilename } from "@/lib/billing/pdf/filename";
 import { clientSignatureSchema } from "@/lib/billing/validation";
-import {
-  canonicalSignedContent,
-  isSignableType,
-  shortHash,
-} from "@/lib/billing/signature";
+import { canonicalSignedContent, shortHash } from "@/lib/billing/signature";
 import { DOCUMENT_TYPE_LABELS, formatMoney } from "@/lib/billing/format";
-import type { DocumentType } from "@/lib/billing/types";
+import type {
+  DocumentType,
+  BillingDocument,
+  DocumentLine,
+  Client,
+  Organization,
+} from "@/lib/billing/types";
 
 export const runtime = "nodejs";
 
@@ -31,6 +35,56 @@ function clientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   return request.headers.get("x-real-ip")?.trim() || "inconnue";
+}
+
+/**
+ * PDF du document fraîchement signé, prêt à être joint aux emails (retour à
+ * l'émetteur + exemplaire du client). Il est rendu APRÈS l'enregistrement pour
+ * porter le tracé du client, sa mention d'horodatage et sa référence
+ * d'intégrité.
+ *
+ * Volontairement tolérant : la signature est déjà enregistrée à ce stade, un
+ * échec de rendu ne doit pas la faire échouer — l'email part alors sans PDF.
+ */
+async function renderSignedPdf(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  id: string,
+): Promise<MailAttachment | null> {
+  try {
+    const { data } = await admin
+      .from("documents")
+      .select(
+        "*, lines:document_lines(*), client:clients(*), category:categories(name_fr), custom_type:document_types(name), organization:organizations(*)",
+      )
+      .eq("id", id)
+      .maybeSingle();
+    if (!data) return null;
+
+    const document = data as BillingDocument & {
+      lines: DocumentLine[];
+      client: Client | null;
+      category: { name_fr: string } | null;
+      custom_type: { name: string } | null;
+      organization: Organization;
+    };
+
+    const content = await renderDocumentPdf({
+      document,
+      lines: document.lines ?? [],
+      organization: document.organization,
+      client: document.client,
+      categoryName: document.category?.name_fr ?? null,
+      customTypeName: document.custom_type?.name ?? null,
+    });
+
+    return {
+      filename: pdfFilename(document, document.client?.name ?? null),
+      content,
+    };
+  } catch (error) {
+    console.error("[Signature] PDF non joint à l'email :", error);
+    return null;
+  }
 }
 
 /**
@@ -93,7 +147,7 @@ export async function POST(
 
   if (loadError || !doc) return fail("Document introuvable.", 404);
   if (doc.status === "annule") return fail("Document indisponible.", 404);
-  if (!doc.signature_required || !isSignableType(doc.type)) {
+  if (!doc.signature_required) {
     return fail("Ce document n'est pas ouvert à la signature.", 403);
   }
   if (doc.signed_at) {
@@ -173,20 +227,37 @@ export async function POST(
   }
   if (!updated) return fail("Ce document a déjà été signé.", 409);
 
-  // 8) Notification interne (tolérante : un échec d'email ne casse rien).
+  // 8) Le document signé revient à l'émetteur : PDF en pièce jointe.
+  //    Généré après l'enregistrement pour porter le tracé du client.
+  //    Tolérant : si le rendu échoue, l'email part quand même sans le PDF.
+  const signedPdf = await renderSignedPdf(admin, doc.id);
+
+  // 9) Notification interne (tolérante : un échec d'email ne casse rien).
   const typeLabel = DOCUMENT_TYPE_LABELS[doc.type as DocumentType] ?? doc.type;
+  const rows: [string, string][] = [
+    ["Document", `${typeLabel} ${doc.number ?? ""}`.trim()],
+    ["Client", client?.name ?? "—"],
+    ["Signé par", input.name],
+    ["Email", input.email || "—"],
+    ["Montant", formatMoney(doc.total_amount)],
+    ["Référence d'intégrité", shortHash(hash)],
+  ];
   await sendEmail({
     subject: `Document signé par le client — ${doc.number ?? typeLabel}`,
-    html: emailTemplate("Signature client reçue", [
-      ["Document", `${typeLabel} ${doc.number ?? ""}`.trim()],
-      ["Client", client?.name ?? "—"],
-      ["Signé par", input.name],
-      ["Email", input.email || "—"],
-      ["Montant", formatMoney(doc.total_amount)],
-      ["Référence d'intégrité", shortHash(hash)],
-    ]),
+    html: emailTemplate("Signature client reçue", rows),
     replyTo: input.email || undefined,
+    attachments: signedPdf ? [signedPdf] : undefined,
   });
+
+  // 10) Copie au client s'il a laissé son email : il garde l'exemplaire signé.
+  if (input.email && signedPdf) {
+    await sendEmail({
+      to: input.email,
+      subject: `Votre ${typeLabel.toLowerCase()} signé${doc.number ? ` — ${doc.number}` : ""}`,
+      html: emailTemplate("Votre exemplaire signé", rows),
+      attachments: [signedPdf],
+    });
+  }
 
   revalidatePath(`/facture-privee/${token}`);
   revalidatePath(`/admin/billing/documents/${doc.id}`);

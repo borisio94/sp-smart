@@ -10,12 +10,19 @@ export const canSendEmail =
 
 const resend = canSendEmail ? new Resend(apiKey) : null;
 
+/** Pièce jointe (ex. le PDF d'un document signé). */
+export type MailAttachment = {
+  filename: string;
+  content: Buffer;
+};
+
 type Mail = {
   subject: string;
   html: string;
   /** Destinataire ; par défaut l'adresse admin (RESEND_TO_EMAIL). */
   to?: string;
   replyTo?: string;
+  attachments?: MailAttachment[];
 };
 
 /**
@@ -27,6 +34,7 @@ export async function sendEmail({
   html,
   to,
   replyTo,
+  attachments,
 }: Mail): Promise<boolean> {
   const recipient = to || toEmail;
   if (!resend || !recipient) {
@@ -42,6 +50,7 @@ export async function sendEmail({
       subject,
       html,
       replyTo,
+      attachments: attachments?.length ? attachments : undefined,
     });
     if (error) {
       console.error("[Email] Erreur Resend :", error);

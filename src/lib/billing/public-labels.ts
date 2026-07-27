@@ -28,7 +28,7 @@ export const PUBLIC_DOC_LABELS = {
   signIntro:
     "Signez ci-dessous pour marquer votre accord sur ce document. Votre signature sera apposée sur le PDF.",
   signName: "Votre nom et prénom",
-  signEmail: "Votre email (facultatif)",
+  signEmail: "Votre email (facultatif — pour recevoir l'exemplaire signé)",
   signDrawLabel: "Votre signature",
   signPlaceholder: "Signez ici avec le doigt ou la souris",
   signClear: "Effacer",

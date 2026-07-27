@@ -15,6 +15,7 @@ import type {
 } from "../types";
 import { DOCUMENT_TYPE_LABELS } from "../format";
 import { INTERVENTION_TYPE_LABELS, emptyReport } from "../templates";
+import { shortHash } from "../signature";
 import { PDF_COLORS, bandColor, pdfNumber, pdfDate, cleanField } from "./theme";
 
 /**
@@ -30,6 +31,8 @@ export interface ReportPDFData {
   watermarkData: string | null;
   signatureData: string | null;
   stampData: string | null;
+  /** Tracé signé par le client depuis son lien privé (null si non signé). */
+  clientSignatureData: string | null;
 }
 
 // Conversion millimètres → points PDF (cf. DocumentPDF).
@@ -127,6 +130,9 @@ const styles = StyleSheet.create({
   signImageAlone: { marginTop: 6, width: SIGNATURE_WIDTH, objectFit: "contain" },
   stampImageAlone: { marginTop: 6, width: STAMP_SIZE, height: STAMP_SIZE, objectFit: "contain" },
   signSpacer: { height: 56 },
+  // ── Signature électronique du client (apposée depuis le lien privé) ──
+  clientSignImage: { marginTop: 6, width: SIGNATURE_WIDTH, objectFit: "contain" },
+  clientSignMention: { marginTop: 2, fontSize: 7.5, textAlign: "center", color: PDF_COLORS.gray475 },
 
   // ── Pied de page ──
   footer: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: PDF_COLORS.footerBg, paddingHorizontal: 24, paddingVertical: 9 },
@@ -425,7 +431,20 @@ export function ReportPDF(data: ReportPDFData) {
         <View style={styles.signatures} wrap={false}>
           <View style={styles.signBox}>
             <Text style={styles.signLabel}>Le client (réception)</Text>
-            <View style={styles.signSpacer} />
+            {/* Tracé apposé à distance depuis le lien privé, le cas échéant. */}
+            {doc.signed_at && data.clientSignatureData ? (
+              <>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image src={data.clientSignatureData} style={styles.clientSignImage} />
+                <Text style={styles.clientSignMention}>
+                  Signé électroniquement par {cleanField(doc.signed_by_name) ?? "—"}
+                  {"\n"}
+                  le {pdfDate(doc.signed_at)} — réf. {shortHash(doc.signature_doc_hash)}
+                </Text>
+              </>
+            ) : (
+              <View style={styles.signSpacer} />
+            )}
           </View>
           <View style={styles.signBox}>
             <Text style={styles.signLabel}>Le technicien — {org.name}</Text>

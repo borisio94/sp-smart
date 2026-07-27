@@ -226,6 +226,7 @@
       "signedAt": "Signé le",
       "signatureHash": "Référence d'intégrité",
       "signaturePending": "En attente de la signature du client.",
+      "signatureDraftBlocked": "Ce document est encore en brouillon : le client ne peut pas le signer. Utilisez « Marquer comme envoyé » ci-dessus pour ouvrir la signature.",
       "signatureNone": "Signature non demandée pour ce document.",
       "signatureVoidWarning": "Ce document a déjà été signé par le client. L'enregistrer annulera la signature : le client devra signer à nouveau la version modifiée.",
       "saveDraft": "Enregistrer le brouillon",

@@ -19,7 +19,15 @@ import { SignaturePad } from "./signature-pad";
  * `/facture-privee/[token]/signer` (clé service role côté serveur) ; aucune
  * écriture n'est ouverte au rôle anon.
  */
-export function ClientSignatureBlock({ token }: { token: string }) {
+export function ClientSignatureBlock({
+  token,
+  defaultName = "",
+}: {
+  token: string;
+  /** Nom du destinataire, repris du document : le client n'a plus qu'à signer
+   *  (il reste modifiable si une autre personne signe pour lui). */
+  defaultName?: string;
+}) {
   const router = useRouter();
   // PNG du tracé, remonté par le pad à la fin de chaque trait.
   const [signature, setSignature] = useState<string | null>(null);
@@ -34,7 +42,7 @@ export function ClientSignatureBlock({ token }: { token: string }) {
   } = useForm<ClientSignatureInput>({
     resolver: zodResolver(clientSignatureSchema),
     defaultValues: {
-      name: "",
+      name: defaultName,
       email: "",
       // Le tracé est injecté au moment de la soumission (il vient du canvas).
       signature: "",

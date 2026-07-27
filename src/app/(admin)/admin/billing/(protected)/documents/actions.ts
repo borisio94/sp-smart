@@ -12,7 +12,6 @@ import {
 import { computeTotals, resolveLineTotal } from "@/lib/billing/compute";
 import { formatDate } from "@/lib/billing/format";
 import { canTransition, timestampField } from "@/lib/billing/status-machine";
-import { isSignableType } from "@/lib/billing/signature";
 import type { DocumentStatus, CustomDocumentType } from "@/lib/billing/types";
 
 /** Client Supabase serveur (type retourné par le helper). */
@@ -158,8 +157,9 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       delivery_terms: nz(v.delivery_terms),
       // Forcé côté serveur pour un bon de commande (zone non désactivable).
       include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
-      // Un rapport de maintenance ne se signe pas en ligne (signé sur site).
-      signature_required: isSignableType(v.type) ? v.signature_required : false,
+      // Signature en ligne proposée au client : choix de l'émetteur, quel que
+      // soit le type de document.
+      signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       status: "brouillon",
     })
@@ -226,8 +226,9 @@ export async function updateDocument(
       delivery_terms: nz(v.delivery_terms),
       // Forcé côté serveur pour un bon de commande (zone non désactivable).
       include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
-      // Un rapport de maintenance ne se signe pas en ligne (signé sur site).
-      signature_required: isSignableType(v.type) ? v.signature_required : false,
+      // Signature en ligne proposée au client : choix de l'émetteur, quel que
+      // soit le type de document.
+      signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       // Une édition invalide la signature déjà apposée (cf. signatureResetOnEdit).
       ...signatureReset,

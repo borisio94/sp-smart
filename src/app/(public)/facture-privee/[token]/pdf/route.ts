@@ -1,12 +1,5 @@
-import { renderToBuffer } from "@react-pdf/renderer";
-
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { DocumentPDF } from "@/lib/billing/pdf/DocumentPDF";
-import {
-  fetchBrandingDataUri,
-  fetchClientSignatureDataUri,
-} from "@/lib/billing/pdf/branding";
-import { fetchSiteLogoDataUri } from "@/lib/billing/pdf/site-logo";
+import { renderDocumentPdf } from "@/lib/billing/pdf/render";
 import { pdfFilename } from "@/lib/billing/pdf/filename";
 import type {
   BillingDocument,
@@ -49,35 +42,14 @@ export async function GET(
     organization: Organization;
   };
 
-  const org = document.organization;
-  const [uploadedLogo, signatureData, stampData, clientSignatureData] =
-    await Promise.all([
-      fetchBrandingDataUri(org.logo_url),
-      fetchBrandingDataUri(org.signature_url),
-      fetchBrandingDataUri(org.stamp_url),
-      // Tracé apposé par le client depuis ce même lien privé.
-      fetchClientSignatureDataUri(document.client_signature_url),
-    ]);
-  // En-tête : logo uploadé en priorité, sinon repli sur le logo du site (Sanity).
-  const logoData = uploadedLogo ?? (await fetchSiteLogoDataUri());
-  // Filigrane : logo uploadé dans le bucket uniquement (sinon monogramme "SP").
-  const watermarkData = uploadedLogo;
-
-  const buffer = await renderToBuffer(
-    DocumentPDF({
-      document,
-      lines: (document.lines ?? []).sort((a, b) => a.position - b.position),
-      organization: org,
-      client: document.client,
-      categoryName: document.category?.name_fr ?? null,
-      customTypeName: document.custom_type?.name ?? null,
-      logoData,
-      watermarkData,
-      signatureData,
-      stampData,
-      clientSignatureData,
-    }),
-  );
+  const buffer = await renderDocumentPdf({
+    document,
+    lines: document.lines ?? [],
+    organization: document.organization,
+    client: document.client,
+    categoryName: document.category?.name_fr ?? null,
+    customTypeName: document.custom_type?.name ?? null,
+  });
 
   const filename = pdfFilename(document, document.client?.name ?? null);
 

@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { SignatureRequiredField } from "@/components/billing/signature-required-field";
 
 interface Props {
   clients: Client[];
@@ -448,21 +449,10 @@ export function FactureForm(props: Props) {
             </span>
           </label>
           {/* Signature électronique du client sur son lien privé. */}
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" className="mt-0.5" {...register("signature_required")} />
-            <span>
-              <span className="font-medium">{t("documents.signatureRequired")}</span>
-              <span className="mt-0.5 block text-muted-foreground">
-                {t("documents.signatureRequiredHint")}
-              </span>
-            </span>
-          </label>
-          {/* Le document a déjà été signé : l'enregistrer annulera la signature. */}
-          {props.document?.signed_at ? (
-            <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-              {t("documents.signatureVoidWarning")}
-            </p>
-          ) : null}
+          <SignatureRequiredField
+            field={register("signature_required")}
+            signedAt={props.document?.signed_at}
+          />
           <div>
             <Label htmlFor="f-notes">{t("documents.internalNotes")}</Label>
             <Textarea
