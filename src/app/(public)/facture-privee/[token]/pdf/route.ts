@@ -2,7 +2,10 @@ import { renderToBuffer } from "@react-pdf/renderer";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { DocumentPDF } from "@/lib/billing/pdf/DocumentPDF";
-import { fetchBrandingDataUri } from "@/lib/billing/pdf/branding";
+import {
+  fetchBrandingDataUri,
+  fetchClientSignatureDataUri,
+} from "@/lib/billing/pdf/branding";
 import { fetchSiteLogoDataUri } from "@/lib/billing/pdf/site-logo";
 import { pdfFilename } from "@/lib/billing/pdf/filename";
 import type {
@@ -47,11 +50,14 @@ export async function GET(
   };
 
   const org = document.organization;
-  const [uploadedLogo, signatureData, stampData] = await Promise.all([
-    fetchBrandingDataUri(org.logo_url),
-    fetchBrandingDataUri(org.signature_url),
-    fetchBrandingDataUri(org.stamp_url),
-  ]);
+  const [uploadedLogo, signatureData, stampData, clientSignatureData] =
+    await Promise.all([
+      fetchBrandingDataUri(org.logo_url),
+      fetchBrandingDataUri(org.signature_url),
+      fetchBrandingDataUri(org.stamp_url),
+      // Tracé apposé par le client depuis ce même lien privé.
+      fetchClientSignatureDataUri(document.client_signature_url),
+    ]);
   // En-tête : logo uploadé en priorité, sinon repli sur le logo du site (Sanity).
   const logoData = uploadedLogo ?? (await fetchSiteLogoDataUri());
   // Filigrane : logo uploadé dans le bucket uniquement (sinon monogramme "SP").
@@ -69,6 +75,7 @@ export async function GET(
       watermarkData,
       signatureData,
       stampData,
+      clientSignatureData,
     }),
   );
 

@@ -79,6 +79,7 @@ function buildFactureDefaults(props: Props): DocumentInput {
     delivery_terms: d?.delivery_terms ?? props.defaultDeliveryTerms ?? "",
     // Encadré « Conditions » actif par défaut (décochable).
     include_conditions: d?.include_conditions ?? true,
+    signature_required: d?.signature_required ?? false,
     notes_internes: d?.notes_internes ?? "",
     report: emptyReport(),
     invoice: {
@@ -443,6 +444,16 @@ export function FactureForm(props: Props) {
               <span className="font-medium">{t("documents.includeConditions")}</span>
               <span className="mt-0.5 block text-muted-foreground">
                 {t("documents.includeConditionsHint")}
+              </span>
+            </span>
+          </label>
+          {/* Signature électronique du client sur son lien privé. */}
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-0.5" {...register("signature_required")} />
+            <span>
+              <span className="font-medium">{t("documents.signatureRequired")}</span>
+              <span className="mt-0.5 block text-muted-foreground">
+                {t("documents.signatureRequiredHint")}
               </span>
             </span>
           </label>

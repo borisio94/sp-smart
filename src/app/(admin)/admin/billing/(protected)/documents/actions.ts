@@ -12,6 +12,7 @@ import {
 import { computeTotals, resolveLineTotal } from "@/lib/billing/compute";
 import { formatDate } from "@/lib/billing/format";
 import { canTransition, timestampField } from "@/lib/billing/status-machine";
+import { isSignableType } from "@/lib/billing/signature";
 import type { DocumentStatus, CustomDocumentType } from "@/lib/billing/types";
 
 /** Client Supabase serveur (type retourné par le helper). */
@@ -122,6 +123,8 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       delivery_terms: nz(v.delivery_terms),
       // Forcé côté serveur pour un bon de commande (zone non désactivable).
       include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
+      // Un rapport de maintenance ne se signe pas en ligne (signé sur site).
+      signature_required: isSignableType(v.type) ? v.signature_required : false,
       notes_internes: nz(v.notes_internes),
       status: "brouillon",
     })
@@ -187,6 +190,8 @@ export async function updateDocument(
       delivery_terms: nz(v.delivery_terms),
       // Forcé côté serveur pour un bon de commande (zone non désactivable).
       include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
+      // Un rapport de maintenance ne se signe pas en ligne (signé sur site).
+      signature_required: isSignableType(v.type) ? v.signature_required : false,
       notes_internes: nz(v.notes_internes),
     })
     .eq("id", id);
@@ -314,6 +319,7 @@ export async function createFacture(values: DocumentInput): Promise<ActionResult
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
       include_conditions: v.include_conditions,
+      signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       linked_document_id: linked.linkedId,
       status: "brouillon",
@@ -404,6 +410,7 @@ export async function updateFacture(
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
       include_conditions: v.include_conditions,
+      signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       linked_document_id: linkedId || null,
     })

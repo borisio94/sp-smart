@@ -68,6 +68,10 @@ export interface PublicDocument {
   payment_status: string;
   client_name: string | null;
   organization_name: string | null;
+  // Signature électronique du client (jamais l'IP ni l'email du signataire).
+  signature_required: boolean | null;
+  signed_at: string | null;
+  signed_by_name: string | null;
 }
 
 export interface PublicDocumentLine {

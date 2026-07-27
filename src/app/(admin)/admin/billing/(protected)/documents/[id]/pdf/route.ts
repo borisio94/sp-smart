@@ -4,7 +4,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDocument, getOrganization } from "@/lib/billing/queries";
 import { DocumentPDF } from "@/lib/billing/pdf/DocumentPDF";
 import { ReportPDF } from "@/lib/billing/pdf/ReportPDF";
-import { fetchBrandingDataUri } from "@/lib/billing/pdf/branding";
+import {
+  fetchBrandingDataUri,
+  fetchClientSignatureDataUri,
+} from "@/lib/billing/pdf/branding";
 import { fetchSiteLogoDataUri } from "@/lib/billing/pdf/site-logo";
 import { pdfFilename } from "@/lib/billing/pdf/filename";
 
@@ -37,11 +40,14 @@ export async function GET(
   }
 
   // Charge les images de marque (signature, cachet) en base64.
-  const [uploadedLogo, signatureData, stampData] = await Promise.all([
-    fetchBrandingDataUri(organization.logo_url),
-    fetchBrandingDataUri(organization.signature_url),
-    fetchBrandingDataUri(organization.stamp_url),
-  ]);
+  const [uploadedLogo, signatureData, stampData, clientSignatureData] =
+    await Promise.all([
+      fetchBrandingDataUri(organization.logo_url),
+      fetchBrandingDataUri(organization.signature_url),
+      fetchBrandingDataUri(organization.stamp_url),
+      // Tracé apposé par le client depuis son lien privé (le cas échéant).
+      fetchClientSignatureDataUri(doc.client_signature_url),
+    ]);
   // En-tête : logo uploadé en priorité, sinon repli sur le logo du site (Sanity).
   const logoData = uploadedLogo ?? (await fetchSiteLogoDataUri());
   // Filigrane : logo uploadé dans le bucket uniquement (sinon monogramme "SP").
@@ -71,6 +77,7 @@ export async function GET(
           watermarkData,
           signatureData,
           stampData,
+          clientSignatureData,
         });
 
   const buffer = await renderToBuffer(element);

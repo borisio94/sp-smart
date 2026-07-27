@@ -15,6 +15,7 @@ import type {
 } from "../types";
 import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, factureTitleLabel } from "../format";
 import { deductionsTotal, groupSections, hasNamedSections } from "../compute";
+import { shortHash } from "../signature";
 import { amountToWords } from "../amountToWords";
 import {
   PDF_COLORS,
@@ -41,6 +42,8 @@ export interface DocumentPDFData {
   watermarkData: string | null;
   signatureData: string | null;
   stampData: string | null;
+  /** Tracé signé par le client depuis son lien privé (bucket « signatures »). */
+  clientSignatureData: string | null;
 }
 
 // Conversion millimètres → points PDF (1 pt = 1/72 pouce ; 1 pouce = 25,4 mm).
@@ -160,6 +163,8 @@ const styles = StyleSheet.create({
   },
   tRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: PDF_COLORS.hairline },
   tCell: { fontSize: 10.5, paddingVertical: 5.5, paddingHorizontal: 6, color: PDF_COLORS.bodyBlack },
+  // Ligne forfaitaire (montant direct, sans qté/PU) : mise en évidence en gras.
+  tCellFlat: { fontFamily: "Times-Bold" },
   // Bande de titre de section (compartiment) et ligne de sous-total.
   sectionBandRow: {
     backgroundColor: PDF_COLORS.bandBg,
@@ -366,6 +371,14 @@ const styles = StyleSheet.create({
     objectFit: "contain",
   },
   signSpacer: { height: 56 },
+  // ── Signature électronique du client (apposée depuis le lien privé) ──
+  clientSignImage: { marginTop: 6, width: SIGNATURE_WIDTH, objectFit: "contain" },
+  clientSignMention: {
+    marginTop: 2,
+    fontSize: 7.5,
+    textAlign: "center",
+    color: PDF_COLORS.gray475,
+  },
 
   // ── Pied de page (3 colonnes) ──
   footer: {
@@ -714,7 +727,15 @@ export function DocumentPDF(data: DocumentPDFData) {
                           ]}
                           wrap={false}
                         >
-                          <Text style={[styles.tCell, styles.colDesignation]}>{l.designation}</Text>
+                          <Text
+                            style={[
+                              styles.tCell,
+                              styles.colDesignation,
+                              l.is_amount_only ? styles.tCellFlat : {},
+                            ]}
+                          >
+                            {l.designation}
+                          </Text>
                           <Text style={[styles.tCell, styles.colUnit]}>
                             {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
                           </Text>
@@ -724,7 +745,15 @@ export function DocumentPDF(data: DocumentPDFData) {
                           <Text style={[styles.tCell, styles.colPrice]}>
                             {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
                           </Text>
-                          <Text style={[styles.tCell, styles.colTotal]}>{pdfNumber(l.line_total)}</Text>
+                          <Text
+                            style={[
+                              styles.tCell,
+                              styles.colTotal,
+                              l.is_amount_only ? styles.tCellFlat : {},
+                            ]}
+                          >
+                            {pdfNumber(l.line_total)}
+                          </Text>
                         </View>
                       ))}
                       <View style={styles.subtotalRow} wrap={false}>
@@ -742,7 +771,15 @@ export function DocumentPDF(data: DocumentPDFData) {
                       ]}
                       wrap={false}
                     >
-                      <Text style={[styles.tCell, styles.colDesignation]}>{l.designation}</Text>
+                      <Text
+                        style={[
+                          styles.tCell,
+                          styles.colDesignation,
+                          l.is_amount_only ? styles.tCellFlat : {},
+                        ]}
+                      >
+                        {l.designation}
+                      </Text>
                       <Text style={[styles.tCell, styles.colUnit]}>
                         {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
                       </Text>
@@ -752,7 +789,15 @@ export function DocumentPDF(data: DocumentPDFData) {
                       <Text style={[styles.tCell, styles.colPrice]}>
                         {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
                       </Text>
-                      <Text style={[styles.tCell, styles.colTotal]}>{pdfNumber(l.line_total)}</Text>
+                      <Text
+                        style={[
+                          styles.tCell,
+                          styles.colTotal,
+                          l.is_amount_only ? styles.tCellFlat : {},
+                        ]}
+                      >
+                        {pdfNumber(l.line_total)}
+                      </Text>
                     </View>
                   ))}
             </View>
@@ -886,7 +931,19 @@ export function DocumentPDF(data: DocumentPDFData) {
         <View style={styles.signatures} wrap={false}>
           <View style={styles.signBox}>
             <Text style={styles.signLabel}>Le client</Text>
-            <View style={styles.signSpacer} />
+            {doc.signed_at && data.clientSignatureData ? (
+              <>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image src={data.clientSignatureData} style={styles.clientSignImage} />
+                <Text style={styles.clientSignMention}>
+                  Signé électroniquement par {cleanField(doc.signed_by_name) ?? "—"}
+                  {"\n"}
+                  le {pdfDate(doc.signed_at)} — réf. {shortHash(doc.signature_doc_hash)}
+                </Text>
+              </>
+            ) : (
+              <View style={styles.signSpacer} />
+            )}
           </View>
           <View style={styles.signBox}>
             <Text style={styles.signLabel}>{org.name}</Text>

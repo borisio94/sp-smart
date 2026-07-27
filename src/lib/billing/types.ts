@@ -258,6 +258,15 @@ export interface BillingDocument {
   is_historical: boolean;
   include_signature: boolean;
   include_conditions: boolean; // affiche l'encadré « conditions » dans le PDF
+  // ── Signature électronique du client (lien privé) ──
+  signature_required: boolean; // proposer la signature sur la page publique
+  signed_at: string | null; // horodatage serveur de la signature
+  signed_by_name: string | null; // identité déclarée par le signataire
+  signed_by_email: string | null;
+  client_signature_url: string | null; // PNG du tracé (bucket privé « signatures »)
+  signature_ip: string | null;
+  signature_user_agent: string | null;
+  signature_doc_hash: string | null; // SHA-256 du contenu signé (intégrité)
   notes_internes: string | null;
   created_at: string;
   updated_at: string;
