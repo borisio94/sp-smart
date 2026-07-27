@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,18 +38,31 @@ export function ClientSignatureBlock({
     register,
     handleSubmit,
     setValue,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<ClientSignatureInput>({
     resolver: zodResolver(clientSignatureSchema),
     defaultValues: {
       name: defaultName,
       email: "",
-      // Le tracé est injecté au moment de la soumission (il vient du canvas).
+      // Rempli par le pad (cf. onSignatureChange), pas saisi par le client.
       signature: "",
       captchaToken: "",
     },
     mode: "onTouched",
   });
+
+  /**
+   * Le pad remonte le PNG à la fin de chaque trait : on le pousse dans l'état
+   * du formulaire, sinon le champ `signature` resterait vide et la validation
+   * Zod échouerait silencieusement au clic sur « Signer ».
+   */
+  const onSignatureChange = useCallback(
+    (dataUrl: string | null) => {
+      setSignature(dataUrl);
+      setValue("signature", dataUrl ?? "", { shouldValidate: isSubmitted });
+    },
+    [setValue, isSubmitted],
+  );
 
   function onSubmit(values: ClientSignatureInput) {
     setServerError(null);
@@ -78,12 +91,20 @@ export function ClientSignatureBlock({
     });
   }
 
+  /**
+   * Validation en échec : on ne laisse jamais le clic sans réponse visible
+   * (le champ fautif peut se trouver hors de l'écran).
+   */
+  function onInvalid() {
+    setServerError(signature ? L.signInvalid : L.signEmptyError);
+  }
+
   const err = (m?: string) =>
     m ? <p className="mt-1 text-sm text-destructive">{m}</p> : null;
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       noValidate
       className="mt-6 rounded-2xl bg-background p-5 ring-1 ring-foreground/10"
     >
@@ -122,12 +143,13 @@ export function ClientSignatureBlock({
         <span className="text-sm font-medium">{L.signDrawLabel}</span>
         <div className="mt-1">
           <SignaturePad
-            onChange={setSignature}
+            onChange={onSignatureChange}
             disabled={pending}
             clearLabel={L.signClear}
             placeholder={L.signPlaceholder}
           />
         </div>
+        {err(errors.signature?.message)}
       </div>
 
       <label className="mt-4 flex items-start gap-2 text-sm">

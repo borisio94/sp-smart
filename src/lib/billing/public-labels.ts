@@ -36,6 +36,7 @@ export const PUBLIC_DOC_LABELS = {
   signSubmit: "Signer le document",
   signPending: "Signature en cours…",
   signEmptyError: "Veuillez tracer votre signature.",
+  signInvalid: "Veuillez corriger les champs signalés ci-dessus.",
   signSuccess: "Merci, votre signature a bien été enregistrée.",
   signGenericError: "La signature n'a pas pu être enregistrée. Réessayez.",
   signedBadge: (name: string, date: string) => `Signé par ${name} le ${date}`,
