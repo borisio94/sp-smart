@@ -12,6 +12,7 @@ import {
 import { computeTotals, resolveLineTotal } from "@/lib/billing/compute";
 import { formatDate } from "@/lib/billing/format";
 import { canTransition, timestampField } from "@/lib/billing/status-machine";
+import { isSignableType } from "@/lib/billing/signature";
 import type { DocumentStatus, CustomDocumentType } from "@/lib/billing/types";
 
 /** Client Supabase serveur (type retourné par le helper). */
@@ -77,6 +78,41 @@ function buildLines(documentId: string, input: DocumentInput) {
 }
 
 /**
+ * Champs de signature à écrire lors d'une édition.
+ *
+ * Une signature client porte sur un contenu précis (c'est le sens de
+ * `signature_doc_hash`). Modifier le document après coup ferait mentir le PDF,
+ * qui continuerait d'afficher « Signé électroniquement par … » à côté d'un
+ * contenu que le client n'a jamais accepté. On annule donc la signature dès
+ * qu'un document signé est réenregistré : `signature_required` reste actif, le
+ * document repasse simplement « en attente de signature ».
+ *
+ * Renvoie un objet vide si le document n'était pas signé (cas courant).
+ */
+async function signatureResetOnEdit(
+  supabase: ServerClient,
+  id: string,
+): Promise<Record<string, unknown>> {
+  const { data } = await supabase
+    .from("documents")
+    .select("signed_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!data?.signed_at) return {};
+
+  return {
+    signed_at: null,
+    signed_by_name: null,
+    signed_by_email: null,
+    client_signature_url: null,
+    signature_ip: null,
+    signature_user_agent: null,
+    signature_doc_hash: null,
+  };
+}
+
+/**
  * Crée un document (brouillon) avec ses lignes.
  * Le numéro et le share_token sont générés automatiquement par les triggers DB.
  */
@@ -122,6 +158,8 @@ export async function createDocument(values: DocumentInput): Promise<ActionResul
       delivery_terms: nz(v.delivery_terms),
       // Forcé côté serveur pour un bon de commande (zone non désactivable).
       include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
+      // Un rapport de maintenance ne se signe pas en ligne (signé sur site).
+      signature_required: isSignableType(v.type) ? v.signature_required : false,
       notes_internes: nz(v.notes_internes),
       status: "brouillon",
     })
@@ -157,6 +195,7 @@ export async function updateDocument(
   const supabase = await createSupabaseServerClient();
   const v = parsed.data;
   const totals = computeTotals(v);
+  const signatureReset = await signatureResetOnEdit(supabase, id);
 
   const { error } = await supabase
     .from("documents")
@@ -187,7 +226,11 @@ export async function updateDocument(
       delivery_terms: nz(v.delivery_terms),
       // Forcé côté serveur pour un bon de commande (zone non désactivable).
       include_conditions: v.type === "bon_commande" ? true : v.include_conditions,
+      // Un rapport de maintenance ne se signe pas en ligne (signé sur site).
+      signature_required: isSignableType(v.type) ? v.signature_required : false,
       notes_internes: nz(v.notes_internes),
+      // Une édition invalide la signature déjà apposée (cf. signatureResetOnEdit).
+      ...signatureReset,
     })
     .eq("id", id);
 
@@ -314,6 +357,7 @@ export async function createFacture(values: DocumentInput): Promise<ActionResult
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
       include_conditions: v.include_conditions,
+      signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       linked_document_id: linked.linkedId,
       status: "brouillon",
@@ -383,6 +427,7 @@ export async function updateFacture(
 
   const invoiceData = buildInvoiceData(v);
   if (invoiceData) invoiceData.devis_ref = devisRef;
+  const signatureReset = await signatureResetOnEdit(supabase, id);
 
   const { error } = await supabase
     .from("documents")
@@ -404,8 +449,11 @@ export async function updateFacture(
       payment_terms: nz(v.payment_terms),
       delivery_terms: nz(v.delivery_terms),
       include_conditions: v.include_conditions,
+      signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       linked_document_id: linkedId || null,
+      // Une édition invalide la signature déjà apposée (cf. signatureResetOnEdit).
+      ...signatureReset,
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };

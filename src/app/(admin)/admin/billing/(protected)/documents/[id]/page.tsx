@@ -9,9 +9,11 @@ import {
   factureTitleLabel,
   formatMoney,
   formatDate,
+  formatDateTime,
   formatNumber,
 } from "@/lib/billing/format";
 import { deductionsTotal, groupSections, hasNamedSections } from "@/lib/billing/compute";
+import { shortHash } from "@/lib/billing/signature";
 import { INTERVENTION_TYPE_LABELS } from "@/lib/billing/templates";
 import { deleteDocument } from "../actions";
 import { PageHeader } from "@/components/billing/page-header";
@@ -246,7 +248,10 @@ export default async function DocumentDetailPage({
                                   </tr>
                                 ) : null}
                                 {group.lines.map((l) => (
-                                  <tr key={l.id} className="border-b border-border/60">
+                                  <tr
+                                    key={l.id}
+                                    className={`border-b border-border/60${l.is_amount_only ? " font-semibold" : ""}`}
+                                  >
                                     <td className="py-2">{l.designation}</td>
                                     <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatNumber(l.quantity)}</td>
                                     <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatMoney(l.unit_price)}</td>
@@ -260,7 +265,10 @@ export default async function DocumentDetailPage({
                               </Fragment>
                             ))
                           : doc.lines.map((l) => (
-                              <tr key={l.id} className="border-b border-border/60">
+                              <tr
+                                key={l.id}
+                                className={`border-b border-border/60${l.is_amount_only ? " font-semibold" : ""}`}
+                              >
                                 <td className="py-2">{l.designation}</td>
                                 <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatNumber(l.quantity)}</td>
                                 <td className="py-2 text-right tabular-nums">{l.is_amount_only ? "—" : formatMoney(l.unit_price)}</td>
@@ -341,6 +349,31 @@ export default async function DocumentDetailPage({
               <Row label={t("documents.validityDate")}>{formatDate(doc.validity_date)}</Row>
             </CardContent>
           </Card>
+
+          {/* Signature électronique du client (si demandée sur ce document) */}
+          {doc.signature_required || doc.signed_at ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("documents.signature")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {doc.signed_at ? (
+                  <>
+                    <Row label={t("documents.signedBy")}>{doc.signed_by_name ?? "—"}</Row>
+                    {doc.signed_by_email ? (
+                      <Row label={t("clients.email")}>{doc.signed_by_email}</Row>
+                    ) : null}
+                    <Row label={t("documents.signedAt")}>{formatDateTime(doc.signed_at)}</Row>
+                    <Row label={t("documents.signatureHash")}>
+                      <span className="font-mono">{shortHash(doc.signature_doc_hash)}</span>
+                    </Row>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">{t("documents.signaturePending")}</p>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           {!isReport ? (
           <Card>

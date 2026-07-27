@@ -164,6 +164,7 @@ function buildDefaults(props: Props): DocumentInput {
       payment_terms: d.payment_terms ?? "",
       delivery_terms: d.delivery_terms ?? "",
       include_conditions: d.include_conditions ?? false,
+      signature_required: d.signature_required ?? false,
       notes_internes: d.notes_internes ?? "",
       report: d.report_data ?? emptyReport(),
       invoice: d.invoice_data ?? emptyInvoice(),
@@ -188,6 +189,7 @@ function buildDefaults(props: Props): DocumentInput {
     payment_terms: props.defaultPaymentTerms ?? "",
     delivery_terms: props.defaultDeliveryTerms ?? "",
     include_conditions: false,
+    signature_required: false,
     notes_internes: "",
     report: emptyReport(),
     invoice: emptyInvoice(),
@@ -1151,6 +1153,22 @@ export function DocumentForm(props: Props) {
                   </span>
                 </span>
               </label>
+              {/* Signature électronique du client sur son lien privé. */}
+              <label className="flex items-start gap-2 rounded-xl ring-1 ring-foreground/10 p-3 text-sm">
+                <input type="checkbox" className="mt-0.5" {...register("signature_required")} />
+                <span>
+                  <span className="font-medium">{t("documents.signatureRequired")}</span>
+                  <span className="mt-0.5 block text-muted-foreground">
+                    {t("documents.signatureRequiredHint")}
+                  </span>
+                </span>
+              </label>
+              {/* Le document a déjà été signé : l'enregistrer annulera la signature. */}
+              {props.document?.signed_at ? (
+                <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+                  {t("documents.signatureVoidWarning")}
+                </p>
+              ) : null}
               <div>
                 <Label htmlFor="d-notes">{t("documents.internalNotes")}</Label>
                 <Textarea id="d-notes" className="mt-1" placeholder={t("documents.internalNotesHint")} {...register("notes_internes")} />

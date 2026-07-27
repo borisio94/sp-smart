@@ -1,5 +1,8 @@
 import { getPublicDocument } from "@/lib/billing/public-stats";
 import { DOCUMENT_TYPE_LABELS, formatMoney, formatDate, formatNumber } from "@/lib/billing/format";
+import { isSignableType } from "@/lib/billing/signature";
+import { PUBLIC_DOC_LABELS as L } from "@/lib/billing/public-labels";
+import { ClientSignatureBlock } from "@/components/billing/client-signature-block";
 import type { DocumentType } from "@/lib/billing/types";
 
 /**
@@ -20,10 +23,8 @@ export default async function PublicInvoicePage({
   if (!result) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-xl font-semibold">Document indisponible</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Ce lien n&apos;est plus valide ou le document a été retiré.
-        </p>
+        <h1 className="text-xl font-semibold">{L.unavailableTitle}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{L.unavailableText}</p>
       </main>
     );
   }
@@ -31,6 +32,16 @@ export default async function PublicInvoicePage({
   const { document: doc, lines } = result;
   const typeLabel = DOCUMENT_TYPE_LABELS[doc.type as DocumentType] ?? doc.type;
   const amountWords = doc.amount_in_words?.trim();
+
+  // Signature : proposée si l'émetteur l'a demandée, que le type s'y prête, que
+  // le document est finalisé (un brouillon n'engage pas) et qu'il n'est pas
+  // déjà signé. Mêmes conditions que celles revérifiées par l'endpoint.
+  const alreadySigned = Boolean(doc.signed_at);
+  const canSign =
+    Boolean(doc.signature_required) &&
+    isSignableType(doc.type) &&
+    doc.status !== "brouillon" &&
+    !alreadySigned;
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
@@ -48,18 +59,18 @@ export default async function PublicInvoicePage({
         <div className="space-y-4 p-5">
           <div className="flex flex-wrap justify-between gap-2 text-sm">
             <div>
-              <p className="text-xs uppercase text-muted-foreground">Destinataire</p>
+              <p className="text-xs uppercase text-muted-foreground">{L.recipient}</p>
               <p className="font-medium">{doc.client_name ?? "—"}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs uppercase text-muted-foreground">Date</p>
+              <p className="text-xs uppercase text-muted-foreground">{L.date}</p>
               <p>{formatDate(doc.issue_date)}</p>
             </div>
           </div>
 
           {doc.subject ? (
             <div className="text-sm">
-              <p className="text-xs uppercase text-muted-foreground">Objet</p>
+              <p className="text-xs uppercase text-muted-foreground">{L.subject}</p>
               <p>{doc.subject}</p>
             </div>
           ) : null}
@@ -70,10 +81,10 @@ export default async function PublicInvoicePage({
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 font-medium">Désignation</th>
-                    <th className="px-3 py-2 text-right font-medium">Qté</th>
-                    <th className="px-3 py-2 text-right font-medium">P.U.</th>
-                    <th className="px-3 py-2 text-right font-medium">Total</th>
+                    <th className="px-3 py-2 font-medium">{L.designation}</th>
+                    <th className="px-3 py-2 text-right font-medium">{L.quantity}</th>
+                    <th className="px-3 py-2 text-right font-medium">{L.unitPrice}</th>
+                    <th className="px-3 py-2 text-right font-medium">{L.total}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -94,7 +105,7 @@ export default async function PublicInvoicePage({
 
           {/* Net à payer */}
           <div className="flex items-center justify-between rounded-lg bg-primary px-4 py-3 text-primary-foreground">
-            <span className="font-semibold">NET À PAYER</span>
+            <span className="font-semibold">{L.netToPay}</span>
             <span className="text-lg font-bold tabular-nums">{formatMoney(doc.total_amount)}</span>
           </div>
           {amountWords ? (
@@ -103,7 +114,7 @@ export default async function PublicInvoicePage({
 
           {doc.payment_terms ? (
             <div className="text-sm">
-              <p className="text-xs uppercase text-muted-foreground">Modalités de paiement</p>
+              <p className="text-xs uppercase text-muted-foreground">{L.paymentTerms}</p>
               <p className="whitespace-pre-wrap">{doc.payment_terms}</p>
             </div>
           ) : null}
@@ -115,13 +126,25 @@ export default async function PublicInvoicePage({
             href={`/facture-privee/${token}/pdf`}
             className="inline-flex h-10 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
           >
-            Télécharger en PDF
+            {L.downloadPdf}
           </a>
         </div>
       </div>
 
+      {/* Signature électronique du client */}
+      {canSign ? <ClientSignatureBlock token={token} /> : null}
+
+      {alreadySigned ? (
+        <div className="mt-6 rounded-2xl bg-background p-5 ring-1 ring-foreground/10">
+          <p className="text-sm font-semibold">
+            {L.signedBadge(doc.signed_by_name ?? "—", formatDate(doc.signed_at))}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{L.signedNotice}</p>
+        </div>
+      ) : null}
+
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        Document émis par {doc.organization_name ?? "SP Smart Sarl"}.
+        {L.issuedBy(doc.organization_name ?? "SP Smart Sarl")}
       </p>
     </main>
   );

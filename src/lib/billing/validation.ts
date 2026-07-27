@@ -212,6 +212,8 @@ export const documentSchema = z
     payment_terms: z.string().trim().max(2000).optional().or(z.literal("")),
     delivery_terms: z.string().trim().max(2000).optional().or(z.literal("")),
     include_conditions: z.boolean(),
+    // Propose la signature électronique au client sur son lien privé.
+    signature_required: z.boolean(),
     notes_internes: z.string().trim().max(2000).optional().or(z.literal("")),
     // Sections du rapport de maintenance (requises seulement si type = rapport).
     report: reportDataSchema.optional(),
@@ -323,6 +325,27 @@ export const paymentSchema = z.object({
 });
 
 export type PaymentInput = z.infer<typeof paymentSchema>;
+
+// ───────────── Signature électronique du client (page publique) ─────────────
+/**
+ * Données envoyées par le client depuis son lien privé. Le tracé est une image
+ * PNG encodée en data URL, produite par le canvas de signature.
+ */
+export const clientSignatureSchema = z.object({
+  name: z.string().trim().min(2, "Votre nom est requis").max(160),
+  email: z.union([
+    z.string().trim().email("Email invalide").max(160),
+    z.literal(""),
+  ]),
+  accept: z.literal(true, { message: "Vous devez accepter le document" }),
+  signature: z
+    .string()
+    .startsWith("data:image/png;base64,", "Signature invalide")
+    .max(400_000, "Signature trop lourde"),
+  captchaToken: z.string().optional(),
+});
+
+export type ClientSignatureInput = z.infer<typeof clientSignatureSchema>;
 
 // ───────────── Trésorerie / Caisse ─────────────
 // Moyen de paiement optionnel (réutilise l'énumération des paiements).

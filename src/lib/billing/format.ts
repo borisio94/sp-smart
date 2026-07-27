@@ -39,6 +39,23 @@ export function formatDate(iso: string | null | undefined): string {
 }
 
 /**
+ * Date + heure (ex. « 27/07/2026 à 14:32 »). Utilisé là où l'horodatage précis
+ * compte, notamment comme preuve de signature électronique.
+ */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  // Date et heure formatées séparément : le séparateur inséré par Intl varie
+  // selon l'environnement (espace fine insécable), on maîtrise le rendu.
+  const time = new Intl.DateTimeFormat("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+  return `${formatDate(iso)} à ${time}`;
+}
+
+/**
  * Unités courantes proposées à la saisie d'une ligne (datalist). L'utilisateur
  * peut choisir dans la liste ou saisir une unité libre.
  */
