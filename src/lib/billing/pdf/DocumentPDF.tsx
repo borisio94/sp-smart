@@ -539,13 +539,15 @@ export function DocumentPDF(data: DocumentPDFData) {
   // qu'une part de l'ensemble (acompte). On rappelle alors le montant du
   // marché et ce qui reste dû dessus — calculé, jamais saisi.
   const settlement = data.settlement ?? null;
+  const isReceipt = doc.type === "recu";
   const showMarketRecap =
-    isFacture && shouldShowSettlement(settlement, doc.total_amount);
-  // Facture au montant plein : la ligne « présente facture » répéterait le
-  // marché — seuls le versé et le solde apportent alors une information.
-  const marketIsPartial = settlement
-    ? settlement.marketTotal > doc.total_amount
-    : false;
+    (isFacture || isReceipt) &&
+    shouldShowSettlement(settlement, doc.total_amount);
+  // La ligne « présente facture » n'a de sens que sur une facture ne couvrant
+  // qu'une part du marché : au montant plein elle répéterait le marché, et sur
+  // un reçu le montant est déjà compté dans « déjà encaissé ».
+  const showThisDocLine =
+    isFacture && settlement !== null && settlement.marketTotal > doc.total_amount;
   const marketPart = settlement
     ? marketShare(doc.total_amount, settlement.marketTotal)
     : null;
@@ -887,7 +889,7 @@ export function DocumentPDF(data: DocumentPDFData) {
                 }`}
                 value={pdfMoney(settlement.marketTotal)}
               />
-              {marketIsPartial ? (
+              {showThisDocLine ? (
                 <RecapRow
                   label={`Présente facture${marketPart ? ` (${pdfNumber(marketPart)} %)` : ""}`}
                   value={pdfMoney(doc.total_amount)}

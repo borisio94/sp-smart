@@ -46,8 +46,11 @@ export async function renderDocumentPdf({
       fetchBrandingDataUri(organization.signature_url),
       fetchBrandingDataUri(organization.stamp_url),
       fetchClientSignatureDataUri(document.client_signature_url),
-      // Suivi du marché : seules les factures en tirent un récapitulatif.
-      document.type === "facture" ? getSettlement(document.id) : null,
+      // Suivi du marché : factures et reçus. Le reçu est le document remis au
+      // versement d'un acompte — c'est là que le reste dû doit se lire.
+      document.type === "facture" || document.type === "recu"
+        ? getSettlement(document.id)
+        : null,
     ]);
 
   // En-tête : logo uploadé en priorité, sinon repli sur le logo du site (Sanity).
