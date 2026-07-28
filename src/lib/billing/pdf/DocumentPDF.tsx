@@ -16,7 +16,11 @@ import type {
 import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, factureTitleLabel } from "../format";
 import { deductionsTotal, groupSections, hasNamedSections } from "../compute";
 import { shortHash } from "../signature";
-import { marketShare, type Settlement } from "../settlement";
+import {
+  marketShare,
+  shouldShowSettlement,
+  type Settlement,
+} from "../settlement";
 import { amountToWords } from "../amountToWords";
 import {
   PDF_COLORS,
@@ -536,7 +540,12 @@ export function DocumentPDF(data: DocumentPDFData) {
   // marché et ce qui reste dû dessus — calculé, jamais saisi.
   const settlement = data.settlement ?? null;
   const showMarketRecap =
-    isFacture && settlement !== null && settlement.marketTotal > doc.total_amount;
+    isFacture && shouldShowSettlement(settlement, doc.total_amount);
+  // Facture au montant plein : la ligne « présente facture » répéterait le
+  // marché — seuls le versé et le solde apportent alors une information.
+  const marketIsPartial = settlement
+    ? settlement.marketTotal > doc.total_amount
+    : false;
   const marketPart = settlement
     ? marketShare(doc.total_amount, settlement.marketTotal)
     : null;
@@ -878,10 +887,12 @@ export function DocumentPDF(data: DocumentPDFData) {
                 }`}
                 value={pdfMoney(settlement.marketTotal)}
               />
-              <RecapRow
-                label={`Présente facture${marketPart ? ` (${pdfNumber(marketPart)} %)` : ""}`}
-                value={pdfMoney(doc.total_amount)}
-              />
+              {marketIsPartial ? (
+                <RecapRow
+                  label={`Présente facture${marketPart ? ` (${pdfNumber(marketPart)} %)` : ""}`}
+                  value={pdfMoney(doc.total_amount)}
+                />
+              ) : null}
               {settlement.settledTotal > 0 ? (
                 <RecapRow
                   label="Déjà encaissé sur le marché"

@@ -1,7 +1,7 @@
 import { getPublicDocument } from "@/lib/billing/public-stats";
 import { DOCUMENT_TYPE_LABELS, formatMoney, formatDate, formatNumber } from "@/lib/billing/format";
 import { PUBLIC_DOC_LABELS as L } from "@/lib/billing/public-labels";
-import { buildSettlement } from "@/lib/billing/settlement";
+import { buildSettlement, shouldShowSettlement } from "@/lib/billing/settlement";
 import { ClientSignatureBlock } from "@/components/billing/client-signature-block";
 import type { DocumentType } from "@/lib/billing/types";
 
@@ -43,8 +43,9 @@ export default async function PublicInvoicePage({
     invoicedTotal: doc.invoiced_total,
     settledTotal: doc.settled_total,
   });
-  const market =
-    settlement && settlement.marketTotal > doc.total_amount ? settlement : null;
+  const market = shouldShowSettlement(settlement, doc.total_amount)
+    ? settlement
+    : null;
 
   // Signature : proposée si l'émetteur l'a demandée (quel que soit le type de
   // document), que le document est finalisé (un brouillon n'engage pas) et

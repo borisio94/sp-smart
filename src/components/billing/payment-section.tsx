@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { listPayments } from "@/lib/billing/queries";
 import { sumPayments, remainingAmount } from "@/lib/billing/payments";
 import { getSettlement } from "@/lib/billing/settlement-query";
-import { marketShare } from "@/lib/billing/settlement";
+import { marketShare, shouldShowSettlement } from "@/lib/billing/settlement";
 import { formatMoney } from "@/lib/billing/format";
 import { PaymentRecorder } from "./payment-recorder";
 import { PaymentRow } from "./payment-row";
@@ -30,11 +30,12 @@ export async function PaymentSection({
     listPayments(documentId),
     getSettlement(documentId),
   ]);
-  // Le suivi du marché n'a d'intérêt que si la facture n'en couvre qu'une part
-  // (acompte) : sinon facture et marché se confondent.
-  const market =
-    settlement && settlement.marketTotal > totalAmount ? settlement : null;
-  const marketPart = market ? marketShare(totalAmount, market.marketTotal) : null;
+  const market = shouldShowSettlement(settlement, totalAmount) ? settlement : null;
+  // La part n'a de sens que si la facture ne couvre qu'un morceau du marché.
+  const marketPart =
+    market && market.marketTotal > totalAmount
+      ? marketShare(totalAmount, market.marketTotal)
+      : null;
   const paid = sumPayments(payments);
   const remaining = remainingAmount(payments, totalAmount);
   const pct = totalAmount > 0 ? Math.min(100, Math.round((paid / totalAmount) * 100)) : 0;

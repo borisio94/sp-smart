@@ -30,6 +30,28 @@ export interface Settlement {
 }
 
 /**
+ * Faut-il rappeler le suivi du marché sur un document de ce montant ?
+ *
+ * Deux cas le justifient :
+ *  - la facture ne couvre qu'une part du marché (acompte) — le reste dû ne se
+ *    lit nulle part ailleurs ;
+ *  - un encaissement existe déjà sur le marché — une facture définitive au
+ *    montant plein doit alors rappeler ce qui a été versé et le solde réel.
+ *
+ * Dans les autres cas (facture unique couvrant tout le marché, rien d'encaissé)
+ * le rappel n'apprendrait rien : facture et marché se confondent.
+ */
+export function shouldShowSettlement(
+  settlement: Settlement | null,
+  documentTotal: number,
+): settlement is Settlement {
+  if (!settlement) return false;
+  return (
+    settlement.marketTotal > documentTotal || settlement.settledTotal > 0
+  );
+}
+
+/**
  * Part qu'un montant représente dans le marché (ex. « 60 % »), arrondie à
  * l'entier. Renvoie null si le marché est nul : on n'affiche alors aucun taux.
  */
