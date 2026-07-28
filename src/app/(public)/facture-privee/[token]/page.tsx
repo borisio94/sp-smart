@@ -1,6 +1,7 @@
 import { getPublicDocument } from "@/lib/billing/public-stats";
 import { DOCUMENT_TYPE_LABELS, formatMoney, formatDate, formatNumber } from "@/lib/billing/format";
 import { PUBLIC_DOC_LABELS as L } from "@/lib/billing/public-labels";
+import { buildSettlement } from "@/lib/billing/settlement";
 import { ClientSignatureBlock } from "@/components/billing/client-signature-block";
 import type { DocumentType } from "@/lib/billing/types";
 
@@ -32,6 +33,18 @@ export default async function PublicInvoicePage({
   const typeLabel = DOCUMENT_TYPE_LABELS[doc.type as DocumentType] ?? doc.type;
   const amountWords = doc.amount_in_words?.trim();
   const isReport = doc.type === "rapport_maintenance";
+
+  // Suivi du marché : une facture d'acompte ne porte qu'une part du devis
+  // d'origine. On rappelle alors ce qui reste dû sur l'ensemble, sinon le
+  // client ne verrait que le montant de cette facture.
+  const settlement = buildSettlement({
+    quotationNumber: doc.quotation_number ?? null,
+    marketTotal: doc.market_total,
+    invoicedTotal: doc.invoiced_total,
+    settledTotal: doc.settled_total,
+  });
+  const market =
+    settlement && settlement.marketTotal > doc.total_amount ? settlement : null;
 
   // Signature : proposée si l'émetteur l'a demandée (quel que soit le type de
   // document), que le document est finalisé (un brouillon n'engage pas) et
@@ -117,6 +130,28 @@ export default async function PublicInvoicePage({
               ) : null}
             </>
           )}
+
+          {/* Reste à payer sur le marché (facture d'acompte) */}
+          {market ? (
+            <div className="rounded-lg bg-muted/50 p-4 text-sm">
+              <p className="mb-2 text-xs uppercase text-muted-foreground">
+                {L.marketTitle}
+                {market.quotationNumber ? ` — ${market.quotationNumber}` : ""}
+              </p>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{L.marketTotal}</span>
+                <span className="tabular-nums">{formatMoney(market.marketTotal)}</span>
+              </div>
+              <div className="mt-1 flex justify-between">
+                <span className="text-muted-foreground">{L.marketSettled}</span>
+                <span className="tabular-nums">{formatMoney(market.settledTotal)}</span>
+              </div>
+              <div className="mt-1 flex justify-between border-t border-border pt-1.5 font-semibold">
+                <span>{L.marketRemaining}</span>
+                <span className="tabular-nums">{formatMoney(market.remaining)}</span>
+              </div>
+            </div>
+          ) : null}
 
           {doc.payment_terms ? (
             <div className="text-sm">

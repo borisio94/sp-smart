@@ -2,6 +2,8 @@ import { getTranslations } from "next-intl/server";
 
 import { listPayments } from "@/lib/billing/queries";
 import { sumPayments, remainingAmount } from "@/lib/billing/payments";
+import { getSettlement } from "@/lib/billing/settlement-query";
+import { marketShare } from "@/lib/billing/settlement";
 import { formatMoney } from "@/lib/billing/format";
 import { PaymentRecorder } from "./payment-recorder";
 import { PaymentRow } from "./payment-row";
@@ -24,7 +26,15 @@ export async function PaymentSection({
   totalAmount: number;
 }) {
   const t = await getTranslations("Admin");
-  const payments = await listPayments(documentId);
+  const [payments, settlement] = await Promise.all([
+    listPayments(documentId),
+    getSettlement(documentId),
+  ]);
+  // Le suivi du marché n'a d'intérêt que si la facture n'en couvre qu'une part
+  // (acompte) : sinon facture et marché se confondent.
+  const market =
+    settlement && settlement.marketTotal > totalAmount ? settlement : null;
+  const marketPart = market ? marketShare(totalAmount, market.marketTotal) : null;
   const paid = sumPayments(payments);
   const remaining = remainingAmount(payments, totalAmount);
   const pct = totalAmount > 0 ? Math.min(100, Math.round((paid / totalAmount) * 100)) : 0;
@@ -36,6 +46,38 @@ export async function PaymentSection({
         <CardTitle>{t("payments.sectionTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Suivi du marché : la facture d'acompte ne porte qu'une part du
+            devis d'origine — on rappelle ce qui reste dû sur l'ensemble. */}
+        {market ? (
+          <div className="rounded-xl bg-muted/40 p-4 text-sm">
+            <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+              {t("payments.marketTitle")}
+              {market.quotationNumber ? ` — ${market.quotationNumber}` : ""}
+            </p>
+            <dl className="space-y-1.5">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">{t("payments.marketTotal")}</dt>
+                <dd className="tabular-nums">{formatMoney(market.marketTotal)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">
+                  {t("payments.marketInvoiced")}
+                  {marketPart ? ` (${t("payments.marketThisOne", { percent: marketPart })})` : ""}
+                </dt>
+                <dd className="tabular-nums">{formatMoney(market.invoicedTotal)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">{t("payments.marketSettled")}</dt>
+                <dd className="tabular-nums">{formatMoney(market.settledTotal)}</dd>
+              </div>
+              <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
+                <dt>{t("payments.marketRemaining")}</dt>
+                <dd className="tabular-nums">{formatMoney(market.remaining)}</dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
+
         {/* Progression payé / total */}
         <div>
           <div className="mb-1 flex justify-between text-sm">

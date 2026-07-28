@@ -6,6 +6,7 @@ import { DocumentPDF } from "./DocumentPDF";
 import { ReportPDF } from "./ReportPDF";
 import { fetchBrandingDataUri, fetchClientSignatureDataUri } from "./branding";
 import { fetchSiteLogoDataUri } from "./site-logo";
+import { getSettlement } from "../settlement-query";
 import type {
   BillingDocument,
   DocumentLine,
@@ -39,12 +40,14 @@ export async function renderDocumentPdf({
   categoryName = null,
   customTypeName = null,
 }: RenderDocumentPdfInput): Promise<Buffer> {
-  const [uploadedLogo, signatureData, stampData, clientSignatureData] =
+  const [uploadedLogo, signatureData, stampData, clientSignatureData, settlement] =
     await Promise.all([
       fetchBrandingDataUri(organization.logo_url),
       fetchBrandingDataUri(organization.signature_url),
       fetchBrandingDataUri(organization.stamp_url),
       fetchClientSignatureDataUri(document.client_signature_url),
+      // Suivi du marché : seules les factures en tirent un récapitulatif.
+      document.type === "facture" ? getSettlement(document.id) : null,
     ]);
 
   // En-tête : logo uploadé en priorité, sinon repli sur le logo du site (Sanity).
@@ -76,6 +79,7 @@ export async function renderDocumentPdf({
           signatureData,
           stampData,
           clientSignatureData,
+          settlement,
         });
 
   return renderToBuffer(element);

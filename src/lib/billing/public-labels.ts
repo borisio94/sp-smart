@@ -20,6 +20,10 @@ export const PUBLIC_DOC_LABELS = {
   total: "Total",
   netToPay: "NET À PAYER",
   paymentTerms: "Modalités de paiement",
+  marketTitle: "Suivi du marché",
+  marketTotal: "Montant total du marché",
+  marketSettled: "Déjà réglé",
+  marketRemaining: "Reste à payer",
   downloadPdf: "Télécharger en PDF",
   issuedBy: (org: string) => `Document émis par ${org}.`,
 

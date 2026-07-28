@@ -16,6 +16,7 @@ import type {
 import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, factureTitleLabel } from "../format";
 import { deductionsTotal, groupSections, hasNamedSections } from "../compute";
 import { shortHash } from "../signature";
+import { marketShare, type Settlement } from "../settlement";
 import { amountToWords } from "../amountToWords";
 import {
   PDF_COLORS,
@@ -44,6 +45,12 @@ export interface DocumentPDFData {
   stampData: string | null;
   /** Tracé signé par le client depuis son lien privé (bucket « signatures »). */
   clientSignatureData: string | null;
+  /**
+   * Suivi du marché rattaché (devis / proforma) : permet d'afficher le reste à
+   * payer sur l'ensemble, qu'une facture d'acompte ne porte pas à elle seule.
+   * null quand le document n'est rattaché à aucune cotation.
+   */
+  settlement?: Settlement | null;
 }
 
 // Conversion millimètres → points PDF (1 pt = 1/72 pouce ; 1 pouce = 25,4 mm).
@@ -524,6 +531,16 @@ export function DocumentPDF(data: DocumentPDFData) {
     hasInvoice && factureKind === "definitive" && invDeductions.length > 0;
   const showRecap = showAcompteRecap || showDeductionRecap;
 
+  // Suivi du marché : une facture rattachée à une cotation ne porte souvent
+  // qu'une part de l'ensemble (acompte). On rappelle alors le montant du
+  // marché et ce qui reste dû dessus — calculé, jamais saisi.
+  const settlement = data.settlement ?? null;
+  const showMarketRecap =
+    isFacture && settlement !== null && settlement.marketTotal > doc.total_amount;
+  const marketPart = settlement
+    ? marketShare(doc.total_amount, settlement.marketTotal)
+    : null;
+
   // Libellé du grand total (bandeau vert) selon le type/nature.
   const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
   const grandLabel = hasInvoice
@@ -844,6 +861,42 @@ export function DocumentPDF(data: DocumentPDFData) {
         ) : (
           <Text style={styles.freeText}>{doc.body_text || ""}</Text>
         )}
+
+        {/* Suivi du marché : ce que la facture représente sur la cotation
+            d'origine, et ce qui reste dû sur l'ensemble. */}
+        {showMarketRecap && settlement ? (
+          <View style={[styles.recapBox, { borderColor: band }]}>
+            <View style={[styles.recapHeader, { borderBottomColor: band }]}>
+              <Text style={[styles.recapHeaderText, { color: band }]}>
+                RÉCAPITULATIF DU RÈGLEMENT
+              </Text>
+            </View>
+            <View style={styles.recapBody}>
+              <RecapRow
+                label={`Montant total du marché (TTC)${
+                  settlement.quotationNumber ? ` — ${settlement.quotationNumber}` : ""
+                }`}
+                value={pdfMoney(settlement.marketTotal)}
+              />
+              <RecapRow
+                label={`Présente facture${marketPart ? ` (${pdfNumber(marketPart)} %)` : ""}`}
+                value={pdfMoney(doc.total_amount)}
+              />
+              {settlement.settledTotal > 0 ? (
+                <RecapRow
+                  label="Déjà encaissé sur le marché"
+                  value={`- ${pdfMoney(settlement.settledTotal)}`}
+                  negative
+                />
+              ) : null}
+              <RecapRow
+                label="RESTE À PAYER SUR LE MARCHÉ"
+                value={pdfMoney(settlement.remaining)}
+                strong
+              />
+            </View>
+          </View>
+        ) : null}
 
         {/* Récapitulatif de règlement (facture d'acompte / facture définitive) */}
         {showRecap && inv ? (

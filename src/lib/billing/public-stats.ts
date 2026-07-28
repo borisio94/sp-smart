@@ -72,6 +72,12 @@ export interface PublicDocument {
   signature_required: boolean | null;
   signed_at: string | null;
   signed_by_name: string | null;
+  // Suivi du marché rattaché (cf. migration 0018). Optionnels : absents tant
+  // que la migration n'est pas appliquée — la page n'affiche alors rien.
+  market_total?: number | null;
+  invoiced_total?: number | null;
+  settled_total?: number | null;
+  quotation_number?: string | null;
 }
 
 export interface PublicDocumentLine {
