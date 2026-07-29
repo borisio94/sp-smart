@@ -53,10 +53,15 @@ export function computePaymentStatus(
   return "acompte";
 }
 
-/** Montant restant à payer (jamais négatif). */
+/**
+ * Montant restant à payer (jamais négatif).
+ *
+ * Sur une facture d'acompte, le montant dû est celui du marché et non celui de
+ * la facture : passer `dueAmount(settlement, total)` (cf. `settlement.ts`).
+ */
 export function remainingAmount(
   payments: Pick<Payment, "amount">[],
-  totalAmount: number,
+  dueTotal: number,
 ): number {
-  return Math.max(0, (Number(totalAmount) || 0) - sumPayments(payments));
+  return Math.max(0, (Number(dueTotal) || 0) - sumPayments(payments));
 }

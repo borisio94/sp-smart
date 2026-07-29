@@ -1,12 +1,18 @@
 import { getTranslations } from "next-intl/server";
 
 import { listPayments } from "@/lib/billing/queries";
-import { sumPayments, remainingAmount } from "@/lib/billing/payments";
+import { sumPayments } from "@/lib/billing/payments";
 import { getSettlement } from "@/lib/billing/settlement-query";
-import { marketShare, shouldShowSettlement } from "@/lib/billing/settlement";
+import {
+  dueAmount,
+  isAdvanceOnMarket,
+  settledAmount,
+  shouldShowSettlement,
+} from "@/lib/billing/settlement";
 import { formatMoney } from "@/lib/billing/format";
 import { PaymentRecorder } from "./payment-recorder";
 import { PaymentRow } from "./payment-row";
+import { FinalInvoiceButton } from "./final-invoice-button";
 import {
   Card,
   CardContent,
@@ -15,8 +21,13 @@ import {
 } from "@/components/ui/card";
 
 /**
- * Section paiements d'une facture (Server Component) : barre de progression,
- * formulaire d'enregistrement et historique des paiements.
+ * Section paiements d'une facture (Server Component) : suivi du marché, barre
+ * de progression, formulaire d'enregistrement et historique des versements.
+ *
+ * Une facture d'acompte tient lieu de registre pour tout son marché : les
+ * acomptes suivants s'y enregistrent en paiements (pas de nouvelle facture), la
+ * progression se mesure sur le montant du marché, et la saisie se clôt dès que
+ * le marché est soldé — une facture définitive prend alors le relais.
  */
 export async function PaymentSection({
   documentId,
@@ -31,15 +42,19 @@ export async function PaymentSection({
     getSettlement(documentId),
   ]);
   const market = shouldShowSettlement(settlement, totalAmount) ? settlement : null;
-  // La part n'a de sens que si la facture ne couvre qu'un morceau du marché.
-  const marketPart =
-    market && market.marketTotal > totalAmount
-      ? marketShare(totalAmount, market.marketTotal)
-      : null;
-  const paid = sumPayments(payments);
-  const remaining = remainingAmount(payments, totalAmount);
-  const pct = totalAmount > 0 ? Math.min(100, Math.round((paid / totalAmount) * 100)) : 0;
+  // Acompte sur un marché plus large → l'encaissement se suit sur le marché.
+  const onMarket = isAdvanceOnMarket(settlement, totalAmount);
+  const paidOnDoc = sumPayments(payments);
+  const due = dueAmount(settlement, totalAmount);
+  const paid = settledAmount(settlement, paidOnDoc);
+  const remaining = Math.max(0, due - paid);
+  const pct = due > 0 ? Math.min(100, Math.round((paid / due) * 100)) : 0;
   const today = new Date().toISOString().slice(0, 10);
+
+  // Règlement clôturé : plus rien à encaisser sur le marché.
+  const closed = settlement !== null && settlement.remaining <= 0;
+  // La facture définitive n'a pas à se proposer sa propre génération.
+  const isFinalInvoice = settlement?.finalInvoiceId === documentId;
 
   return (
     <Card>
@@ -60,11 +75,16 @@ export async function PaymentSection({
                 <dt className="text-muted-foreground">{t("payments.marketTotal")}</dt>
                 <dd className="tabular-nums">{formatMoney(market.marketTotal)}</dd>
               </div>
+              {/* Montant de la facture : celui qui a été saisi, jamais déduit
+                  d'un pourcentage du marché. */}
+              {onMarket ? (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{t("payments.marketThisInvoice")}</dt>
+                  <dd className="tabular-nums">{formatMoney(totalAmount)}</dd>
+                </div>
+              ) : null}
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">
-                  {t("payments.marketInvoiced")}
-                  {marketPart ? ` (${t("payments.marketThisOne", { percent: marketPart })})` : ""}
-                </dt>
+                <dt className="text-muted-foreground">{t("payments.marketInvoiced")}</dt>
                 <dd className="tabular-nums">{formatMoney(market.invoicedTotal)}</dd>
               </div>
               <div className="flex justify-between">
@@ -76,10 +96,15 @@ export async function PaymentSection({
                 <dd className="tabular-nums">{formatMoney(market.remaining)}</dd>
               </div>
             </dl>
+            {onMarket && !closed ? (
+              <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+                {t("payments.marketAdvanceHint")}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
-        {/* Progression payé / total */}
+        {/* Progression payé / montant dû (le marché pour une facture d'acompte) */}
         <div>
           <div className="mb-1 flex justify-between text-sm">
             <span className="text-muted-foreground">
@@ -94,7 +119,7 @@ export async function PaymentSection({
           </div>
         </div>
 
-        {/* Historique */}
+        {/* Historique des acomptes encaissés sur cette facture */}
         <div>
           <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
             {t("payments.history")}
@@ -110,16 +135,33 @@ export async function PaymentSection({
           )}
         </div>
 
-        {/* Enregistrement */}
+        {/* Enregistrement — ou clôture du règlement */}
         <div className="border-t border-border pt-4">
-          <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
-            {t("payments.add")}
-          </p>
-          <PaymentRecorder
-            documentId={documentId}
-            defaultDate={today}
-            suggestedAmount={remaining}
-          />
+          {closed ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium">{t("payments.closedTitle")}</p>
+              <p className="text-sm text-muted-foreground">
+                {isFinalInvoice ? t("payments.closedFinal") : t("payments.closedHint")}
+              </p>
+              {isFinalInvoice ? null : (
+                <FinalInvoiceButton
+                  documentId={documentId}
+                  finalInvoiceId={settlement?.finalInvoiceId ?? null}
+                />
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
+                {t("payments.add")}
+              </p>
+              <PaymentRecorder
+                documentId={documentId}
+                defaultDate={today}
+                suggestedAmount={remaining}
+              />
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -87,9 +87,13 @@ function buildFactureDefaults(props: Props): DocumentInput {
       kind: inv?.kind ?? "acompte",
       payment_method: inv?.payment_method ?? "",
       devis_ref: inv?.devis_ref ?? "",
+      // Aucun acompte n'est déduit d'un pourcentage : seul le montant saisi
+      // compte. Les acomptes déduits d'une facture définitive sont générés à la
+      // clôture du marché — on les conserve pour qu'une simple édition du
+      // document ne les efface pas.
       advance_percent: null,
-      advance_amount: 0,
-      deductions: [],
+      advance_amount: inv?.advance_amount ?? 0,
+      deductions: inv?.deductions ?? [],
     },
   };
 }
@@ -128,6 +132,17 @@ export function FactureForm(props: Props) {
   const clientQuotations = props.quotations.filter(
     (q) => q.client_id === watched.client_id && q.id !== props.document?.id,
   );
+
+  // Un marché n'a qu'une facture d'acompte : elle tient le registre des
+  // versements. Si elle existe déjà, on renvoie l'utilisateur vers elle plutôt
+  // que de laisser créer une seconde facture pour le même acompte.
+  const existingAdvance = clientQuotations.find(
+    (q) => q.id === watched.linked_document_id,
+  )?.advance_invoice;
+  const advanceAlreadyOpen =
+    kind === "acompte" &&
+    existingAdvance != null &&
+    existingAdvance.id !== props.document?.id;
 
   // Report automatique de la « Réf client » (code CLI-…) à la sélection.
   const selectedClientId = watched.client_id;
@@ -373,6 +388,22 @@ export function FactureForm(props: Props) {
             </p>
           </div>
         </div>
+
+        {/* Un acompte de plus sur un marché déjà facturé = un paiement, pas une
+            nouvelle facture. */}
+        {advanceAlreadyOpen && existingAdvance ? (
+          <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+            {t("documents.advanceAlreadyOpen", {
+              number: existingAdvance.number ?? "—",
+            })}{" "}
+            <Link
+              href={`/admin/billing/documents/${existingAdvance.id}`}
+              className="font-medium underline underline-offset-4"
+            >
+              {t("documents.advanceAlreadyOpenLink")}
+            </Link>
+          </p>
+        ) : null}
 
         {/* Catégorie (facultatif, pour les statistiques) */}
         <div className="max-w-sm">

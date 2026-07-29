@@ -6,11 +6,32 @@
  * de 1 300 000) : sans ce recoupement, ni le client ni l'émetteur ne voient ce
  * qui reste dû sur l'ensemble. C'est cette lacune que ce module comble.
  *
+ * Règle de gestion (cf. demande client) : les acomptes suivants ne donnent PAS
+ * lieu à une nouvelle facture — ils s'enregistrent en paiements sur la facture
+ * d'acompte initiale, qui devient le registre du marché. Le montant de
+ * référence pour l'encaissement est donc celui du marché (`dueAmount`), et le
+ * détail des versements (`advances`) est rappelé sur la facture. Quand plus
+ * rien ne reste dû, la saisie se clôt et une facture définitive est générée.
+ *
  * Module volontairement « pur » (aucun import Node) : il est partagé par le
  * PDF, la fiche admin et la page publique. La lecture en base vit dans
  * `settlement-query.ts`, et la page du lien privé obtient les mêmes agrégats
  * par la RPC `get_document_by_token` (cf. migration 0018).
  */
+
+import type { PaymentMethod } from "./types";
+
+/** Un acompte encaissé sur le marché (paiement réel, jamais saisi à la main). */
+export interface SettlementAdvance {
+  /** Montant versé (FCFA). */
+  amount: number;
+  /** Date de versement (ISO `AAAA-MM-JJ`). */
+  date: string;
+  /** Moyen de paiement, null si inconnu. */
+  method: PaymentMethod | null;
+  /** Référence du versement (n° de transaction, de chèque…). */
+  reference: string | null;
+}
 
 export interface Settlement {
   /**
@@ -27,6 +48,16 @@ export interface Settlement {
   settledTotal: number;
   /** Reste à payer sur le marché = marché − encaissé (jamais négatif). */
   remaining: number;
+  /**
+   * Détail des acomptes encaissés, du plus ancien au plus récent. Vide côté
+   * page publique : la RPC ne renvoie que des agrégats.
+   */
+  advances: SettlementAdvance[];
+  /**
+   * Facture définitive déjà générée sur ce marché (le règlement est alors
+   * définitivement clos). null tant qu'elle n'existe pas.
+   */
+  finalInvoiceId: string | null;
 }
 
 /**
@@ -52,15 +83,45 @@ export function shouldShowSettlement(
 }
 
 /**
- * Part qu'un montant représente dans le marché (ex. « 60 % »), arrondie à
- * l'entier. Renvoie null si le marché est nul : on n'affiche alors aucun taux.
+ * La facture n'est-elle qu'un acompte sur un marché plus large ?
+ * C'est le seul cas où l'encaissement se suit au niveau du marché et non au
+ * niveau de la facture.
  */
-export function marketShare(
-  amount: number,
-  marketTotal: number,
-): number | null {
-  if (!marketTotal || marketTotal <= 0) return null;
-  return Math.round((amount / marketTotal) * 100);
+export function isAdvanceOnMarket(
+  settlement: Settlement | null,
+  documentTotal: number,
+): settlement is Settlement {
+  return settlement !== null && settlement.marketTotal > documentTotal;
+}
+
+/**
+ * Montant de référence pour l'encaissement d'une facture.
+ *
+ * Facture d'acompte → le marché entier : les versements suivants s'ajoutent sur
+ * cette même facture jusqu'au solde du marché. Sinon → le montant de la facture
+ * (cas courant : la cotation et la facture se confondent).
+ */
+export function dueAmount(
+  settlement: Settlement | null,
+  documentTotal: number,
+): number {
+  const total = Number(documentTotal) || 0;
+  return isAdvanceOnMarket(settlement, total) ? settlement.marketTotal : total;
+}
+
+/**
+ * Montant déjà encaissé à retenir face à `dueAmount`.
+ *
+ * Dès qu'un marché existe, c'est son encaissé qui fait foi : les acomptes
+ * s'enregistrent sur une seule facture, et une facture définitive émise à la
+ * clôture n'a aucun paiement propre alors que tout est réglé. Sans marché
+ * rattaché, seuls comptent les paiements de la facture elle-même.
+ */
+export function settledAmount(
+  settlement: Settlement | null,
+  paidOnDocument: number,
+): number {
+  return settlement ? settlement.settledTotal : Number(paidOnDocument) || 0;
 }
 
 /**
@@ -73,6 +134,8 @@ export function buildSettlement(input: {
   marketTotal: number | null | undefined;
   invoicedTotal: number | null | undefined;
   settledTotal: number | null | undefined;
+  advances?: SettlementAdvance[];
+  finalInvoiceId?: string | null;
 }): Settlement | null {
   const marketTotal = Number(input.marketTotal) || 0;
   // Aucun marché rattaché — ou RPC pas encore migrée (champs absents).
@@ -86,5 +149,7 @@ export function buildSettlement(input: {
     invoicedTotal: Number(input.invoicedTotal) || 0,
     settledTotal,
     remaining: Math.max(0, marketTotal - settledTotal),
+    advances: input.advances ?? [],
+    finalInvoiceId: input.finalInvoiceId ?? null,
   };
 }

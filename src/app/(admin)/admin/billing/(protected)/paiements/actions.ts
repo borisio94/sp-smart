@@ -10,6 +10,8 @@ import {
   computePaymentStatus,
   sumPayments,
 } from "@/lib/billing/payments";
+import { getSettlement } from "@/lib/billing/settlement-query";
+import { dueAmount } from "@/lib/billing/settlement";
 import type { Payment } from "@/lib/billing/types";
 
 export type ActionResult =
@@ -22,24 +24,36 @@ function nz(value: string | undefined | null): string | null {
 }
 
 /**
- * Recalcule et persiste le statut de paiement d'une facture à partir de
- * l'ensemble de ses paiements. Renvoie le total payé et le total dû.
+ * Recalcule et persiste le statut de paiement d'une facture.
+ *
+ * Une facture d'acompte est le registre de son marché : les versements suivants
+ * s'y ajoutent jusqu'au solde de la cotation. Le statut se juge donc face au
+ * montant du marché et sur l'ensemble de ses encaissements — sinon la facture
+ * afficherait « payée » dès le premier acompte. Quand facture et marché se
+ * confondent (cas courant), le calcul revient au comportement habituel.
  */
 async function recomputePaymentStatus(documentId: string) {
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: payments }, { data: doc }] = await Promise.all([
+  const [{ data: payments }, { data: doc }, settlement] = await Promise.all([
     supabase.from("payments").select("amount").eq("document_id", documentId),
     supabase.from("documents").select("total_amount").eq("id", documentId).maybeSingle(),
+    getSettlement(documentId),
   ]);
 
-  const list = (payments as Pick<Payment, "amount">[] | null) ?? [];
+  const own = (payments as Pick<Payment, "amount">[] | null) ?? [];
   const total = Number(doc?.total_amount ?? 0);
-  const status = computePaymentStatus(list, total);
+  const due = dueAmount(settlement, total);
+  // Marché rattaché → on juge sur ses encaissements (une facture d'acompte les
+  // porte tous, une facture définitive n'en porte aucun en propre).
+  const list = settlement
+    ? settlement.advances.map((a) => ({ amount: a.amount }))
+    : own;
+  const status = computePaymentStatus(list, due);
 
   await supabase.from("documents").update({ payment_status: status }).eq("id", documentId);
 
-  return { status, paid: sumPayments(list), total };
+  return { status, paid: sumPayments(list), due };
 }
 
 /**
@@ -74,6 +88,18 @@ export async function recordPayment(
     };
   }
 
+  // Clôture : dès que l'encaissé atteint le montant du marché, plus aucun
+  // versement n'est accepté (un remboursement — montant négatif — reste
+  // possible pour corriger une erreur de saisie).
+  const settlementBefore = await getSettlement(documentId);
+  if (settlementBefore && settlementBefore.remaining <= 0 && v.amount > 0) {
+    return {
+      ok: false,
+      error:
+        "Le règlement de ce marché est clôturé : le montant total a déjà été encaissé.",
+    };
+  }
+
   const { error: insertError } = await supabase.from("payments").insert({
     document_id: documentId,
     amount: Math.round(v.amount),
@@ -85,7 +111,7 @@ export async function recordPayment(
   });
   if (insertError) return { ok: false, error: insertError.message };
 
-  const { status } = await recomputePaymentStatus(documentId);
+  const { status, due } = await recomputePaymentStatus(documentId);
 
   revalidatePath("/admin/billing/paiements");
   revalidatePath(`/admin/billing/documents/${documentId}`);
@@ -120,7 +146,9 @@ export async function recordPayment(
           materials_subtotal: 0,
           labor_amount: 0,
           discount_amount: 0,
-          total_amount: doc.total_amount,
+          // Le reçu constate le règlement total : sur une facture d'acompte,
+          // c'est le marché entier qui vient d'être soldé.
+          total_amount: due,
           status: "termine",
           payment_status: "paye_total",
           linked_document_id: documentId,

@@ -2,6 +2,7 @@ import { getPublicDocument } from "@/lib/billing/public-stats";
 import { DOCUMENT_TYPE_LABELS, formatMoney, formatDate, formatNumber } from "@/lib/billing/format";
 import { PUBLIC_DOC_LABELS as L } from "@/lib/billing/public-labels";
 import { buildSettlement, shouldShowSettlement } from "@/lib/billing/settlement";
+import { tryGetSettlement } from "@/lib/billing/settlement-query";
 import { ClientSignatureBlock } from "@/components/billing/client-signature-block";
 import type { DocumentType } from "@/lib/billing/types";
 
@@ -36,13 +37,17 @@ export default async function PublicInvoicePage({
 
   // Suivi du marché : une facture d'acompte ne porte qu'une part du devis
   // d'origine. On rappelle alors ce qui reste dû sur l'ensemble, sinon le
-  // client ne verrait que le montant de cette facture.
-  const settlement = buildSettlement({
-    quotationNumber: doc.quotation_number ?? null,
-    marketTotal: doc.market_total,
-    invoicedTotal: doc.invoiced_total,
-    settledTotal: doc.settled_total,
-  });
+  // client ne verrait que le montant de cette facture. La lecture directe
+  // apporte en plus le détail des acomptes (montants et dates de versement) ;
+  // à défaut, on retombe sur les agrégats de la RPC.
+  const settlement =
+    (await tryGetSettlement(doc.id)) ??
+    buildSettlement({
+      quotationNumber: doc.quotation_number ?? null,
+      marketTotal: doc.market_total,
+      invoicedTotal: doc.invoiced_total,
+      settledTotal: doc.settled_total,
+    });
   const market = shouldShowSettlement(settlement, doc.total_amount)
     ? settlement
     : null;
@@ -143,6 +148,24 @@ export default async function PublicInvoicePage({
                 <span className="text-muted-foreground">{L.marketTotal}</span>
                 <span className="tabular-nums">{formatMoney(market.marketTotal)}</span>
               </div>
+              {/* Détail des acomptes : chaque versement avec sa date. */}
+              {market.advances.filter((a) => a.amount > 0).length > 0 ? (
+                <div className="mt-2 border-t border-border pt-1.5">
+                  <p className="text-xs uppercase text-muted-foreground">
+                    {L.marketAdvances}
+                  </p>
+                  {market.advances
+                    .filter((a) => a.amount > 0)
+                    .map((a, i) => (
+                      <div key={i} className="mt-1 flex justify-between gap-3">
+                        <span className="text-muted-foreground">
+                          {L.marketAdvance(i + 1, formatDate(a.date))}
+                        </span>
+                        <span className="tabular-nums">{formatMoney(a.amount)}</span>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
               <div className="mt-1 flex justify-between">
                 <span className="text-muted-foreground">{L.marketSettled}</span>
                 <span className="tabular-nums">{formatMoney(market.settledTotal)}</span>

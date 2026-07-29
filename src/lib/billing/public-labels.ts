@@ -24,6 +24,8 @@ export const PUBLIC_DOC_LABELS = {
   marketTotal: "Montant total du marché",
   marketSettled: "Déjà réglé",
   marketRemaining: "Reste à payer",
+  marketAdvances: "Acomptes versés",
+  marketAdvance: (index: number, date: string) => `Acompte N° ${index} du ${date}`,
   downloadPdf: "Télécharger en PDF",
   issuedBy: (org: string) => `Document émis par ${org}.`,
 

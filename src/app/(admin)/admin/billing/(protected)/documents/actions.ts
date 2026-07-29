@@ -10,7 +10,8 @@ import {
   type DocumentInput,
 } from "@/lib/billing/validation";
 import { computeTotals, resolveLineTotal } from "@/lib/billing/compute";
-import { formatDate } from "@/lib/billing/format";
+import { formatDate, PAYMENT_METHOD_LABELS } from "@/lib/billing/format";
+import { getSettlement } from "@/lib/billing/settlement-query";
 import { canTransition, timestampField } from "@/lib/billing/status-machine";
 import type { DocumentStatus, CustomDocumentType } from "@/lib/billing/types";
 
@@ -44,10 +45,9 @@ function buildInvoiceData(input: DocumentInput) {
     kind: inv.kind,
     payment_method: inv.payment_method ?? "",
     devis_ref: (inv.devis_ref ?? "").trim(),
-    advance_percent:
-      inv.advance_percent === null || inv.advance_percent === undefined
-        ? null
-        : Number(inv.advance_percent),
+    // Aucun acompte n'est plus déduit d'un pourcentage : seul le montant saisi
+    // fait foi (le champ reste lu pour les documents historiques).
+    advance_percent: null,
     advance_amount: inv.kind === "acompte" ? round(inv.advance_amount) : 0,
     deductions:
       inv.kind === "definitive"
@@ -468,6 +468,124 @@ export async function updateFacture(
   revalidatePath("/admin/billing/documents");
   revalidatePath(`/admin/billing/documents/${id}`);
   return { ok: true, id };
+}
+
+/**
+ * Génère la facture définitive d'un marché entièrement encaissé.
+ *
+ * Le marché se règle sur une seule facture d'acompte : chaque versement s'y
+ * ajoute en paiement. Quand l'encaissé atteint le montant de la cotation, la
+ * saisie se clôt et cette action produit la pièce finale — montant plein du
+ * marché, déduction de chaque acompte avec sa date de versement, net à payer
+ * nul. Elle reprend les lignes de la cotation : la facture définitive et le
+ * marché portent ainsi rigoureusement le même détail.
+ *
+ * Idempotente : si la facture définitive existe déjà, son identifiant est
+ * simplement renvoyé.
+ */
+export async function generateFinalInvoice(documentId: string): Promise<ActionResult> {
+  const profile = await requireProfile();
+  const supabase = await createSupabaseServerClient();
+
+  const settlement = await getSettlement(documentId);
+  if (!settlement || !settlement.quotationId) {
+    return { ok: false, error: "Cette facture n'est rattachée à aucun marché." };
+  }
+  if (settlement.finalInvoiceId) {
+    return { ok: true, id: settlement.finalInvoiceId };
+  }
+  if (settlement.remaining > 0) {
+    return {
+      ok: false,
+      error: "Le marché n'est pas encore entièrement encaissé.",
+    };
+  }
+
+  // Source : la facture d'acompte (conditions, client, catégorie) et la
+  // cotation (montants et lignes du marché).
+  const [{ data: source }, { data: quotation }] = await Promise.all([
+    supabase
+      .from("documents")
+      .select(
+        "client_id, category_id, title, subject, client_ref, payment_terms, delivery_terms",
+      )
+      .eq("id", documentId)
+      .maybeSingle(),
+    supabase
+      .from("documents")
+      .select("*")
+      .eq("id", settlement.quotationId)
+      .maybeSingle(),
+  ]);
+  if (!source || !quotation) {
+    return { ok: false, error: "Cotation liée introuvable." };
+  }
+
+  const deductions = settlement.advances
+    // Un remboursement (montant négatif) n'est pas un acompte déductible.
+    .filter((a) => a.amount > 0)
+    .map((a) => ({
+      reference: a.reference?.trim() || (a.method ? PAYMENT_METHOD_LABELS[a.method] : ""),
+      date: formatDate(a.date),
+      amount: Math.round(a.amount),
+    }));
+
+  const { data: created, error } = await supabase
+    .from("documents")
+    .insert({
+      organization_id: profile.organization_id,
+      created_by: profile.id,
+      client_id: source.client_id,
+      category_id: source.category_id,
+      type: "facture",
+      issue_date: new Date().toISOString().slice(0, 10),
+      title: quotation.title ?? source.title,
+      subject: quotation.subject ?? source.subject,
+      client_ref: source.client_ref,
+      body_mode: "table",
+      invoice_data: {
+        kind: "definitive",
+        payment_method: "",
+        devis_ref: buildDevisRef(quotation.number, quotation.issue_date),
+        advance_percent: null,
+        advance_amount: 0,
+        deductions,
+      },
+      materials_subtotal: quotation.materials_subtotal,
+      labor_amount: quotation.labor_amount,
+      discount_amount: quotation.discount_amount,
+      tax_rate: quotation.tax_rate,
+      tax_amount: quotation.tax_amount,
+      total_amount: quotation.total_amount,
+      payment_terms: source.payment_terms,
+      delivery_terms: source.delivery_terms,
+      include_conditions: true,
+      signature_required: false,
+      linked_document_id: quotation.id,
+      // Brouillon : l'émetteur relit puis envoie. Le règlement, lui, est acquis.
+      status: "brouillon",
+      payment_status: "paye_total",
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+
+  // Reprise à l'identique des lignes du marché.
+  const { data: sourceLines } = await supabase
+    .from("document_lines")
+    .select("position, section, designation, unit, quantity, unit_price, is_amount_only, line_total")
+    .eq("document_id", quotation.id)
+    .order("position", { ascending: true });
+
+  const lines = (sourceLines ?? []).map((l) => ({ ...l, document_id: created.id }));
+  if (lines.length > 0) {
+    const { error: linesError } = await supabase.from("document_lines").insert(lines);
+    if (linesError) return { ok: false, error: linesError.message };
+  }
+
+  revalidatePath("/admin/billing/documents");
+  revalidatePath(`/admin/billing/documents/${documentId}`);
+  return { ok: true, id: created.id };
 }
 
 const STATUS_VALUES: DocumentStatus[] = [

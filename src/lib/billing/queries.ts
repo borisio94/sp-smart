@@ -183,6 +183,11 @@ export interface QuotationOption {
   type: BillingDocument["type"];
   client_id: string | null;
   issue_date: string;
+  /**
+   * Facture d'acompte déjà ouverte sur ce marché. Elle en tient le registre :
+   * les acomptes suivants s'y enregistrent en paiements, sans nouvelle facture.
+   */
+  advance_invoice: { id: string; number: string | null } | null;
 }
 
 /**
@@ -197,7 +202,45 @@ export async function listQuotations(): Promise<QuotationOption[]> {
     .select("id, number, type, client_id, issue_date")
     .in("type", ["devis", "proforma", "bon_commande"])
     .order("issue_date", { ascending: false });
-  return (data as QuotationOption[] | null) ?? [];
+
+  const quotations =
+    (data as Omit<QuotationOption, "advance_invoice">[] | null) ?? [];
+  if (quotations.length === 0) return [];
+
+  // Facture d'acompte déjà émise sur chacun de ces marchés (la plus ancienne
+  // fait foi : c'est elle qui reçoit les versements suivants).
+  const { data: invoices } = await supabase
+    .from("documents")
+    .select("id, number, linked_document_id, invoice_data")
+    .eq("type", "facture")
+    .neq("status", "annule")
+    .in(
+      "linked_document_id",
+      quotations.map((q) => q.id),
+    )
+    .order("issue_date", { ascending: true });
+
+  const advanceByQuotation = new Map<string, { id: string; number: string | null }>();
+  for (const inv of (invoices as
+    | {
+        id: string;
+        number: string | null;
+        linked_document_id: string;
+        invoice_data: { kind?: string } | null;
+      }[]
+    | null) ?? []) {
+    if (inv.invoice_data?.kind !== "acompte") continue;
+    if (advanceByQuotation.has(inv.linked_document_id)) continue;
+    advanceByQuotation.set(inv.linked_document_id, {
+      id: inv.id,
+      number: inv.number,
+    });
+  }
+
+  return quotations.map((q) => ({
+    ...q,
+    advance_invoice: advanceByQuotation.get(q.id) ?? null,
+  }));
 }
 
 /** Facture d'acompte candidate à la déduction sur une facture définitive. */

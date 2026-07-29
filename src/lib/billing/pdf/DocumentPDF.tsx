@@ -16,11 +16,7 @@ import type {
 import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, factureTitleLabel } from "../format";
 import { deductionsTotal, groupSections, hasNamedSections } from "../compute";
 import { shortHash } from "../signature";
-import {
-  marketShare,
-  shouldShowSettlement,
-  type Settlement,
-} from "../settlement";
+import { shouldShowSettlement, type Settlement } from "../settlement";
 import { amountToWords } from "../amountToWords";
 import {
   PDF_COLORS,
@@ -548,9 +544,10 @@ export function DocumentPDF(data: DocumentPDFData) {
   // un reçu le montant est déjà compté dans « déjà encaissé ».
   const showThisDocLine =
     isFacture && settlement !== null && settlement.marketTotal > doc.total_amount;
-  const marketPart = settlement
-    ? marketShare(doc.total_amount, settlement.marketTotal)
-    : null;
+  // Détail des acomptes encaissés (montant + date de versement) : les acomptes
+  // suivants s'enregistrent en paiements sur la facture initiale, qui doit donc
+  // les rappeler tous. À défaut de détail (lien privé), on s'en tient au total.
+  const marketAdvances = settlement?.advances.filter((a) => a.amount > 0) ?? [];
 
   // Libellé du grand total (bandeau vert) selon le type/nature.
   const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
@@ -891,11 +888,22 @@ export function DocumentPDF(data: DocumentPDFData) {
               />
               {showThisDocLine ? (
                 <RecapRow
-                  label={`Présente facture${marketPart ? ` (${pdfNumber(marketPart)} %)` : ""}`}
+                  label="Présente facture"
                   value={pdfMoney(doc.total_amount)}
                 />
               ) : null}
-              {settlement.settledTotal > 0 ? (
+              {marketAdvances.length > 0 ? (
+                marketAdvances.map((a, i) => (
+                  <RecapRow
+                    key={i}
+                    label={`Acompte N° ${i + 1} versé le ${pdfDate(a.date)}${
+                      a.method ? ` — ${PAYMENT_METHOD_LABELS[a.method]}` : ""
+                    }`}
+                    value={`- ${pdfMoney(a.amount)}`}
+                    negative
+                  />
+                ))
+              ) : settlement.settledTotal > 0 ? (
                 <RecapRow
                   label="Déjà encaissé sur le marché"
                   value={`- ${pdfMoney(settlement.settledTotal)}`}
@@ -928,10 +936,10 @@ export function DocumentPDF(data: DocumentPDFData) {
                     label="Montant Total du Marché (TTC)"
                     value={pdfMoney(doc.total_amount)}
                   />
+                  {/* Montant saisi tel quel : aucun acompte n'est déduit d'un
+                      pourcentage du marché. */}
                   <RecapRow
-                    label={`Acompte versé ce jour${
-                      inv.advance_percent ? ` (${pdfNumber(inv.advance_percent)} %)` : ""
-                    }`}
+                    label="Acompte versé ce jour"
                     value={`- ${pdfMoney(inv.advance_amount)}`}
                     negative
                   />
