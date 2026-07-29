@@ -60,14 +60,38 @@ function buildInvoiceData(input: DocumentInput) {
   };
 }
 
-/** Construit les lignes à insérer (mode tableau uniquement). */
-function buildLines(documentId: string, input: DocumentInput) {
+/**
+ * Désignation de l'unique ligne d'une facture d'acompte.
+ *
+ * Sans ce préfixe, le tableau annonce la prestation entière au prix de
+ * l'acompte : le client lit « Automatisation du portail — 450 000 » alors que
+ * le chantier en vaut 720 000, en contradiction directe avec le récapitulatif
+ * du marché imprimé juste en dessous.
+ */
+function advanceDesignation(label: string): string {
+  const clean = label.trim();
+  return /^acompte\b/i.test(clean) ? clean : `Acompte sur : ${clean}`;
+}
+
+/**
+ * Construit les lignes à insérer (mode tableau uniquement).
+ * `advanceLabel` : préfixe la ligne unique d'une facture d'acompte (cf.
+ * `advanceDesignation`) — jamais sur la cotation, qui porte le marché entier.
+ */
+function buildLines(
+  documentId: string,
+  input: DocumentInput,
+  advanceLabel = false,
+) {
   if (effectiveBodyMode(input) !== "table") return [];
+  const prefix = advanceLabel && input.lines.length === 1;
   return input.lines.map((l, index) => ({
     document_id: documentId,
     position: index,
     section: nz(l.section),
-    designation: l.designation.trim(),
+    designation: prefix
+      ? advanceDesignation(l.designation)
+      : l.designation.trim(),
     unit: l.is_amount_only ? null : nz(l.unit),
     quantity: l.is_amount_only ? 1 : Number(l.quantity) || 0,
     unit_price: Math.round(Number(l.unit_price) || 0),
@@ -367,7 +391,7 @@ export async function createFacture(values: DocumentInput): Promise<ActionResult
     .single();
   if (error) return { ok: false, error: error.message };
 
-  const lines = buildLines(data.id, v);
+  const lines = buildLines(data.id, v, v.invoice?.kind === "acompte");
   if (lines.length > 0) {
     const { error: linesError } = await supabase.from("document_lines").insert(lines);
     if (linesError) return { ok: false, error: linesError.message };
@@ -460,7 +484,7 @@ export async function updateFacture(
   if (error) return { ok: false, error: error.message };
 
   await supabase.from("document_lines").delete().eq("document_id", id);
-  const lines = buildLines(id, v);
+  const lines = buildLines(id, v, v.invoice?.kind === "acompte");
   if (lines.length > 0) {
     const { error: linesError } = await supabase.from("document_lines").insert(lines);
     if (linesError) return { ok: false, error: linesError.message };

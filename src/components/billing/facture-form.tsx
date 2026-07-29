@@ -76,6 +76,9 @@ function buildFactureDefaults(props: Props): DocumentInput {
         unit: line?.unit ?? "",
         quantity: 1,
         unit_price: line?.unit_price ?? 0,
+        // Forfait : une facture porte un montant, pas une quantité × un prix
+        // unitaire. Les colonnes Unité/Qté/PU resteraient vides de sens.
+        is_amount_only: true,
       },
     ],
     labor_amount: 0,

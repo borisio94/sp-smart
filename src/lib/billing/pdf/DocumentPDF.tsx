@@ -490,6 +490,10 @@ export function DocumentPDF(data: DocumentPDFData) {
   // Sections (« compartiments ») : regroupement des lignes + sous-totaux.
   const sectionGroups = groupSections(lines);
   const sectioned = hasNamedSections(lines);
+  // Tableau entièrement forfaitaire (cas d'une facture, qui porte un montant et
+  // non une quantité × un prix) : les colonnes Unité / Qté / PU n'auraient que
+  // des cases vides, on les retire et la désignation occupe la place libérée.
+  const amountOnlyTable = lines.length > 0 && lines.every((l) => l.is_amount_only);
 
   // ── Facture : deux dispositions (acompte / définitive) ──
   const isFacture = doc.type === "facture";
@@ -555,15 +559,29 @@ export function DocumentPDF(data: DocumentPDFData) {
     settlement.marketTotal > doc.total_amount &&
     marketAdvances.length === 0;
 
-  // Libellé du grand total (bandeau vert) selon le type/nature.
+  // Libellé du grand total (bandeau vert) selon le type/nature. Sur une facture
+  // d'acompte, « MONTANT TOTAL » entrerait en conflit avec le « montant total du
+  // marché » rappelé juste en dessous : le bandeau dit donc ce que ce document
+  // réclame. Libellé volontairement court — la cellule fait 170 pt et un texte
+  // plus long passerait à la ligne dans le bandeau.
   const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
   const grandLabel = hasInvoice
-    ? `MONTANT TOTAL (${ttcSuffix})`
+    ? factureKind === "acompte"
+      ? `NET À PAYER (${ttcSuffix})`
+      : `MONTANT TOTAL (${ttcSuffix})`
     : sectioned
       ? "TOTAL GÉNÉRAL"
       : doc.tax_rate > 0
         ? "Total TTC"
         : "Total HT";
+
+  // Sous-total matériel : inutile quand rien ne le sépare du grand total (il le
+  // répéterait à l'identique). Il n'a de sens qu'en regard d'une main d'œuvre,
+  // d'une remise ou d'une taxe — et jamais en mode sectionné, où chaque
+  // compartiment porte déjà son propre total.
+  const showMaterialsSubtotal =
+    !sectioned &&
+    (doc.labor_amount > 0 || doc.discount_amount > 0 || doc.tax_rate > 0);
 
   // Montant en lettres : base et formulation dépendent de la nature.
   //  - acompte avec acompte versé → montant de l'acompte
@@ -734,9 +752,13 @@ export function DocumentPDF(data: DocumentPDFData) {
             <View style={styles.table}>
               <View style={[styles.tHead, { backgroundColor: band }]}>
                 <Text style={[styles.tHeadCell, styles.colDesignation]}>Désignation</Text>
-                <Text style={[styles.tHeadCell, styles.colUnit]}>Unité</Text>
-                <Text style={[styles.tHeadCell, styles.colQty]}>Qté</Text>
-                <Text style={[styles.tHeadCell, styles.colPrice]}>PU (FCFA)</Text>
+                {amountOnlyTable ? null : (
+                  <>
+                    <Text style={[styles.tHeadCell, styles.colUnit]}>Unité</Text>
+                    <Text style={[styles.tHeadCell, styles.colQty]}>Qté</Text>
+                    <Text style={[styles.tHeadCell, styles.colPrice]}>PU (FCFA)</Text>
+                  </>
+                )}
                 <Text style={[styles.tHeadCell, styles.colTotal]}>PT (FCFA)</Text>
               </View>
               {sectioned
@@ -767,15 +789,19 @@ export function DocumentPDF(data: DocumentPDFData) {
                           >
                             {l.designation}
                           </Text>
-                          <Text style={[styles.tCell, styles.colUnit]}>
-                            {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
-                          </Text>
-                          <Text style={[styles.tCell, styles.colQty]}>
-                            {l.is_amount_only ? "" : pdfNumber(l.quantity)}
-                          </Text>
-                          <Text style={[styles.tCell, styles.colPrice]}>
-                            {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
-                          </Text>
+                          {amountOnlyTable ? null : (
+                            <>
+                              <Text style={[styles.tCell, styles.colUnit]}>
+                                {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
+                              </Text>
+                              <Text style={[styles.tCell, styles.colQty]}>
+                                {l.is_amount_only ? "" : pdfNumber(l.quantity)}
+                              </Text>
+                              <Text style={[styles.tCell, styles.colPrice]}>
+                                {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
+                              </Text>
+                            </>
+                          )}
                           <Text
                             style={[
                               styles.tCell,
@@ -811,15 +837,19 @@ export function DocumentPDF(data: DocumentPDFData) {
                       >
                         {l.designation}
                       </Text>
-                      <Text style={[styles.tCell, styles.colUnit]}>
-                        {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
-                      </Text>
-                      <Text style={[styles.tCell, styles.colQty]}>
-                        {l.is_amount_only ? "" : pdfNumber(l.quantity)}
-                      </Text>
-                      <Text style={[styles.tCell, styles.colPrice]}>
-                        {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
-                      </Text>
+                      {amountOnlyTable ? null : (
+                        <>
+                          <Text style={[styles.tCell, styles.colUnit]}>
+                            {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
+                          </Text>
+                          <Text style={[styles.tCell, styles.colQty]}>
+                            {l.is_amount_only ? "" : pdfNumber(l.quantity)}
+                          </Text>
+                          <Text style={[styles.tCell, styles.colPrice]}>
+                            {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
+                          </Text>
+                        </>
+                      )}
                       <Text
                         style={[
                           styles.tCell,
@@ -836,13 +866,12 @@ export function DocumentPDF(data: DocumentPDFData) {
             {/* Totaux : bloc étroit aligné à droite */}
             <View style={styles.totalsWrap}>
             <View style={styles.totalsTable}>
-              {/* Sous-total matériel : masqué en mode sectionné (déjà cumulé par section). */}
-              {sectioned ? null : (
+              {showMaterialsSubtotal ? (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabelCell}>Total matériel</Text>
                   <Text style={styles.totalValueCell}>{pdfNumber(doc.materials_subtotal)}</Text>
                 </View>
-              )}
+              ) : null}
               {doc.labor_amount > 0 ? (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabelCell}>Main d&apos;œuvre</Text>
