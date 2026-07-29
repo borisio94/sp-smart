@@ -539,15 +539,21 @@ export function DocumentPDF(data: DocumentPDFData) {
   const showMarketRecap =
     (isFacture || isReceipt) &&
     shouldShowSettlement(settlement, doc.total_amount);
-  // La ligne « présente facture » n'a de sens que sur une facture ne couvrant
-  // qu'une part du marché : au montant plein elle répéterait le marché, et sur
-  // un reçu le montant est déjà compté dans « déjà encaissé ».
-  const showThisDocLine =
-    isFacture && settlement !== null && settlement.marketTotal > doc.total_amount;
   // Détail des acomptes encaissés (montant + date de versement) : les acomptes
   // suivants s'enregistrent en paiements sur la facture initiale, qui doit donc
   // les rappeler tous. À défaut de détail (lien privé), on s'en tient au total.
   const marketAdvances = settlement?.advances.filter((a) => a.amount > 0) ?? [];
+  // La ligne « présente facture » n'a de sens que sur une facture ne couvrant
+  // qu'une part du marché : au montant plein elle répéterait le marché, et sur
+  // un reçu le montant est déjà compté dans « déjà encaissé ». Dès que les
+  // versements sont détaillés, on la retire aussi : la colonne se lit alors
+  // comme une soustraction (marché − acomptes = reste dû), et un montant non
+  // déduit au milieu donnerait l'illusion d'un double compte.
+  const showThisDocLine =
+    isFacture &&
+    settlement !== null &&
+    settlement.marketTotal > doc.total_amount &&
+    marketAdvances.length === 0;
 
   // Libellé du grand total (bandeau vert) selon le type/nature.
   const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
@@ -881,7 +887,7 @@ export function DocumentPDF(data: DocumentPDFData) {
             </View>
             <View style={styles.recapBody}>
               <RecapRow
-                label={`Montant total du marché (TTC)${
+                label={`Montant total du marché (${ttcSuffix})${
                   settlement.quotationNumber ? ` — ${settlement.quotationNumber}` : ""
                 }`}
                 value={pdfMoney(settlement.marketTotal)}
@@ -933,7 +939,7 @@ export function DocumentPDF(data: DocumentPDFData) {
               {factureKind === "acompte" ? (
                 <>
                   <RecapRow
-                    label="Montant Total du Marché (TTC)"
+                    label={`Montant Total du Marché (${ttcSuffix})`}
                     value={pdfMoney(doc.total_amount)}
                   />
                   {/* Montant saisi tel quel : aucun acompte n'est déduit d'un
@@ -952,7 +958,7 @@ export function DocumentPDF(data: DocumentPDFData) {
               ) : (
                 <>
                   <RecapRow
-                    label="Montant Total du Chantier (TTC)"
+                    label={`Montant Total du Chantier (${ttcSuffix})`}
                     value={pdfMoney(doc.total_amount)}
                   />
                   {invDeductions.map((d, i) => (

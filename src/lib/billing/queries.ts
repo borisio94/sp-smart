@@ -183,6 +183,8 @@ export interface QuotationOption {
   type: BillingDocument["type"];
   client_id: string | null;
   issue_date: string;
+  /** Montant du marché — sert à énoncer le solde en FCFA sur la facture. */
+  total_amount: number;
   /**
    * Facture d'acompte déjà ouverte sur ce marché. Elle en tient le registre :
    * les acomptes suivants s'y enregistrent en paiements, sans nouvelle facture.
@@ -199,7 +201,7 @@ export async function listQuotations(): Promise<QuotationOption[]> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("documents")
-    .select("id, number, type, client_id, issue_date")
+    .select("id, number, type, client_id, issue_date, total_amount")
     .in("type", ["devis", "proforma", "bon_commande"])
     .order("issue_date", { ascending: false });
 

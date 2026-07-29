@@ -18,7 +18,12 @@ import {
   formatMoney,
   formatDate,
 } from "@/lib/billing/format";
-import { FACTURE_TEMPLATES, emptyReport } from "@/lib/billing/templates";
+import {
+  FACTURE_TEMPLATES,
+  balanceTermsLine,
+  withTermsLine,
+  emptyReport,
+} from "@/lib/billing/templates";
 import {
   createFacture,
   updateFacture,
@@ -184,7 +189,19 @@ export function FactureForm(props: Props) {
     ].some((v) => (v ?? "").trim() !== "");
     if (hasContent && !window.confirm(t("documents.applyTemplateConfirm"))) return;
     if (tpl.subject !== undefined) setValue("subject", tpl.subject);
-    if (tpl.payment_terms !== undefined) setValue("payment_terms", tpl.payment_terms);
+    // Sur une facture d'acompte, le solde s'énonce en FCFA : marché de la
+    // cotation liée moins l'acompte saisi — jamais un pourcentage.
+    const marketTotal = clientQuotations.find(
+      (q) => q.id === watched.linked_document_id,
+    )?.total_amount;
+    const balance = marketTotal
+      ? Math.max(0, Math.round(marketTotal) - Math.round(totals.totalAmount))
+      : 0;
+    const terms =
+      kind === "acompte" && balance > 0
+        ? withTermsLine(tpl.payment_terms ?? "", balanceTermsLine(balance))
+        : tpl.payment_terms;
+    if (terms !== undefined) setValue("payment_terms", terms);
     if (tpl.delivery_terms !== undefined) setValue("delivery_terms", tpl.delivery_terms);
     setValue("include_conditions", true);
     toast.success(t("documents.templateApplied"));

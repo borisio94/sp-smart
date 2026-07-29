@@ -28,6 +28,8 @@ import {
 } from "@/lib/billing/format";
 import {
   DOCUMENT_TEMPLATES,
+  advanceTermsLine,
+  withTermsLine,
   emptyReport,
   reportSkeleton,
   isReportEmpty,
@@ -404,6 +406,9 @@ export function DocumentForm(props: Props) {
   const [customTypes, setCustomTypes] = useState<CustomDocumentType[]>(
     props.customTypes,
   );
+  // Montant d'acompte à énoncer dans les conditions (saisie ponctuelle : il ne
+  // sert qu'à rédiger la modalité, il n'est pas stocké sur le document).
+  const [advanceInput, setAdvanceInput] = useState("");
   const [showTypeForm, setShowTypeForm] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypePrefix, setNewTypePrefix] = useState("");
@@ -469,6 +474,28 @@ export function DocumentForm(props: Props) {
       setValue("include_conditions", tpl.include_conditions);
     }
     toast.success(t("documents.templateApplied"));
+  }
+
+  /**
+   * Écrit la modalité d'acompte en montants dans les conditions : le montant
+   * demandé est celui qui est saisi ici, le solde s'en déduit par soustraction
+   * — jamais un pourcentage du total.
+   */
+  function insertAdvanceTerms() {
+    const advance = Math.round(Number(advanceInput) || 0);
+    if (advance <= 0 || advance > totals.totalAmount) {
+      toast.error(t("documents.advanceTermsInvalid"));
+      return;
+    }
+    setValue(
+      "payment_terms",
+      withTermsLine(
+        getValues("payment_terms") ?? "",
+        advanceTermsLine(advance, totals.totalAmount),
+      ),
+    );
+    if (!conditionsForced) setValue("include_conditions", true);
+    toast.success(t("documents.advanceTermsInserted"));
   }
 
   async function onCreateType() {
@@ -1125,6 +1152,35 @@ export function DocumentForm(props: Props) {
                   <FileText className="size-4" />
                   {t("documents.applyTemplate", { type: DOCUMENT_TYPE_LABELS[watched.type] })}
                 </Button>
+              ) : null}
+              {/* Modalité d'acompte chiffrée : montant saisi, solde déduit. */}
+              {totals.totalAmount > 0 ? (
+                <div className="rounded-xl ring-1 ring-foreground/10 p-3">
+                  <Label htmlFor="d-advance">{t("documents.advanceTerms")}</Label>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <Input
+                      id="d-advance"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max={totals.totalAmount}
+                      className="max-w-[12rem]"
+                      value={advanceInput}
+                      onChange={(e) => setAdvanceInput(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={insertAdvanceTerms}
+                    >
+                      {t("documents.advanceTermsInsert")}
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("documents.advanceTermsHint")}
+                  </p>
+                </div>
               ) : null}
               <div>
                 <Label htmlFor="d-payterms">

@@ -1,3 +1,4 @@
+import { formatMoney } from "./format";
 import type { DocumentType, FactureKind, MaintenanceReportData } from "./types";
 
 /**
@@ -26,7 +27,9 @@ export const DOCUMENT_TEMPLATES: Partial<Record<DocumentType, DocumentTemplate>>
   devis: {
     subject: "Étude et proposition chiffrée pour…",
     payment_terms:
-      "Acompte de 50 % à la commande, solde à la livraison.\n" +
+      // Aucun taux : le montant de l'acompte se saisit et s'insère ici
+      // (cf. `advanceTermsLine`).
+      "Acompte à la commande, solde à la livraison.\n" +
       "Devis gratuit et sans engagement.\n" +
       "Offre valable 30 jours à compter de la date d'émission.",
     delivery_terms:
@@ -100,6 +103,48 @@ export const FACTURE_TEMPLATES: Record<FactureKind, DocumentTemplate> = {
     include_conditions: true,
   },
 };
+
+// ───────────── Modalités de règlement chiffrées ─────────────
+/**
+ * Montant destiné à un texte de conditions, donc au PDF : les espaces fines
+ * insécables produites par Intl n'existent pas dans les polices embarquées
+ * (même parade que `normalizeSpaces` côté rendu PDF).
+ */
+function termsMoney(amount: number): string {
+  return formatMoney(amount).replace(/[   ]/g, " ");
+}
+
+/**
+ * Les modalités s'expriment en MONTANTS, jamais en pourcentages : l'acompte est
+ * celui qui a été convenu et saisi, le solde s'en déduit par soustraction. Un
+ * taux obligerait le client à recalculer — et ferait diverger l'énoncé des
+ * conditions du montant réellement facturé.
+ */
+export function advanceTermsLine(advance: number, total: number): string {
+  const balance = Math.max(0, Math.round(total) - Math.round(advance));
+  return `Acompte de ${termsMoney(advance)} à la commande, solde de ${termsMoney(
+    balance,
+  )} à la livraison.`;
+}
+
+/** Modalité de solde d'une facture d'acompte (reste dû sur le marché). */
+export function balanceTermsLine(balance: number): string {
+  return `Solde de ${termsMoney(
+    balance,
+  )} payable à la livraison / à la fin des travaux (selon le calendrier convenu).`;
+}
+
+/**
+ * Place une modalité chiffrée en tête des conditions, en retirant la ligne
+ * d'acompte ou de solde déjà présente : réinsérer un montant corrigé ne doit
+ * pas laisser l'ancien à côté.
+ */
+export function withTermsLine(terms: string, line: string): string {
+  const kept = (terms ?? "")
+    .split("\n")
+    .filter((l) => !/^\s*(acompte|solde)\b/i.test(l));
+  return [line, ...kept].join("\n").trim();
+}
 
 // ───────────── Rapport de maintenance ─────────────
 /** Rapport vierge (édition d'un rapport existant ou état initial). */
