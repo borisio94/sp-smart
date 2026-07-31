@@ -804,6 +804,17 @@ export function DocumentPDF(data: DocumentPDFData) {
     !hasInvoice && doc.amount_in_words?.trim()
       ? doc.amount_in_words.trim()
       : amountToWords(wordsAmount);
+  // Titre du fichier PDF (onglet du navigateur, propriétés du document, pièce
+  // jointe d'un e-mail) : le client y figure, sans quoi deux documents ouverts
+  // côte à côte sont impossibles à distinguer.
+  const docMetaTitle = [
+    `${docLabel}${advanceRankSuffix}`,
+    doc.number ?? null,
+    client?.name?.trim() || null,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+
   const wordsIntro = hasInvoice
     ? factureKind === "acompte"
       ? "Arrêtée la présente facture d'acompte à la somme de :"
@@ -841,10 +852,7 @@ export function DocumentPDF(data: DocumentPDFData) {
     conditionItems.length > 0;
 
   return (
-    <Document
-      title={`${docLabel}${advanceRankSuffix} ${doc.number ?? ""}`.trim()}
-      author={org.name}
-    >
+    <Document title={docMetaTitle} author={org.name} subject={subject ?? undefined}>
       <Page size="A4" style={styles.page}>
         {/* Filigrane EN PREMIER (arrière-plan) : logo entreprise ou monogramme SP */}
         {data.watermarkData ? (
