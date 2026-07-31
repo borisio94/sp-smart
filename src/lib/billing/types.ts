@@ -125,6 +125,12 @@ export interface InvoiceData {
   advance_percent: number | null; // acompte : pourcentage du marché (affichage/calcul)
   advance_amount: number; // acompte : montant versé ce jour (FCFA)
   deductions: InvoiceDeduction[]; // facture définitive : acomptes déduits
+  /**
+   * Versement (`payments.id`) que cette facture d'acompte matérialise, quand
+   * elle a été générée depuis l'historique des encaissements. C'est ce lien qui
+   * empêche de générer deux fois la facture d'un même acompte.
+   */
+  advance_payment_id?: string | null;
 }
 
 // ───────────── Tables ─────────────

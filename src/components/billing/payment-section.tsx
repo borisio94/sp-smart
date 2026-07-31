@@ -9,10 +9,11 @@ import {
   settledAmount,
   shouldShowSettlement,
 } from "@/lib/billing/settlement";
-import { formatMoney } from "@/lib/billing/format";
+import { formatMoney, formatDate } from "@/lib/billing/format";
 import { PaymentRecorder } from "./payment-recorder";
 import { PaymentRow } from "./payment-row";
 import { FinalInvoiceButton } from "./final-invoice-button";
+import { AdvanceInvoiceButton } from "./advance-invoice-button";
 import {
   Card,
   CardContent,
@@ -24,10 +25,12 @@ import {
  * Section paiements d'une facture (Server Component) : suivi du marché, barre
  * de progression, formulaire d'enregistrement et historique des versements.
  *
- * Une facture d'acompte tient lieu de registre pour tout son marché : les
- * acomptes suivants s'y enregistrent en paiements (pas de nouvelle facture), la
- * progression se mesure sur le montant du marché, et la saisie se clôt dès que
- * le marché est soldé — une facture définitive prend alors le relais.
+ * Une facture d'acompte ne porte qu'une part du marché : la progression se
+ * mesure donc sur le montant de la cotation et sur l'ensemble de ses
+ * encaissements, faute de quoi la facture s'afficherait « payée » dès son
+ * propre acompte. Le versement proposé, lui, est celui de la facture ouverte.
+ * La saisie se clôt dès que le marché est soldé — une facture définitive prend
+ * alors le relais.
  */
 export async function PaymentSection({
   documentId,
@@ -48,8 +51,26 @@ export async function PaymentSection({
   const due = dueAmount(settlement, totalAmount);
   const paid = settledAmount(settlement, paidOnDoc);
   const remaining = Math.max(0, due - paid);
+  // Une facture d'acompte générée depuis l'historique matérialise un versement
+  // DÉJÀ encaissé (enregistré sur la facture qui l'a reçu, jamais déplacé).
+  const alreadySettled =
+    settlement?.advances.some((a) => a.invoiceId === documentId) ?? false;
+  // Montant proposé à la saisie : ce que réclame CETTE facture (une facture
+  // d'acompte n'encaisse que son acompte, pas le solde du marché). Sur une
+  // facture dont l'acompte est déjà encaissé, proposer son montant inviterait à
+  // saisir deux fois le même versement : on propose le reste dû sur le marché.
+  const suggested =
+    onMarket && !alreadySettled
+      ? Math.max(0, totalAmount - paidOnDoc)
+      : remaining;
   const pct = due > 0 ? Math.min(100, Math.round((paid / due) * 100)) : 0;
   const today = new Date().toISOString().slice(0, 10);
+
+  // Acomptes encaissés sur le marché : chacun peut porter sa propre facture.
+  // Un remboursement (montant négatif) n'en est pas un.
+  const marketAdvances = (settlement?.advances ?? []).filter(
+    (a): a is typeof a & { id: string } => Boolean(a.id) && a.amount > 0,
+  );
 
   // Règlement clôturé : plus rien à encaisser sur le marché.
   const closed = settlement !== null && settlement.remaining <= 0;
@@ -119,6 +140,40 @@ export async function PaymentSection({
           </div>
         </div>
 
+        {/* Factures d'acompte du marché : chaque versement encaissé peut porter
+            sa propre pièce, datée du jour où il a été reçu. */}
+        {marketAdvances.length > 0 ? (
+          <div>
+            <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+              {t("payments.advancesTitle")}
+            </p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              {t("payments.advancesHint")}
+            </p>
+            <ul className="divide-y divide-border">
+              {marketAdvances.map((a, i) => (
+                <li
+                  key={a.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm"
+                >
+                  <span className="font-medium">
+                    {t("payments.advanceRank", { rank: i + 1 })}
+                  </span>
+                  <span className="tabular-nums">{formatMoney(a.amount)}</span>
+                  <span className="text-muted-foreground">{formatDate(a.date)}</span>
+                  <span className="ml-auto">
+                    <AdvanceInvoiceButton
+                      paymentId={a.id}
+                      invoiceId={a.invoiceId ?? null}
+                      invoiceNumber={a.invoiceNumber ?? null}
+                    />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {/* Historique des acomptes encaissés sur cette facture */}
         <div>
           <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
@@ -158,7 +213,7 @@ export async function PaymentSection({
               <PaymentRecorder
                 documentId={documentId}
                 defaultDate={today}
-                suggestedAmount={remaining}
+                suggestedAmount={suggested}
               />
             </>
           )}

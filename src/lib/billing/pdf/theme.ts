@@ -56,6 +56,16 @@ export function pdfNumber(value: number | null | undefined): string {
 }
 
 /**
+ * Pourcentage : deux décimales au plus, sans zéro inutile (« 50 », « 27,78 »).
+ * Le signe « % » n'est pas ajouté (le libellé qui l'utilise le place lui-même).
+ */
+const percentFmt = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
+
+export function pdfPercent(value: number | null | undefined): string {
+  return normalizeSpaces(percentFmt.format(value ?? 0));
+}
+
+/**
  * Nettoie une valeur de champ de l'organisation pour l'affichage sur le PDF :
  * renvoie null si la valeur est vide OU contient le placeholder "A_REMPLIR"
  * (jamais montré à un client). À utiliser pour tous les champs légaux/contact.

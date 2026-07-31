@@ -141,16 +141,29 @@ export function FactureForm(props: Props) {
     (q) => q.client_id === watched.client_id && q.id !== props.document?.id,
   );
 
-  // Un marché n'a qu'une facture d'acompte : elle tient le registre des
-  // versements. Si elle existe déjà, on renvoie l'utilisateur vers elle plutôt
-  // que de laisser créer une seconde facture pour le même acompte.
-  const existingAdvance = clientQuotations.find(
+  // Un marché porte autant de factures d'acompte qu'il y a de versements : on
+  // rappelle celles déjà émises et ce qui reste à verser, pour que la suivante
+  // se saisisse en connaissance de cause.
+  const linkedQuotation = clientQuotations.find(
     (q) => q.id === watched.linked_document_id,
-  )?.advance_invoice;
-  const advanceAlreadyOpen =
-    kind === "acompte" &&
-    existingAdvance != null &&
-    existingAdvance.id !== props.document?.id;
+  );
+  // En édition, la facture courante est déjà comptée dans le cumul du marché
+  // auquel elle est rattachée : on l'en retire pour ne pas déduire deux fois son
+  // propre acompte.
+  const editedInSequence =
+    props.document != null &&
+    props.document.invoice_data?.kind === "acompte" &&
+    props.document.linked_document_id === linkedQuotation?.id;
+  const priorAdvanceCount = Math.max(
+    0,
+    (linkedQuotation?.advance_count ?? 0) - (editedInSequence ? 1 : 0),
+  );
+  const priorAdvanceTotal = Math.max(
+    0,
+    (linkedQuotation?.advance_total ?? 0) -
+      (editedInSequence ? props.document!.total_amount : 0),
+  );
+  const showAdvanceSequence = kind === "acompte" && priorAdvanceCount > 0;
 
   // Report automatique de la « Réf client » (code CLI-…) à la sélection.
   const selectedClientId = watched.client_id;
@@ -193,12 +206,16 @@ export function FactureForm(props: Props) {
     if (hasContent && !window.confirm(t("documents.applyTemplateConfirm"))) return;
     if (tpl.subject !== undefined) setValue("subject", tpl.subject);
     // Sur une facture d'acompte, le solde s'énonce en FCFA : marché de la
-    // cotation liée moins l'acompte saisi — jamais un pourcentage.
-    const marketTotal = clientQuotations.find(
-      (q) => q.id === watched.linked_document_id,
-    )?.total_amount;
+    // cotation liée, moins les acomptes déjà facturés et celui saisi ici —
+    // jamais un pourcentage.
+    const marketTotal = linkedQuotation?.total_amount;
     const balance = marketTotal
-      ? Math.max(0, Math.round(marketTotal) - Math.round(totals.totalAmount))
+      ? Math.max(
+          0,
+          Math.round(marketTotal) -
+            Math.round(priorAdvanceTotal) -
+            Math.round(totals.totalAmount),
+        )
       : 0;
     const terms =
       kind === "acompte" && balance > 0
@@ -409,19 +426,18 @@ export function FactureForm(props: Props) {
           </div>
         </div>
 
-        {/* Un acompte de plus sur un marché déjà facturé = un paiement, pas une
-            nouvelle facture. */}
-        {advanceAlreadyOpen && existingAdvance ? (
-          <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-            {t("documents.advanceAlreadyOpen", {
-              number: existingAdvance.number ?? "—",
-            })}{" "}
-            <Link
-              href={`/admin/billing/documents/${existingAdvance.id}`}
-              className="font-medium underline underline-offset-4"
-            >
-              {t("documents.advanceAlreadyOpenLink")}
-            </Link>
+        {/* Acompte suivant sur un marché déjà entamé : on rappelle le rang et ce
+            qui reste à verser, repris tels quels sur le PDF. */}
+        {showAdvanceSequence && linkedQuotation ? (
+          <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
+            {t("documents.advanceSequence", {
+              rank: priorAdvanceCount + 1,
+              count: priorAdvanceCount,
+              invoiced: formatMoney(priorAdvanceTotal),
+              remaining: formatMoney(
+                Math.max(0, linkedQuotation.total_amount - priorAdvanceTotal),
+              ),
+            })}
           </p>
         ) : null}
 

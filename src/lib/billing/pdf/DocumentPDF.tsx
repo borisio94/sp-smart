@@ -16,13 +16,19 @@ import type {
 import { DOCUMENT_TYPE_LABELS, PAYMENT_METHOD_LABELS, factureTitleLabel } from "../format";
 import { deductionsTotal, groupSections, hasNamedSections } from "../compute";
 import { shortHash } from "../signature";
-import { shouldShowSettlement, type Settlement } from "../settlement";
+import {
+  advancePosition,
+  isAdvanceOnMarket,
+  shouldShowSettlement,
+  type Settlement,
+} from "../settlement";
 import { amountToWords } from "../amountToWords";
 import {
   PDF_COLORS,
   bandColor,
   pdfMoney,
   pdfNumber,
+  pdfPercent,
   pdfDate,
   cleanField,
 } from "./theme";
@@ -172,6 +178,14 @@ const styles = StyleSheet.create({
   tCell: { fontSize: 10.5, paddingVertical: 5.5, paddingHorizontal: 6, color: PDF_COLORS.bodyBlack },
   // Ligne forfaitaire (montant direct, sans qté/PU) : mise en évidence en gras.
   tCellFlat: { fontFamily: "Times-Bold" },
+  // Ligne de synthèse qui clôt le tableau (reste à payer d'un acompte) :
+  // bandeau vert plein, texte blanc — même traitement que le grand total.
+  tCellStrong: {
+    fontFamily: "Times-Bold",
+    fontSize: 12,
+    color: PDF_COLORS.white,
+    paddingVertical: 7,
+  },
   // Bande de titre de section (compartiment) et ligne de sous-total.
   sectionBandRow: {
     backgroundColor: PDF_COLORS.bandBg,
@@ -215,6 +229,9 @@ const styles = StyleSheet.create({
   colQty: { width: 38, textAlign: "center" },
   colPrice: { width: 78, textAlign: "right" },
   colTotal: { width: 84, textAlign: "right" },
+  // Tableau à deux colonnes : la place libérée par Unité/Qté/PU profite au
+  // montant, dont l'en-tête « Montant (FCFA) » passerait sinon à la ligne.
+  colTotalWide: { width: 120, textAlign: "right" },
 
   // ── Totaux : bloc étroit aligné à droite (libellé | [taux] | valeur) ──
   totalsWrap: { marginHorizontal: 28, marginTop: 2, alignItems: "flex-end" },
@@ -439,6 +456,54 @@ function toItems(text: string | null): string[] {
 }
 
 /**
+ * Une ligne du tableau, cellules déjà formatées pour l'impression.
+ *
+ * Cette indirection existe pour la facture d'acompte, dont le tableau n'est pas
+ * la copie des lignes enregistrées mais une reconstitution (reste à verser,
+ * acompte en négatif) : le même balisage imprime les deux cas.
+ */
+interface TableRowView {
+  key: string;
+  designation: string;
+  /** Vide sur une ligne forfaitaire (aucune unité à annoncer). */
+  unit: string;
+  qty: string;
+  price: string;
+  total: string;
+  /** Ligne forfaitaire : un montant, pas une quantité × un prix unitaire. */
+  flat: boolean;
+  /**
+   * Ligne de synthèse qui clôt le tableau (bandeau vert, texte blanc) : le
+   * reste à payer d'une facture d'acompte, qui tient lieu de total.
+   */
+  strong?: boolean;
+}
+
+/** Vue d'impression d'une ligne enregistrée. */
+function toRowView(line: DocumentLine): TableRowView {
+  const flat = Boolean(line.is_amount_only);
+  return {
+    key: line.id,
+    designation: line.designation,
+    unit: flat ? "" : cleanField(line.unit) ?? "",
+    qty: flat ? "" : pdfNumber(line.quantity),
+    price: flat ? "" : pdfNumber(line.unit_price),
+    total: pdfNumber(line.line_total),
+    flat,
+  };
+}
+
+/**
+ * Retire le préfixe « Acompte sur : » d'une désignation (posé à la création
+ * d'une facture d'acompte, cf. `advanceDesignation` côté serveur). Le tableau
+ * en trois lignes annonce l'acompte sur sa propre ligne : le préfixe ferait
+ * doublon devant l'objet.
+ */
+function stripAdvancePrefix(value: string): string {
+  return value.replace(/^\s*acompte\s+sur\s*:\s*/i, "").trim();
+}
+
+/**
  * Ligne du récapitulatif de règlement d'une facture.
  *  - `strong` : ligne de synthèse (solde / net à payer), bandeau vert plein.
  *  - `negative` : montant déduit (affiché en rouge).
@@ -490,10 +555,6 @@ export function DocumentPDF(data: DocumentPDFData) {
   // Sections (« compartiments ») : regroupement des lignes + sous-totaux.
   const sectionGroups = groupSections(lines);
   const sectioned = hasNamedSections(lines);
-  // Tableau entièrement forfaitaire (cas d'une facture, qui porte un montant et
-  // non une quantité × un prix) : les colonnes Unité / Qté / PU n'auraient que
-  // des cases vides, on les retire et la désignation occupe la place libérée.
-  const amountOnlyTable = lines.length > 0 && lines.every((l) => l.is_amount_only);
 
   // ── Facture : deux dispositions (acompte / définitive) ──
   const isFacture = doc.type === "facture";
@@ -523,7 +584,6 @@ export function DocumentPDF(data: DocumentPDFData) {
       : isFacture
         ? factureTitleLabel(factureKind)
         : DOCUMENT_TYPE_LABELS[doc.type];
-  const typeLabel = docLabel.toUpperCase();
 
   // Le récapitulatif de règlement (acompte versé / déduction des acomptes) ne
   // s'affiche que si des données le justifient. La saisie simplifiée génère une
@@ -559,11 +619,113 @@ export function DocumentPDF(data: DocumentPDFData) {
     settlement.marketTotal > doc.total_amount &&
     marketAdvances.length === 0;
 
-  // Libellé du grand total (bandeau vert) selon le type/nature. Sur une facture
-  // d'acompte, « MONTANT TOTAL » entrerait en conflit avec le « montant total du
-  // marché » rappelé juste en dessous : le bandeau dit donc ce que ce document
-  // réclame. Libellé volontairement court — la cellule fait 170 pt et un texte
-  // plus long passerait à la ligne dans le bandeau.
+  // ── Facture d'acompte rattachée à un marché : tableau en trois lignes ──
+  // Un marché porte autant de factures d'acompte qu'il y a de versements, et
+  // chacune se lit face au marché. Le tableau tient en deux colonnes
+  // (Désignation | Montant) et trois lignes :
+  //   1. l'objet du marché, au montant qui restait à verser avant ce versement ;
+  //   2. l'acompte réclamé, en négatif (« Acompte de 25 % sur le devis … ») ;
+  //   3. le reste à payer après ce versement (bandeau vert, tient lieu de total).
+  // Le montant en lettres demeure celui de l'acompte, c'est-à-dire le montant
+  // porté en négatif. Sans marché rattaché il n'y a rien à situer : le document
+  // garde sa ligne forfaitaire unique.
+  //
+  // Reconstitution à l'impression uniquement : la ligne enregistrée — et donc le
+  // total du document, sur lequel s'adossent paiements et statistiques — reste
+  // le seul acompte réclamé.
+  const advanceAmount = doc.total_amount; // ce que la présente facture réclame
+  const advanceLayout =
+    hasInvoice &&
+    factureKind === "acompte" &&
+    doc.body_mode === "table" &&
+    !sectioned &&
+    // Factures historiques saisies avec un « acompte versé » : elles portent
+    // déjà leur propre récapitulatif, bâti sur d'autres montants.
+    !showAcompteRecap &&
+    advanceAmount > 0 &&
+    isAdvanceOnMarket(settlement, advanceAmount);
+  // Rang de l'acompte et montants encadrant ce versement, lus sur la séquence
+  // des factures d'acompte du marché (cf. `advancePosition`).
+  const advance = advancePosition(settlement, doc.id, advanceAmount);
+  // Titre : une facture d'acompte annonce son rang dans la séquence du marché
+  // (« N° 1 », « N° 2 »…). Sans lui, tous les acomptes d'un même chantier
+  // porteraient rigoureusement le même intitulé.
+  const advanceRankSuffix =
+    factureKind === "acompte" && advance.rank !== null
+      ? ` N° ${advance.rank}`
+      : "";
+  const typeLabel = `${docLabel}${advanceRankSuffix}`.toUpperCase();
+  // Part de l'acompte dans le marché : toujours recalculée, jamais saisie.
+  const advancePercent =
+    settlement && settlement.marketTotal > 0
+      ? (advanceAmount * 100) / settlement.marketTotal
+      : null;
+  const advanceQuotationRef =
+    settlement?.quotationNumber ?? cleanField(inv?.devis_ref);
+  const advanceLineLabel = [
+    "Acompte",
+    advancePercent !== null ? `de ${pdfPercent(advancePercent)} %` : null,
+    advanceQuotationRef ? `sur le devis ${advanceQuotationRef}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const advanceRows: TableRowView[] = [
+    {
+      key: "advance-object",
+      // Objet du MARCHÉ (celui de la cotation rattachée) : la désignation de la
+      // facture ne porte que la part facturée, elle ne dirait pas ce que le
+      // chantier couvre en entier.
+      designation:
+        cleanField(settlement?.quotationSubject) ||
+        stripAdvancePrefix(lines[0]?.designation ?? "") ||
+        cleanField(doc.subject) ||
+        cleanField(doc.title) ||
+        "Prestation",
+      unit: "",
+      qty: "",
+      price: "",
+      total: pdfNumber(advance.remainingBefore),
+      flat: false,
+    },
+    {
+      key: "advance-paid",
+      designation: advanceLineLabel,
+      unit: "",
+      qty: "",
+      price: "",
+      // Signe moins : l'acompte se retranche de ce qui restait à verser.
+      total: `- ${pdfNumber(advanceAmount)}`,
+      flat: false,
+    },
+    {
+      key: "advance-remaining",
+      // Clôture de la soustraction : ce qui reste dû après ce versement.
+      designation: "Reste à payer",
+      unit: "",
+      qty: "",
+      price: "",
+      total: pdfNumber(advance.remainingAfter),
+      flat: false,
+      strong: true,
+    },
+  ];
+
+  // Lignes imprimées dans un tableau non sectionné : celles du document, ou les
+  // trois lignes reconstituées d'une facture d'acompte.
+  const bodyRows = advanceLayout ? advanceRows : lines.map(toRowView);
+  // Tableau à deux colonnes (Désignation | Montant) : facture d'acompte, ou
+  // tableau entièrement forfaitaire (une facture porte un montant et non une
+  // quantité × un prix). Les colonnes Unité / Qté / PU n'auraient que des cases
+  // vides, on les retire et la désignation occupe la place libérée.
+  const amountOnlyTable =
+    advanceLayout || (lines.length > 0 && lines.every((l) => l.is_amount_only));
+  const totalColStyle = amountOnlyTable ? styles.colTotalWide : styles.colTotal;
+
+  // Libellé du grand total (bandeau vert) selon le type/nature. Une facture
+  // d'acompte au tableau reconstitué n'en a pas : sa troisième ligne (« Reste à
+  // payer ») clôt déjà la soustraction et tient lieu de total. Libellés
+  // volontairement courts : la cellule fait 170 pt et un texte plus long
+  // passerait à la ligne.
   const ttcSuffix = doc.tax_rate > 0 ? "TTC" : "HT";
   const grandLabel = hasInvoice
     ? factureKind === "acompte"
@@ -587,6 +749,9 @@ export function DocumentPDF(data: DocumentPDFData) {
   //  - acompte avec acompte versé → montant de l'acompte
   //  - définitive avec déductions → net à payer (solde final)
   //  - sinon                      → total du document
+  // Une facture d'acompte au tableau reconstitué tombe dans le dernier cas : son
+  // total EST l'acompte réclamé, soit le montant porté en négatif au tableau —
+  // et non le reste à verser qui clôt la colonne.
   const wordsAmount = showAcompteRecap
     ? (inv?.advance_amount ?? 0)
     : showDeductionRecap
@@ -634,7 +799,7 @@ export function DocumentPDF(data: DocumentPDFData) {
 
   return (
     <Document
-      title={`${docLabel} ${doc.number ?? ""}`.trim()}
+      title={`${docLabel}${advanceRankSuffix} ${doc.number ?? ""}`.trim()}
       author={org.name}
     >
       <Page size="A4" style={styles.page}>
@@ -759,7 +924,12 @@ export function DocumentPDF(data: DocumentPDFData) {
                     <Text style={[styles.tHeadCell, styles.colPrice]}>PU (FCFA)</Text>
                   </>
                 )}
-                <Text style={[styles.tHeadCell, styles.colTotal]}>PT (FCFA)</Text>
+                {/* « PT » (prix total) n'a pas de sens sur une facture d'acompte,
+                    dont la deuxième ligne est une déduction : la colonne y
+                    annonce un montant. */}
+                <Text style={[styles.tHeadCell, totalColStyle]}>
+                  {advanceLayout ? "Montant (FCFA)" : "PT (FCFA)"}
+                </Text>
               </View>
               {sectioned
                 ? sectionGroups.map((group, gi) => (
@@ -805,7 +975,7 @@ export function DocumentPDF(data: DocumentPDFData) {
                           <Text
                             style={[
                               styles.tCell,
-                              styles.colTotal,
+                              totalColStyle,
                               l.is_amount_only ? styles.tCellFlat : {},
                             ]}
                           >
@@ -819,12 +989,18 @@ export function DocumentPDF(data: DocumentPDFData) {
                       </View>
                     </View>
                   ))
-                : lines.map((l, i) => (
+                : bodyRows.map((r, i) => (
                     <View
-                      key={l.id}
+                      key={r.key}
                       style={[
                         styles.tRow,
-                        { backgroundColor: i % 2 === 1 ? PDF_COLORS.tableAltRow : PDF_COLORS.white },
+                        {
+                          backgroundColor: r.strong
+                            ? PDF_COLORS.totalGreen
+                            : i % 2 === 1
+                              ? PDF_COLORS.tableAltRow
+                              : PDF_COLORS.white,
+                        },
                       ]}
                       wrap={false}
                     >
@@ -832,38 +1008,38 @@ export function DocumentPDF(data: DocumentPDFData) {
                         style={[
                           styles.tCell,
                           styles.colDesignation,
-                          l.is_amount_only ? styles.tCellFlat : {},
+                          r.flat ? styles.tCellFlat : {},
+                          r.strong ? styles.tCellStrong : {},
                         ]}
                       >
-                        {l.designation}
+                        {r.designation}
                       </Text>
                       {amountOnlyTable ? null : (
                         <>
-                          <Text style={[styles.tCell, styles.colUnit]}>
-                            {l.is_amount_only ? "" : cleanField(l.unit) ?? ""}
-                          </Text>
-                          <Text style={[styles.tCell, styles.colQty]}>
-                            {l.is_amount_only ? "" : pdfNumber(l.quantity)}
-                          </Text>
-                          <Text style={[styles.tCell, styles.colPrice]}>
-                            {l.is_amount_only ? "" : pdfNumber(l.unit_price)}
-                          </Text>
+                          <Text style={[styles.tCell, styles.colUnit]}>{r.unit}</Text>
+                          <Text style={[styles.tCell, styles.colQty]}>{r.qty}</Text>
+                          <Text style={[styles.tCell, styles.colPrice]}>{r.price}</Text>
                         </>
                       )}
                       <Text
                         style={[
                           styles.tCell,
-                          styles.colTotal,
-                          l.is_amount_only ? styles.tCellFlat : {},
+                          totalColStyle,
+                          r.flat ? styles.tCellFlat : {},
+                          r.strong ? styles.tCellStrong : {},
                         ]}
                       >
-                        {pdfNumber(l.line_total)}
+                        {r.total}
                       </Text>
                     </View>
                   ))}
             </View>
 
-            {/* Totaux : bloc étroit aligné à droite */}
+            {/* Totaux : bloc étroit aligné à droite. Une facture d'acompte au
+                tableau reconstitué n'en a pas — sa troisième ligne porte déjà le
+                reste à payer, et le détail matériel/taxe de l'acompte donnerait
+                une addition qui ne tombe pas juste face aux montants du marché. */}
+            {advanceLayout ? null : (
             <View style={styles.totalsWrap}>
             <View style={styles.totalsTable}>
               {showMaterialsSubtotal ? (
@@ -900,6 +1076,7 @@ export function DocumentPDF(data: DocumentPDFData) {
               </View>
             </View>
             </View>
+            )}
           </>
         ) : (
           <Text style={styles.freeText}>{doc.body_text || ""}</Text>

@@ -70,6 +70,15 @@ function below1000(n: number): string {
   return `${prefix} ${below1000(rest)}`;
 }
 
+/**
+ * Devant « mille », qui est un adjectif numéral, « cent » et « vingt » restent
+ * invariables : « deux cent mille », « quatre-vingt mille ». Le pluriel ne
+ * subsiste que devant un nom (« deux cents millions ») ou en fin de nombre.
+ */
+function beforeMille(words: string): string {
+  return words.replace(/(cent|vingt)s$/, "$1");
+}
+
 /** Convertit un entier positif en lettres françaises. */
 export function integerToWords(value: number): string {
   let n = Math.floor(Math.abs(value));
@@ -94,7 +103,9 @@ export function integerToWords(value: number): string {
   }
   if (thousands > 0) {
     // « mille » est invariable ; « un mille » → « mille »
-    parts.push(thousands === 1 ? "mille" : `${below1000(thousands)} mille`);
+    parts.push(
+      thousands === 1 ? "mille" : `${beforeMille(below1000(thousands))} mille`,
+    );
   }
   if (rest > 0) {
     parts.push(below1000(rest));

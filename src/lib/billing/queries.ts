@@ -185,11 +185,13 @@ export interface QuotationOption {
   issue_date: string;
   /** Montant du marché — sert à énoncer le solde en FCFA sur la facture. */
   total_amount: number;
+  /** Nombre de factures d'acompte déjà émises sur ce marché. */
+  advance_count: number;
   /**
-   * Facture d'acompte déjà ouverte sur ce marché. Elle en tient le registre :
-   * les acomptes suivants s'y enregistrent en paiements, sans nouvelle facture.
+   * Montant cumulé de ces factures d'acompte : ce qui reste à verser sur le
+   * marché s'en déduit, et le prochain acompte s'y ajoute.
    */
-  advance_invoice: { id: string; number: string | null } | null;
+  advance_total: number;
 }
 
 /**
@@ -206,43 +208,49 @@ export async function listQuotations(): Promise<QuotationOption[]> {
     .order("issue_date", { ascending: false });
 
   const quotations =
-    (data as Omit<QuotationOption, "advance_invoice">[] | null) ?? [];
+    (data as Omit<QuotationOption, "advance_count" | "advance_total">[] | null) ??
+    [];
   if (quotations.length === 0) return [];
 
-  // Facture d'acompte déjà émise sur chacun de ces marchés (la plus ancienne
-  // fait foi : c'est elle qui reçoit les versements suivants).
+  // Factures d'acompte déjà émises sur chacun de ces marchés : un marché en
+  // porte autant qu'il y a de versements (acompte n° 1, n° 2…).
   const { data: invoices } = await supabase
     .from("documents")
-    .select("id, number, linked_document_id, invoice_data")
+    .select("id, linked_document_id, total_amount, invoice_data")
     .eq("type", "facture")
     .neq("status", "annule")
     .in(
       "linked_document_id",
       quotations.map((q) => q.id),
-    )
-    .order("issue_date", { ascending: true });
+    );
 
-  const advanceByQuotation = new Map<string, { id: string; number: string | null }>();
+  const advancesByQuotation = new Map<string, { count: number; total: number }>();
   for (const inv of (invoices as
     | {
         id: string;
-        number: string | null;
         linked_document_id: string;
+        total_amount: number;
         invoice_data: { kind?: string } | null;
       }[]
     | null) ?? []) {
     if (inv.invoice_data?.kind !== "acompte") continue;
-    if (advanceByQuotation.has(inv.linked_document_id)) continue;
-    advanceByQuotation.set(inv.linked_document_id, {
-      id: inv.id,
-      number: inv.number,
-    });
+    const acc = advancesByQuotation.get(inv.linked_document_id) ?? {
+      count: 0,
+      total: 0,
+    };
+    acc.count += 1;
+    acc.total += Number(inv.total_amount) || 0;
+    advancesByQuotation.set(inv.linked_document_id, acc);
   }
 
-  return quotations.map((q) => ({
-    ...q,
-    advance_invoice: advanceByQuotation.get(q.id) ?? null,
-  }));
+  return quotations.map((q) => {
+    const acc = advancesByQuotation.get(q.id);
+    return {
+      ...q,
+      advance_count: acc?.count ?? 0,
+      advance_total: acc?.total ?? 0,
+    };
+  });
 }
 
 /** Facture d'acompte candidate à la déduction sur une facture définitive. */
