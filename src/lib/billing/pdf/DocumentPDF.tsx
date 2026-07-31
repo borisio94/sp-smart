@@ -18,7 +18,9 @@ import { deductionsTotal, groupSections, hasNamedSections } from "../compute";
 import { shortHash } from "../signature";
 import {
   advancePosition,
+  advancePositionAt,
   isAdvanceOnMarket,
+  paidAdvances,
   shouldShowSettlement,
   type Settlement,
 } from "../settlement";
@@ -57,6 +59,12 @@ export interface DocumentPDFData {
    * null quand le document n'est rattaché à aucune cotation.
    */
   settlement?: Settlement | null;
+  /**
+   * Acompte à imprimer sur une facture d'acompte (rang 1..n dans la séquence
+   * des versements du marché). Une même facture porte tous les acomptes du
+   * marché : ce paramètre dit lequel elle constate. Absent → le plus récent.
+   */
+  advanceRank?: number | null;
 }
 
 // Conversion millimètres → points PDF (1 pt = 1/72 pouce ; 1 pouce = 25,4 mm).
@@ -569,10 +577,6 @@ export function DocumentPDF(data: DocumentPDFData) {
   const invSoldeRestant = Math.max(0, doc.total_amount - (inv?.advance_amount ?? 0));
   // Taxe : les factures affichent « TVA », les autres documents « IR ».
   const taxLabel = isFacture ? "TVA" : "IR";
-  // payment_method vaut "" quand non précisé ("" est falsy → écarté ici).
-  const payMethod = inv?.payment_method
-    ? PAYMENT_METHOD_LABELS[inv.payment_method]
-    : null;
 
   // Libellé du document : pour un type « autre », on utilise l'intitulé libre
   // saisi dans le champ « Titre » ; une facture précise sa nature ; sinon le
@@ -606,7 +610,7 @@ export function DocumentPDF(data: DocumentPDFData) {
   // Détail des acomptes encaissés (montant + date de versement) : les acomptes
   // suivants s'enregistrent en paiements sur la facture initiale, qui doit donc
   // les rappeler tous. À défaut de détail (lien privé), on s'en tient au total.
-  const marketAdvances = settlement?.advances.filter((a) => a.amount > 0) ?? [];
+  const marketAdvances = paidAdvances(settlement);
   // La ligne « présente facture » n'a de sens que sur une facture ne couvrant
   // qu'une part du marché : au montant plein elle répéterait le marché, et sur
   // un reçu le montant est déjà compté dans « déjà encaissé ». Dès que les
@@ -620,41 +624,77 @@ export function DocumentPDF(data: DocumentPDFData) {
     marketAdvances.length === 0;
 
   // ── Facture d'acompte rattachée à un marché : tableau en trois lignes ──
-  // Un marché porte autant de factures d'acompte qu'il y a de versements, et
-  // chacune se lit face au marché. Le tableau tient en deux colonnes
-  // (Désignation | Montant) et trois lignes :
+  // Une seule facture d'acompte porte tout le marché : chaque versement s'y
+  // enregistre, et elle s'imprime pour l'acompte demandé — le plus récent par
+  // défaut. Le tableau tient en deux colonnes (Désignation | Montant) et trois
+  // lignes :
   //   1. l'objet du marché, au montant qui restait à verser avant ce versement ;
-  //   2. l'acompte réclamé, en négatif (« Acompte de 25 % sur le devis … ») ;
+  //   2. l'acompte constaté, en négatif (« Acompte de 25 % sur le devis … ») ;
   //   3. le reste à payer après ce versement (bandeau vert, tient lieu de total).
-  // Le montant en lettres demeure celui de l'acompte, c'est-à-dire le montant
+  // Le montant en lettres est celui de cet acompte, c'est-à-dire le montant
   // porté en négatif. Sans marché rattaché il n'y a rien à situer : le document
   // garde sa ligne forfaitaire unique.
   //
   // Reconstitution à l'impression uniquement : la ligne enregistrée — et donc le
   // total du document, sur lequel s'adossent paiements et statistiques — reste
-  // le seul acompte réclamé.
-  const advanceAmount = doc.total_amount; // ce que la présente facture réclame
-  const advanceLayout =
+  // inchangée.
+  const isAdvanceInvoice =
     hasInvoice &&
     factureKind === "acompte" &&
     doc.body_mode === "table" &&
     !sectioned &&
     // Factures historiques saisies avec un « acompte versé » : elles portent
     // déjà leur propre récapitulatif, bâti sur d'autres montants.
-    !showAcompteRecap &&
+    !showAcompteRecap;
+  // Acompte imprimé : celui demandé (rang borné à la séquence réelle), sinon le
+  // plus récent — c'est lui que l'on veut voir en ouvrant la facture.
+  const advanceIndex =
+    isAdvanceInvoice && marketAdvances.length > 0
+      ? Math.min(
+          Math.max(1, data.advanceRank ?? marketAdvances.length),
+          marketAdvances.length,
+        ) - 1
+      : -1;
+  const printedAdvance = advanceIndex >= 0 ? marketAdvances[advanceIndex] : null;
+  // Montant constaté : celui du versement imprimé ; à défaut d'encaissement,
+  // ce que la facture réclame.
+  const advanceAmount = printedAdvance ? printedAdvance.amount : doc.total_amount;
+  const advanceLayout =
+    isAdvanceInvoice &&
     advanceAmount > 0 &&
     isAdvanceOnMarket(settlement, advanceAmount);
-  // Rang de l'acompte et montants encadrant ce versement, lus sur la séquence
-  // des factures d'acompte du marché (cf. `advancePosition`).
-  const advance = advancePosition(settlement, doc.id, advanceAmount);
+  // Rang de l'acompte et montants qui l'encadrent : lus sur les versements dès
+  // qu'il en existe, sur la séquence des factures émises sinon.
+  const advance = printedAdvance
+    ? advancePositionAt(settlement, advanceIndex + 1)
+    : advancePosition(settlement, doc.id, advanceAmount);
   // Titre : une facture d'acompte annonce son rang dans la séquence du marché
   // (« N° 1 », « N° 2 »…). Sans lui, tous les acomptes d'un même chantier
   // porteraient rigoureusement le même intitulé.
+  // Récapitulatif du règlement : il s'arrête lui aussi à l'acompte imprimé. Une
+  // facture datée du 12/03 qui listerait les versements de mai et de juin dirait
+  // ce que personne ne pouvait savoir ce jour-là.
+  const recapAdvances =
+    advanceLayout && printedAdvance
+      ? marketAdvances.slice(0, advanceIndex + 1)
+      : marketAdvances;
+  const recapRemaining =
+    advanceLayout && printedAdvance
+      ? advance.remainingAfter
+      : (settlement?.remaining ?? 0);
+
   const advanceRankSuffix =
-    factureKind === "acompte" && advance.rank !== null
-      ? ` N° ${advance.rank}`
-      : "";
+    advanceLayout && advance.rank !== null ? ` N° ${advance.rank}` : "";
   const typeLabel = `${docLabel}${advanceRankSuffix}`.toUpperCase();
+  // Date affichée : celle du versement constaté quand la facture s'imprime pour
+  // un acompte précis — la pièce dit ce qui s'est passé ce jour-là.
+  const displayDate =
+    advanceLayout && printedAdvance ? printedAdvance.date : doc.issue_date;
+  // Mode de règlement : celui du versement constaté, à défaut celui saisi sur la
+  // facture. `payment_method` vaut "" quand non précisé ("" est falsy).
+  const payMethodKey =
+    (advanceLayout ? printedAdvance?.method : null) || inv?.payment_method || null;
+  const payMethod = payMethodKey ? PAYMENT_METHOD_LABELS[payMethodKey] : null;
   // Part de l'acompte dans le marché : toujours recalculée, jamais saisie.
   const advancePercent =
     settlement && settlement.marketTotal > 0
@@ -749,14 +789,17 @@ export function DocumentPDF(data: DocumentPDFData) {
   //  - acompte avec acompte versé → montant de l'acompte
   //  - définitive avec déductions → net à payer (solde final)
   //  - sinon                      → total du document
-  // Une facture d'acompte au tableau reconstitué tombe dans le dernier cas : son
-  // total EST l'acompte réclamé, soit le montant porté en négatif au tableau —
-  // et non le reste à verser qui clôt la colonne.
-  const wordsAmount = showAcompteRecap
-    ? (inv?.advance_amount ?? 0)
-    : showDeductionRecap
-      ? invNet
-      : doc.total_amount;
+  // Une facture d'acompte au tableau reconstitué énonce l'acompte qu'elle
+  // constate — le montant porté en négatif au tableau, et non le reste à verser
+  // qui clôt la colonne ni le total du document, qui ne vaut que pour le
+  // premier acompte.
+  const wordsAmount = advanceLayout
+    ? advanceAmount
+    : showAcompteRecap
+      ? (inv?.advance_amount ?? 0)
+      : showDeductionRecap
+        ? invNet
+        : doc.total_amount;
   const amountWords =
     !hasInvoice && doc.amount_in_words?.trim()
       ? doc.amount_in_words.trim()
@@ -835,7 +878,7 @@ export function DocumentPDF(data: DocumentPDFData) {
         </View>
 
         {/* Date */}
-        <Text style={styles.dateLine}>{pdfDate(doc.issue_date)}</Text>
+        <Text style={styles.dateLine}>{pdfDate(displayDate)}</Text>
 
         {/* Mode de règlement (factures) */}
         {payMethod ? (
@@ -1104,8 +1147,8 @@ export function DocumentPDF(data: DocumentPDFData) {
                   value={pdfMoney(doc.total_amount)}
                 />
               ) : null}
-              {marketAdvances.length > 0 ? (
-                marketAdvances.map((a, i) => (
+              {recapAdvances.length > 0 ? (
+                recapAdvances.map((a, i) => (
                   <RecapRow
                     key={i}
                     label={`Acompte N° ${i + 1} versé le ${pdfDate(a.date)}${
@@ -1124,7 +1167,7 @@ export function DocumentPDF(data: DocumentPDFData) {
               ) : null}
               <RecapRow
                 label="RESTE À PAYER SUR LE MARCHÉ"
-                value={pdfMoney(settlement.remaining)}
+                value={pdfMoney(recapRemaining)}
                 strong
               />
             </View>

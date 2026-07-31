@@ -6,14 +6,15 @@ import { getSettlement } from "@/lib/billing/settlement-query";
 import {
   dueAmount,
   isAdvanceOnMarket,
+  paidAdvances,
   settledAmount,
   shouldShowSettlement,
 } from "@/lib/billing/settlement";
 import { formatMoney, formatDate } from "@/lib/billing/format";
+import type { FactureKind } from "@/lib/billing/types";
 import { PaymentRecorder } from "./payment-recorder";
 import { PaymentRow } from "./payment-row";
 import { FinalInvoiceButton } from "./final-invoice-button";
-import { AdvanceInvoiceButton } from "./advance-invoice-button";
 import {
   Card,
   CardContent,
@@ -31,13 +32,19 @@ import {
  * propre acompte. Le versement proposé, lui, est celui de la facture ouverte.
  * La saisie se clôt dès que le marché est soldé — une facture définitive prend
  * alors le relais.
+ *
+ * Une facture d'acompte porte TOUS les acomptes du marché : chacun s'y
+ * enregistre et s'y imprime, sans qu'il faille émettre une pièce par versement.
  */
 export async function PaymentSection({
   documentId,
   totalAmount,
+  factureKind = null,
 }: {
   documentId: string;
   totalAmount: number;
+  /** Nature de la facture ouverte (les acomptes ne se listent que sur une facture d'acompte). */
+  factureKind?: FactureKind | null;
 }) {
   const t = await getTranslations("Admin");
   const [payments, settlement] = await Promise.all([
@@ -51,26 +58,19 @@ export async function PaymentSection({
   const due = dueAmount(settlement, totalAmount);
   const paid = settledAmount(settlement, paidOnDoc);
   const remaining = Math.max(0, due - paid);
-  // Une facture d'acompte générée depuis l'historique matérialise un versement
-  // DÉJÀ encaissé (enregistré sur la facture qui l'a reçu, jamais déplacé).
-  const alreadySettled =
-    settlement?.advances.some((a) => a.invoiceId === documentId) ?? false;
-  // Montant proposé à la saisie : ce que réclame CETTE facture (une facture
-  // d'acompte n'encaisse que son acompte, pas le solde du marché). Sur une
-  // facture dont l'acompte est déjà encaissé, proposer son montant inviterait à
-  // saisir deux fois le même versement : on propose le reste dû sur le marché.
-  const suggested =
-    onMarket && !alreadySettled
-      ? Math.max(0, totalAmount - paidOnDoc)
-      : remaining;
+  // Montant proposé à la saisie : ce que réclame CETTE facture tant qu'elle
+  // n'est pas couverte. Son premier acompte encaissé, les versements suivants
+  // portent sur le reste du marché — proposer à nouveau son montant inviterait
+  // à saisir deux fois le même acompte.
+  const ownRemaining = Math.max(0, totalAmount - paidOnDoc);
+  const suggested = onMarket && ownRemaining > 0 ? ownRemaining : remaining;
   const pct = due > 0 ? Math.min(100, Math.round((paid / due) * 100)) : 0;
   const today = new Date().toISOString().slice(0, 10);
 
-  // Acomptes encaissés sur le marché : chacun peut porter sa propre facture.
-  // Un remboursement (montant négatif) n'en est pas un.
-  const marketAdvances = (settlement?.advances ?? []).filter(
-    (a): a is typeof a & { id: string } => Boolean(a.id) && a.amount > 0,
-  );
+  // Acomptes encaissés sur le marché, du plus ancien au plus récent : la
+  // facture d'acompte ouverte s'imprime pour l'un ou pour l'autre.
+  const marketAdvances = paidAdvances(settlement);
+  const isAdvanceInvoice = factureKind === "acompte";
 
   // Règlement clôturé : plus rien à encaisser sur le marché.
   const closed = settlement !== null && settlement.remaining <= 0;
@@ -140,9 +140,9 @@ export async function PaymentSection({
           </div>
         </div>
 
-        {/* Factures d'acompte du marché : chaque versement encaissé peut porter
-            sa propre pièce, datée du jour où il a été reçu. */}
-        {marketAdvances.length > 0 ? (
+        {/* Acomptes du marché : cette facture les porte tous et s'imprime pour
+            celui que l'on choisit — le plus récent par défaut. */}
+        {isAdvanceInvoice && marketAdvances.length > 0 ? (
           <div>
             <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
               {t("payments.advancesTitle")}
@@ -153,20 +153,34 @@ export async function PaymentSection({
             <ul className="divide-y divide-border">
               {marketAdvances.map((a, i) => (
                 <li
-                  key={a.id}
+                  key={a.id ?? i}
                   className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm"
                 >
                   <span className="font-medium">
                     {t("payments.advanceRank", { rank: i + 1 })}
+                    {i === marketAdvances.length - 1 ? (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                        {t("payments.advanceLatest")}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="tabular-nums">{formatMoney(a.amount)}</span>
                   <span className="text-muted-foreground">{formatDate(a.date)}</span>
-                  <span className="ml-auto">
-                    <AdvanceInvoiceButton
-                      paymentId={a.id}
-                      invoiceId={a.invoiceId ?? null}
-                      invoiceNumber={a.invoiceNumber ?? null}
-                    />
+                  <span className="ml-auto flex gap-2">
+                    <a
+                      href={`/admin/billing/documents/${documentId}/pdf?acompte=${i + 1}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 items-center rounded-lg border border-border bg-background px-3 text-xs font-medium hover:bg-muted"
+                    >
+                      {t("payments.advancePreview")}
+                    </a>
+                    <a
+                      href={`/admin/billing/documents/${documentId}/pdf?acompte=${i + 1}&dl=1`}
+                      className="inline-flex h-8 items-center rounded-lg border border-border bg-background px-3 text-xs font-medium hover:bg-muted"
+                    >
+                      {t("payments.advanceDownload")}
+                    </a>
                   </span>
                 </li>
               ))}

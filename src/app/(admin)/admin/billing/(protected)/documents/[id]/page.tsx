@@ -315,7 +315,11 @@ export default async function DocumentDetailPage({
 
           {/* Paiements (factures uniquement) */}
           {canReceivePayment(doc.type, doc.status) ? (
-            <PaymentSection documentId={doc.id} totalAmount={doc.total_amount} />
+            <PaymentSection
+              documentId={doc.id}
+              totalAmount={doc.total_amount}
+              factureKind={inv?.kind ?? null}
+            />
           ) : null}
         </div>
 

@@ -40,13 +40,6 @@ export interface SettlementAdvance {
    * (la RPC n'expose aucun identifiant).
    */
   documentId?: string | null;
-  /**
-   * Facture d'acompte qui matérialise CE versement (cf. `advance_payment_id`).
-   * null tant qu'elle n'a pas été générée — c'est ce qui permet de proposer sa
-   * génération, versement par versement.
-   */
-  invoiceId?: string | null;
-  invoiceNumber?: string | null;
 }
 
 /**
@@ -113,17 +106,54 @@ export interface AdvancePosition {
 }
 
 /**
- * Situe une facture d'acompte dans la séquence du marché.
+ * Acomptes réellement encaissés sur le marché, du plus ancien au plus récent :
+ * le rang d'un acompte est sa place dans cette liste (n° 1, n° 2…).
  *
- * Trois lectures, de la plus fidèle à la plus approximative :
- *  1. le versement que cette facture matérialise — ce sont alors les acomptes
- *     REÇUS avant lui qui comptent, qu'ils aient ou non leur propre facture.
- *     C'est la seule lecture juste quand on facture après coup un encaissement
- *     ancien : les versements intermédiaires seraient sinon ignorés ;
- *  2. à défaut, la séquence des factures d'acompte émises (facture établie
- *     avant tout encaissement) ;
- *  3. en dernier recours, l'encaissé global — pour un document hors séquence
- *     (facture isolée, agrégats publics sans détail). Le tableau reste juste.
+ * Un remboursement (montant négatif) n'est pas un acompte : il ne prend pas de
+ * rang et ne décale pas ceux qui suivent.
+ */
+export function paidAdvances(settlement: Settlement | null): SettlementAdvance[] {
+  return (settlement?.advances ?? []).filter((a) => a.amount > 0);
+}
+
+/**
+ * Situe le k-ième acompte encaissé (rang 1..n) dans la séquence du marché :
+ * ce qui restait à verser avant lui, et ce qui reste après.
+ *
+ * C'est la lecture qui fait foi dès qu'un versement existe — une même facture
+ * d'acompte porte tous les acomptes du marché et s'imprime pour l'un ou pour
+ * l'autre.
+ */
+export function advancePositionAt(
+  settlement: Settlement | null,
+  rank: number,
+): AdvancePosition {
+  const paid = paidAdvances(settlement);
+  const index = rank - 1;
+  if (!settlement || index < 0 || index >= paid.length) {
+    return { rank: null, priorTotal: 0, remainingBefore: 0, remainingAfter: 0 };
+  }
+  const priorTotal = paid
+    .slice(0, index)
+    .reduce((sum, a) => sum + a.amount, 0);
+  const remainingBefore = Math.max(0, settlement.marketTotal - priorTotal);
+  return {
+    rank,
+    priorTotal,
+    remainingBefore,
+    remainingAfter: Math.max(0, remainingBefore - paid[index].amount),
+  };
+}
+
+/**
+ * Situe une facture d'acompte dans la séquence des factures émises sur le
+ * marché.
+ *
+ * Repli utilisé tant qu'aucun versement n'est enregistré (facture établie avant
+ * l'encaissement) : les factures d'acompte font alors foi, chacune disant ce
+ * qu'elle réclame. Pour un document hors séquence (facture isolée, agrégats
+ * publics sans détail), on retombe sur l'encaissé global — le tableau reste
+ * juste. Dès qu'un versement existe, c'est `advancePositionAt` qui s'applique.
  */
 export function advancePosition(
   settlement: Settlement | null,
@@ -134,28 +164,16 @@ export function advancePosition(
   if (!settlement) {
     return { rank: null, priorTotal: 0, remainingBefore: 0, remainingAfter: 0 };
   }
-
-  // Un remboursement n'est pas un acompte : il ne prend pas de rang.
-  const paid = settlement.advances.filter((a) => a.amount > 0);
-  const paidIndex = paid.findIndex((a) => a.invoiceId === documentId);
-  const invoiceIndex = settlement.advanceInvoices.findIndex(
-    (i) => i.id === documentId,
-  );
-
-  const rank =
-    paidIndex >= 0 ? paidIndex + 1 : invoiceIndex >= 0 ? invoiceIndex + 1 : null;
+  const index = settlement.advanceInvoices.findIndex((i) => i.id === documentId);
   const priorTotal =
-    paidIndex >= 0
-      ? paid.slice(0, paidIndex).reduce((sum, a) => sum + a.amount, 0)
-      : invoiceIndex >= 0
-        ? settlement.advanceInvoices
-            .slice(0, invoiceIndex)
-            .reduce((sum, i) => sum + i.amount, 0)
-        : Math.max(0, settlement.settledTotal - amount);
-
+    index >= 0
+      ? settlement.advanceInvoices
+          .slice(0, index)
+          .reduce((sum, i) => sum + i.amount, 0)
+      : Math.max(0, settlement.settledTotal - amount);
   const remainingBefore = Math.max(0, settlement.marketTotal - priorTotal);
   return {
-    rank,
+    rank: index >= 0 ? index + 1 : null,
     priorTotal,
     remainingBefore,
     remainingAfter: Math.max(0, remainingBefore - amount),

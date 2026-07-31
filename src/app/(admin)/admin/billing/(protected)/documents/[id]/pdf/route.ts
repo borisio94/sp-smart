@@ -10,6 +10,8 @@ export const runtime = "nodejs";
  * Génère et stream le PDF d'un document à la volée.
  * GET /admin/billing/documents/[id]/pdf
  *  - ?dl=1 force le téléchargement (Content-Disposition: attachment)
+ *  - ?acompte=N constate le N-ième acompte du marché sur une facture d'acompte
+ *    (défaut : le plus récent)
  */
 export async function GET(
   request: Request,
@@ -31,6 +33,11 @@ export async function GET(
     return new Response("Document introuvable", { status: 404 });
   }
 
+  const url = new URL(request.url);
+  // Rang d'acompte demandé : une facture d'acompte porte tous les versements du
+  // marché et s'imprime pour l'un d'eux. Valeur hors séquence → bornée au rendu.
+  const rank = Number.parseInt(url.searchParams.get("acompte") ?? "", 10);
+
   const buffer = await renderDocumentPdf({
     document: doc,
     lines: doc.lines,
@@ -38,9 +45,9 @@ export async function GET(
     client: doc.client,
     categoryName: doc.category?.name_fr ?? null,
     customTypeName: doc.custom_type?.name ?? null,
+    advanceRank: Number.isFinite(rank) ? rank : null,
   });
 
-  const url = new URL(request.url);
   const download = url.searchParams.get("dl") === "1";
   const filename = pdfFilename(doc, doc.client?.name ?? null);
 

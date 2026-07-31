@@ -65,30 +65,6 @@ function buildInvoiceData(input: DocumentInput): InvoiceData | null {
 }
 
 /**
- * Reporte le lien « facture d'acompte ↔ versement facturé » d'un document déjà
- * enregistré.
- *
- * Ce lien n'est pas saisissable : il est posé par `generateAdvanceInvoice`. Une
- * simple édition de la facture l'effacerait, et le même acompte se verrait
- * aussitôt proposer une seconde facture — soit deux fois le même montant dans
- * la séquence du marché.
- */
-async function keepAdvancePaymentLink(
-  supabase: ServerClient,
-  id: string,
-  invoiceData: InvoiceData | null,
-): Promise<void> {
-  if (!invoiceData) return;
-  const { data } = await supabase
-    .from("documents")
-    .select("invoice_data")
-    .eq("id", id)
-    .maybeSingle();
-  const kept = (data?.invoice_data as InvoiceData | null)?.advance_payment_id;
-  if (kept) invoiceData.advance_payment_id = kept;
-}
-
-/**
  * Désignation de l'unique ligne d'une facture d'acompte.
  *
  * Sans ce préfixe, le tableau annonce la prestation entière au prix de
@@ -249,7 +225,6 @@ export async function updateDocument(
   const totals = computeTotals(v);
   const signatureReset = await signatureResetOnEdit(supabase, id);
   const invoiceData = buildInvoiceData(v);
-  await keepAdvancePaymentLink(supabase, id, invoiceData);
 
   const { error } = await supabase
     .from("documents")
@@ -482,7 +457,6 @@ export async function updateFacture(
 
   const invoiceData = buildInvoiceData(v);
   if (invoiceData) invoiceData.devis_ref = devisRef;
-  await keepAdvancePaymentLink(supabase, id, invoiceData);
   const signatureReset = await signatureResetOnEdit(supabase, id);
 
   const { error } = await supabase
@@ -523,134 +497,6 @@ export async function updateFacture(
   revalidatePath("/admin/billing/documents");
   revalidatePath(`/admin/billing/documents/${id}`);
   return { ok: true, id };
-}
-
-/**
- * Génère la facture d'acompte d'un versement déjà encaissé.
- *
- * Chaque acompte reçu sur un marché peut porter sa propre facture, datée du
- * jour du versement. La pièce est un instantané de ce moment-là : elle part du
- * montant du marché, en retranche les acomptes reçus AVANT celui-ci, puis le
- * présent acompte — tout ce qui a suivi (versements ultérieurs, autres
- * factures) lui reste étranger. Le rang, le pourcentage et le reste à payer
- * sont recalculés à l'impression depuis la séquence du marché.
- *
- * Idempotente : un versement déjà facturé renvoie simplement sa facture.
- */
-export async function generateAdvanceInvoice(
-  paymentId: string,
-): Promise<ActionResult> {
-  const profile = await requireProfile();
-  const supabase = await createSupabaseServerClient();
-
-  const { data: payment, error: paymentError } = await supabase
-    .from("payments")
-    .select("id, amount, received_at, method, reference, document_id")
-    .eq("id", paymentId)
-    .maybeSingle();
-  if (paymentError) return { ok: false, error: paymentError.message };
-  if (!payment) return { ok: false, error: "Versement introuvable." };
-
-  const amount = Math.round(Number(payment.amount) || 0);
-  // Un remboursement n'est pas un acompte : il n'y a rien à facturer.
-  if (amount <= 0) {
-    return { ok: false, error: "Ce mouvement n'est pas un acompte encaissé." };
-  }
-
-  const settlement = await getSettlement(payment.document_id);
-  if (!settlement?.quotationId) {
-    return { ok: false, error: "Ce versement n'est rattaché à aucun marché." };
-  }
-  // Facture déjà émise pour cet acompte (lien explicite ou facture d'acompte du
-  // même montant sur laquelle le versement est enregistré).
-  const existing = settlement.advances.find((a) => a.id === paymentId)?.invoiceId;
-  if (existing) return { ok: true, id: existing };
-
-  const [{ data: source }, { data: quotation }] = await Promise.all([
-    supabase
-      .from("documents")
-      .select("client_id, category_id, client_ref, payment_terms, delivery_terms")
-      .eq("id", payment.document_id)
-      .maybeSingle(),
-    supabase
-      .from("documents")
-      .select("id, number, issue_date, title, subject, tax_rate")
-      .eq("id", settlement.quotationId)
-      .maybeSingle(),
-  ]);
-  if (!source || !quotation) {
-    return { ok: false, error: "Cotation liée introuvable." };
-  }
-
-  // Le versement encaissé est un montant TTC si le marché est taxé : on remonte
-  // au hors-taxe pour que le total de la facture retombe exactement sur la
-  // somme reçue (aucun arrondi ne doit s'y glisser).
-  const taxRate = Number(quotation.tax_rate) || 0;
-  const subtotal = Math.round(amount / (1 + taxRate / 100));
-  const label = (quotation.subject ?? quotation.title ?? "Prestation").trim() || "Prestation";
-
-  const { data: created, error } = await supabase
-    .from("documents")
-    .insert({
-      organization_id: profile.organization_id,
-      created_by: profile.id,
-      client_id: source.client_id,
-      category_id: source.category_id,
-      type: "facture",
-      // Datée du jour du versement : la facture constate ce qui s'est passé
-      // ce jour-là, pas l'état du marché au moment où on l'édite.
-      issue_date: payment.received_at,
-      title: quotation.title,
-      subject: quotation.subject,
-      client_ref: source.client_ref,
-      body_mode: "table",
-      invoice_data: {
-        kind: "acompte",
-        payment_method: payment.method ?? "",
-        devis_ref: buildDevisRef(quotation.number, quotation.issue_date),
-        advance_percent: null,
-        // Le récapitulatif « acompte versé ce jour » ne s'applique pas ici :
-        // le tableau en trois lignes dit déjà tout (cf. DocumentPDF).
-        advance_amount: 0,
-        deductions: [],
-        advance_payment_id: payment.id,
-      },
-      materials_subtotal: subtotal,
-      labor_amount: 0,
-      discount_amount: 0,
-      tax_rate: taxRate,
-      tax_amount: amount - subtotal,
-      total_amount: amount,
-      payment_terms: source.payment_terms,
-      delivery_terms: source.delivery_terms,
-      include_conditions: true,
-      signature_required: false,
-      linked_document_id: quotation.id,
-      // Brouillon : l'émetteur relit puis envoie. L'acompte, lui, est acquis —
-      // il reste enregistré sur la facture qui l'a reçu, jamais déplacé.
-      status: "brouillon",
-      payment_status: "paye_total",
-    })
-    .select("id")
-    .single();
-  if (error) return { ok: false, error: error.message };
-
-  const { error: lineError } = await supabase.from("document_lines").insert({
-    document_id: created.id,
-    position: 0,
-    section: null,
-    designation: advanceDesignation(label),
-    unit: null,
-    quantity: 1,
-    unit_price: subtotal,
-    is_amount_only: true,
-    line_total: subtotal,
-  });
-  if (lineError) return { ok: false, error: lineError.message };
-
-  revalidatePath("/admin/billing/documents");
-  revalidatePath(`/admin/billing/documents/${payment.document_id}`);
-  return { ok: true, id: created.id };
 }
 
 /**

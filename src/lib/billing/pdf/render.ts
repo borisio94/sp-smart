@@ -21,6 +21,11 @@ export interface RenderDocumentPdfInput {
   client: Client | null;
   categoryName?: string | null;
   customTypeName?: string | null;
+  /**
+   * Acompte à constater sur une facture d'acompte (rang 1..n des versements du
+   * marché). Absent → le plus récent (cf. `DocumentPDF`).
+   */
+  advanceRank?: number | null;
 }
 
 /**
@@ -39,6 +44,7 @@ export async function renderDocumentPdf({
   client,
   categoryName = null,
   customTypeName = null,
+  advanceRank = null,
 }: RenderDocumentPdfInput): Promise<Buffer> {
   const [uploadedLogo, signatureData, stampData, clientSignatureData, settlement] =
     await Promise.all([
@@ -83,6 +89,7 @@ export async function renderDocumentPdf({
           stampData,
           clientSignatureData,
           settlement,
+          advanceRank,
         });
 
   return renderToBuffer(element);
