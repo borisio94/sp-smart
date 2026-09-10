@@ -6,6 +6,7 @@ export interface TimelineLabels {
   created: string;
   sent: string;
   confirmed: string;
+  started: string;
   completed: string;
   cancelled: string;
 }
@@ -25,6 +26,7 @@ export function StatusTimeline({
     { key: "created", date: doc.created_at },
     { key: "sent", date: doc.sent_at },
     { key: "confirmed", date: doc.confirmed_at },
+    { key: "started", date: doc.started_at },
     { key: "completed", date: doc.completed_at },
     { key: "cancelled", date: doc.cancelled_at },
   ];

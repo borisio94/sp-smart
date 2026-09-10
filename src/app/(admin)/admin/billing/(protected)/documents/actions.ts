@@ -390,6 +390,7 @@ export async function createFacture(values: DocumentInput): Promise<ActionResult
       signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       linked_document_id: linked.linkedId,
+      market_phase: v.market_phase ?? "travaux",
       status: "brouillon",
     })
     .select("id")
@@ -482,6 +483,7 @@ export async function updateFacture(
       signature_required: v.signature_required,
       notes_internes: nz(v.notes_internes),
       linked_document_id: linkedId || null,
+      market_phase: v.market_phase ?? "travaux",
       // Une édition invalide la signature déjà apposée (cf. signatureResetOnEdit).
       ...signatureReset,
     })
@@ -621,6 +623,7 @@ const STATUS_VALUES: DocumentStatus[] = [
   "brouillon",
   "envoye",
   "confirme",
+  "en_cours",
   "termine",
   "annule",
 ];

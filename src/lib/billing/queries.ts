@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { buildMarketOverview } from "./market";
 import type {
   Client,
   Category,
@@ -11,6 +12,10 @@ import type {
   ExpenseCategory,
   CashMovement,
   CashOverview,
+  MarketExpense,
+  MarketPayout,
+  MarketOverview,
+  MaintenanceContract,
 } from "./types";
 
 /**
@@ -471,11 +476,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         .not("confirmed_at", "is", null)
         .gte("confirmed_at", monthStart)
         .lt("confirmed_at", nextMonthStart),
-      // Documents en attente (envoyé ou confirmé).
+      // Documents en attente (envoyé, confirmé ou chantier en cours).
       supabase
         .from("documents")
         .select("id", { count: "exact", head: true })
-        .in("status", ["envoye", "confirme"]),
+        .in("status", ["envoye", "confirme", "en_cours"]),
       // Factures non soldées + leurs paiements (pour le restant dû).
       supabase
         .from("documents")
@@ -513,4 +518,100 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     unpaidCount: unpaidRows.length,
     recent: (recentRes.data as DocumentListItem[] | null) ?? [],
   };
+}
+
+// ───────────── Marché : charges, après-vente & versements en caisse ─────────────
+/**
+ * Synthèse financière d'un marché (cf. `market.ts`).
+ *
+ * Les encaissements se lisent en DEUX temps, et le détour est nécessaire :
+ *
+ *  - au titre des TRAVAUX : la cotation peut porter ses propres paiements
+ *    (acompte à la commande) et ses factures « travaux » les leurs. N'en
+ *    compter qu'une source sous-estimerait l'argent reçu ;
+ *  - au titre de l'APRÈS-VENTE : les factures marquées `market_phase = 'panne'`
+ *    sont rattachées au marché pour le suivi, mais restent HORS de son
+ *    règlement — sinon le reste à payer du marché deviendrait négatif dès la
+ *    première réparation facturée (même règle que `get_document_by_token`).
+ *
+ * Les factures annulées et leurs paiements sont exclus des deux.
+ */
+export async function getMarketOverview(
+  quotationId: string,
+): Promise<MarketOverview | null> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data: quotation } = await supabase
+    .from("documents")
+    .select("id, total_amount")
+    .eq("id", quotationId)
+    .maybeSingle();
+  if (!quotation) return null;
+
+  // Factures rattachées au marché, avec leur phase (une annulée ne compte plus).
+  const { data: invoices } = await supabase
+    .from("documents")
+    .select("id, market_phase")
+    .eq("linked_document_id", quotationId)
+    .eq("type", "facture")
+    .neq("status", "annule");
+
+  const rows = (invoices as { id: string; market_phase: string }[] | null) ?? [];
+  const afterSalesIds = rows.filter((i) => i.market_phase === "panne").map((i) => i.id);
+  // La cotation porte ses propres paiements : elle compte dans les travaux.
+  const worksIds = [
+    quotationId,
+    ...rows.filter((i) => i.market_phase !== "panne").map((i) => i.id),
+  ];
+
+  const [worksPayRes, afterSalesPayRes, expensesRes, payoutsRes] = await Promise.all([
+    supabase.from("payments").select("amount").in("document_id", worksIds),
+    // `in` sur une liste vide renverrait tout : on court-circuite.
+    afterSalesIds.length > 0
+      ? supabase.from("payments").select("amount").in("document_id", afterSalesIds)
+      : Promise.resolve({ data: [] as { amount: number }[] }),
+    supabase
+      .from("market_expenses")
+      .select("*")
+      .eq("document_id", quotationId)
+      .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("cash_movements")
+      .select("id, amount, occurred_at, description, method, reference")
+      .eq("document_id", quotationId)
+      .eq("source", "marche")
+      .eq("direction", "in")
+      .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const total = (rowsData: { amount: number }[] | null) =>
+    (rowsData ?? []).reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+
+  return buildMarketOverview({
+    marketTotal: Number(quotation.total_amount) || 0,
+    worksCollected: total(worksPayRes.data as { amount: number }[] | null),
+    afterSalesCollected: total(afterSalesPayRes.data as { amount: number }[] | null),
+    afterSalesCount: afterSalesIds.length,
+    expenses: (expensesRes.data as MarketExpense[] | null) ?? [],
+    payouts: (payoutsRes.data as MarketPayout[] | null) ?? [],
+  });
+}
+
+/**
+ * Contrat de maintenance d'un chantier. Renvoie null quand aucun contrat n'a
+ * jamais été créé — l'absence de ligne vaut « pas de contrat », il n'est donc
+ * pas nécessaire d'en créer une pour chaque marché.
+ */
+export async function getMaintenanceContract(
+  quotationId: string,
+): Promise<MaintenanceContract | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("maintenance_contracts")
+    .select("*")
+    .eq("document_id", quotationId)
+    .maybeSingle();
+  return (data as MaintenanceContract | null) ?? null;
 }

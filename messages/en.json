@@ -329,7 +329,11 @@
         "finalStatePlaceholder": "Operational / Partial / Out of service",
         "nextMaintenance": "Next maintenance",
         "nextMaintenancePlaceholder": "e.g. 18/12/2026"
-      }
+      },
+      "marketPhase": "Nature",
+      "marketPhaseWorks": "Contract works",
+      "marketPhaseBreakdown": "After-sales service (breakdown)",
+      "marketPhaseHint": "An after-sales invoice tracks with the contract but stays out of its settlement."
     },
     "status": {
       "changeTo": "Advance the status:",
@@ -347,7 +351,10 @@
       "ts_sent": "Sent on",
       "ts_confirmed": "Confirmed on",
       "ts_completed": "Completed on",
-      "ts_cancelled": "Cancelled on"
+      "ts_cancelled": "Cancelled on",
+      "action_start": "Start the works",
+      "action_back_to_confirmed": "Back to confirmed",
+      "ts_started": "Started on"
     },
     "caisse": {
       "title": "Treasury",
@@ -528,6 +535,60 @@
       "uploaded": "Image saved.",
       "removed": "Image removed.",
       "note": "Tip: use transparent PNGs for a clean look on the document. The signature and stamp appear together in the \"For SP Smart Sarl\" block at their real size (signature ≈ 55 mm, stamp ≈ 40 mm), with the stamp overlapping the signature like a hand-signed document."
+    },
+    "market": {
+      "title": "Contract",
+      "subtitle": "Job costs and cash deposit. Internal information, never shown to the client.",
+      "marketTotal": "Contract total",
+      "expenses": "Costs",
+      "paidOut": "Already deposited",
+      "remainingToPayOut": "Left to deposit",
+      "advancedFunds": "Costs exceed the money received: the company is funding this job.",
+      "expensesTitle": "Contract costs",
+      "noExpense": "No cost recorded.",
+      "addExpense": "Add cost",
+      "reason": "Reason",
+      "reasonHint": "Cable purchase, transport, labour…",
+      "amount": "Amount",
+      "date": "Date",
+      "method": "Method",
+      "reference": "Reference",
+      "expenseAdded": "Cost recorded.",
+      "expenseDeleted": "Cost deleted.",
+      "confirmDeleteExpense": "Delete this cost?",
+      "payoutsTitle": "Cash deposits",
+      "noPayout": "No deposit yet.",
+      "payToCash": "Deposit to cash",
+      "payoutDone": "Deposit recorded in cash.",
+      "payoutWarn": "This deposit of {amount} exceeds the contract available ({remaining}). Confirm anyway?",
+      "worksTitle": "Works",
+      "worksMargin": "Job margin",
+      "afterSalesTitle": "After-sales",
+      "afterSalesCollected": "Collected on breakdowns",
+      "afterSalesResult": "After-sales result",
+      "afterSalesExpensesTitle": "After-sales costs",
+      "afterSalesHint": "{count, plural, =0 {No service invoice issued on this contract.} one {# service invoice issued on this contract.} other {# service invoices issued on this contract.}}",
+      "noAfterSalesExpense": "No after-sales cost.",
+      "cashTitle": "Total & cash",
+      "totalMargin": "Contract total result",
+      "reasonHintBreakdown": "Replaced part, technician call-out…"
+    },
+    "maintenance": {
+      "title": "Maintenance contract",
+      "subtitle": "Enable periodic servicing on this job.",
+      "activeUntil": "Contract active until {date}.",
+      "activate": "Maintenance contract active",
+      "activateHint": "Unchecking suspends the contract without erasing its terms.",
+      "startDate": "Start date",
+      "endDate": "Expiry",
+      "amount": "Contract amount",
+      "periodicity": "Frequency",
+      "periodicity_mensuel": "Monthly",
+      "periodicity_trimestriel": "Quarterly",
+      "periodicity_semestriel": "Half-yearly",
+      "periodicity_annuel": "Yearly",
+      "notes": "Notes",
+      "saved": "Maintenance contract saved."
     }
   },
   "Realizations": {

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { getDocument } from "@/lib/billing/queries";
 import { canReceivePayment } from "@/lib/billing/payments";
+import { isMarketDocument } from "@/lib/billing/market";
 import {
   documentTypeLabel,
   factureTitleLabel,
@@ -23,6 +24,7 @@ import { StatusBadge, PaymentBadge } from "@/components/billing/status-badge";
 import { StatusActions } from "@/components/billing/status-actions";
 import { StatusTimeline } from "@/components/billing/status-timeline";
 import { PaymentSection } from "@/components/billing/payment-section";
+import { MarketSection } from "@/components/billing/market-section";
 import { WhatsAppShare } from "@/components/billing/whatsapp-share";
 import { siteUrl } from "@/lib/site";
 import {
@@ -321,6 +323,9 @@ export default async function DocumentDetailPage({
               factureKind={inv?.kind ?? null}
             />
           ) : null}
+
+          {/* Marché : charges internes et versement en caisse (cotations) */}
+          {isMarketDocument(doc.type) ? <MarketSection documentId={doc.id} /> : null}
         </div>
 
         {/* Colonne latérale */}
@@ -448,6 +453,7 @@ export default async function DocumentDetailPage({
                   created: t("status.ts_created"),
                   sent: t("status.ts_sent"),
                   confirmed: t("status.ts_confirmed"),
+                  started: t("status.ts_started"),
                   completed: t("status.ts_completed"),
                   cancelled: t("status.ts_cancelled"),
                 }}

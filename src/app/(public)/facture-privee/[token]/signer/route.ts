@@ -21,7 +21,7 @@ import type {
 export const runtime = "nodejs";
 
 /** Statuts depuis lesquels un client peut signer (un brouillon n'est pas final). */
-const SIGNABLE_STATUSES = ["envoye", "confirme", "termine"];
+const SIGNABLE_STATUSES = ["envoye", "confirme", "en_cours", "termine"];
 
 /** Signature des 8 premiers octets d'un fichier PNG valide. */
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

@@ -78,6 +78,7 @@ export type DocumentStatus =
   | "brouillon"
   | "envoye"
   | "confirme"
+  | "en_cours"
   | "termine"
   | "annule";
 
@@ -255,6 +256,7 @@ export interface BillingDocument {
   share_token: string;
   pdf_url: string | null;
   linked_document_id: string | null;
+  market_phase: MarketPhase; // travaux du marché ou intervention après-vente
   is_historical: boolean;
   include_signature: boolean;
   include_conditions: boolean; // affiche l'encadré « conditions » dans le PDF
@@ -272,6 +274,7 @@ export interface BillingDocument {
   updated_at: string;
   sent_at: string | null;
   confirmed_at: string | null;
+  started_at: string | null; // démarrage du chantier (statut « en cours »)
   completed_at: string | null;
   cancelled_at: string | null;
 }
@@ -291,6 +294,14 @@ export interface Payment {
 // ───────────── Trésorerie / Caisse ─────────────
 /** Sens d'un mouvement de caisse : entrée (encaissement) ou dépense. */
 export type MovementDirection = "in" | "out";
+
+/**
+ * Origine d'un mouvement de caisse.
+ *  - `manuel`   : saisi à la main dans la caisse
+ *  - `marche`   : versement du net d'un marché (document_id = la cotation)
+ *  - `paiement` : hérité de l'ancien trigger paiement→caisse (désactivé en 0020)
+ */
+export type MovementSource = "manuel" | "marche" | "paiement";
 
 /** Réglages de caisse (singleton par organisation). */
 export interface CashSettings {
@@ -327,6 +338,7 @@ export interface CashMovement {
   payment_id: string | null; // renseigné si issu d'un paiement de facture
   method: string | null;
   reference: string | null;
+  source: MovementSource; // origine du mouvement (saisie, marché, ancien trigger)
   created_at: string;
 }
 
@@ -356,4 +368,109 @@ export interface PublicCategoryStat {
   name_en: string;
   lucide_icon: string | null;
   realized_count: number;
+}
+
+// ───────────── Marché : charges internes & versement en caisse ─────────────
+/**
+ * Charge interne d'un marché (achat de matériel, transport, main d'œuvre…).
+ * Rattachée à la COTATION qui porte le marché, jamais à une facture.
+ * Ne quitte jamais l'administration : ni PDF client, ni lien privé.
+ */
+/**
+ * Phase d'un marché.
+ *  - `travaux` : le chantier initial, celui que le devis a vendu
+ *  - `panne`   : une intervention après-vente, postérieure à la livraison
+ *
+ * Séparer les deux garde lisible la rentabilité du chantier d'origine :
+ * sans cela, une réparation sous garantie amputerait sa marge.
+ */
+export type MarketPhase = "travaux" | "panne";
+
+export interface MarketExpense {
+  id: string;
+  organization_id: string;
+  document_id: string; // la cotation (devis / proforma / bon de commande)
+  created_by: string | null;
+  reason: string; // raison de la charge (obligatoire)
+  phase: MarketPhase; // travaux du chantier ou intervention après-vente
+  amount: number; // montant positif (FCFA)
+  occurred_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Versement du net d'un marché vers la caisse (mouvement `source = marche`). */
+export interface MarketPayout {
+  id: string;
+  amount: number;
+  occurred_at: string;
+  description: string | null;
+  method: string | null;
+  reference: string | null;
+}
+
+/**
+ * Synthèse financière d'un marché, en trois niveaux de lecture (cf. 0021).
+ *
+ *  1. TRAVAUX     — le chantier vendu par le devis :
+ *                   total du marché − charges de travaux = marge du chantier
+ *  2. APRÈS-VENTE — les interventions postérieures (pannes) :
+ *                   encaissé pannes − charges pannes = résultat SAV
+ *  3. CUMUL       — marge du chantier + résultat SAV
+ *
+ * Les deux premiers restent séparés pour qu'une réparation sous garantie ne
+ * vienne jamais masquer la rentabilité réelle du chantier d'origine.
+ *
+ * Le DISPONIBLE, lui, ignore cette distinction : l'argent en caisse est le
+ * même, d'où qu'il vienne. C'est lui — et jamais la marge — qui plafonne un
+ * versement, car la marge d'un marché à moitié réglé n'existe pas encore.
+ */
+export interface MarketOverview {
+  // ── 1. Travaux ──
+  marketTotal: number; // montant total de la cotation
+  worksCollected: number; // encaissé sur le marché (hors après-vente)
+  worksExpenses: number; // charges de phase « travaux »
+  worksMargin: number; // marketTotal − worksExpenses (peut être négatif)
+
+  // ── 2. Après-vente ──
+  afterSalesCollected: number; // encaissé sur les factures de panne
+  afterSalesExpenses: number; // charges de phase « panne »
+  afterSalesResult: number; // afterSalesCollected − afterSalesExpenses
+  afterSalesCount: number; // nombre de factures d'intervention
+
+  // ── 3. Cumul & trésorerie ──
+  totalMargin: number; // worksMargin + afterSalesResult
+  collectedTotal: number; // tout ce que le client a versé (travaux + pannes)
+  expensesTotal: number; // toutes les charges confondues
+  available: number; // collectedTotal − expensesTotal (négatif = avance de trésorerie)
+  paidOut: number; // déjà versé en caisse depuis ce marché
+  remainingToPayOut: number; // available − paidOut (plafond d'un nouveau versement)
+
+  expenses: MarketExpense[];
+  payouts: MarketPayout[];
+}
+
+// ───────────── Contrat de maintenance ─────────────
+/** Rythme de facturation d'un contrat de maintenance. */
+export type MaintenancePeriodicity =
+  | "mensuel"
+  | "trimestriel"
+  | "semestriel"
+  | "annuel";
+
+/**
+ * Contrat de maintenance attaché à un chantier — un seul par marché : le
+ * renouvellement repousse l'échéance au lieu d'empiler les lignes.
+ */
+export interface MaintenanceContract {
+  document_id: string; // la cotation (le chantier couvert)
+  organization_id: string;
+  active: boolean;
+  start_date: string | null;
+  end_date: string | null; // échéance
+  amount: number; // montant du contrat (FCFA)
+  periodicity: MaintenancePeriodicity;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }

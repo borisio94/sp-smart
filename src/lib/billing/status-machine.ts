@@ -3,21 +3,28 @@ import type { DocumentStatus } from "./types";
 /**
  * Machine d'états des documents (cf. BILLING_BRIEF.md).
  *
- *   brouillon → envoye → confirme → termine
- *                 ↓         ↓
- *               annule    annule
+ *   brouillon → envoye → confirme → en_cours → termine
+ *                 ↓         ↓          ↓
+ *               annule    annule     annule
+ *
+ * « en_cours » marque le chantier en pleine réalisation : le marché est
+ * confirmé, les travaux ont démarré, la livraison n'est pas faite. Le passage
+ * par ce statut reste FACULTATIF — un petit travail peut aller de « confirme »
+ * directement à « termine ».
  *
  * Transitions autorisées :
  *  - brouillon → envoye, annule
  *  - envoye    → confirme, annule, brouillon (retour édition)
- *  - confirme  → termine, annule
+ *  - confirme  → en_cours, termine, annule
+ *  - en_cours  → termine, confirme (correction), annule
  *  - termine   → confirme (correction exceptionnelle, confirmation requise)
  *  - annule    → brouillon (ré-ouverture)
  */
 export const STATUS_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
   brouillon: ["envoye", "annule"],
   envoye: ["confirme", "annule", "brouillon"],
-  confirme: ["termine", "annule"],
+  confirme: ["en_cours", "termine", "annule"],
+  en_cours: ["termine", "confirme", "annule"],
   termine: ["confirme"],
   annule: ["brouillon"],
 };
@@ -27,6 +34,8 @@ export const CONFIRM_REQUIRED: ReadonlyArray<`${DocumentStatus}->${DocumentStatu
   "termine->confirme", // correction d'un document déjà terminé
   "confirme->annule", // annulation d'un document confirmé
   "envoye->annule", // annulation d'un document envoyé
+  "en_cours->annule", // annulation d'un chantier déjà démarré
+  "en_cours->confirme", // retour en arrière sur un chantier démarré
 ];
 
 /** Renvoie les statuts atteignables depuis le statut courant. */
@@ -63,12 +72,15 @@ export function transitionActionKey(
   if (from === "annule" && to === "brouillon") return "action_reopen";
   if (from === "envoye" && to === "brouillon") return "action_back_to_draft";
   if (from === "termine" && to === "confirme") return "action_correct";
+  if (from === "en_cours" && to === "confirme") return "action_back_to_confirmed";
   // Cas génériques (selon la cible)
   switch (to) {
     case "envoye":
       return "action_send";
     case "confirme":
       return "action_confirm";
+    case "en_cours":
+      return "action_start";
     case "termine":
       return "action_complete";
     case "annule":
@@ -81,12 +93,20 @@ export function transitionActionKey(
 /** Colonne timestamp à renseigner lors d'un passage vers ce statut (ou null). */
 export function timestampField(
   to: DocumentStatus,
-): "sent_at" | "confirmed_at" | "completed_at" | "cancelled_at" | null {
+):
+  | "sent_at"
+  | "confirmed_at"
+  | "started_at"
+  | "completed_at"
+  | "cancelled_at"
+  | null {
   switch (to) {
     case "envoye":
       return "sent_at";
     case "confirme":
       return "confirmed_at";
+    case "en_cours":
+      return "started_at";
     case "termine":
       return "completed_at";
     case "annule":

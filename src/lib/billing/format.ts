@@ -150,6 +150,7 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   brouillon: "Brouillon",
   envoye: "Envoyé",
   confirme: "Confirmé",
+  en_cours: "En cours",
   termine: "Terminé",
   annule: "Annulé",
 };

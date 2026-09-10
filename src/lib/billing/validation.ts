@@ -192,6 +192,9 @@ export const documentSchema = z
     // Cotation liée (devis / proforma / bon de commande) — utilisée par une
     // facture. Vide = création automatique d'un devis lié à l'enregistrement.
     linked_document_id: z.string().uuid().optional().or(z.literal("")),
+    // Nature du rattachement : travaux du marché ou intervention après-vente.
+    // Une facture de panne suit le marché sans entrer dans son règlement.
+    market_phase: z.enum(["travaux", "panne"]).optional(),
     issue_date: z.string().trim().min(1, "Date d'émission requise"),
     validity_date: z.string().trim().optional().or(z.literal("")),
     title: z.string().trim().max(200).optional().or(z.literal("")),
@@ -433,7 +436,14 @@ export const historicalSchema = z.object({
   issue_date: z.string().trim().min(1, "Date requise"),
   title: z.string().trim().max(200).optional().or(z.literal("")),
   total_amount: z.number({ message: "Montant invalide" }).min(0).max(1_000_000_000),
-  status: z.enum(["brouillon", "envoye", "confirme", "termine", "annule"]),
+  status: z.enum([
+    "brouillon",
+    "envoye",
+    "confirme",
+    "en_cours",
+    "termine",
+    "annule",
+  ]),
   payment_status: z.enum([
     "non_paye",
     "acompte",
@@ -475,3 +485,57 @@ export const organizationSchema = z.object({
 });
 
 export type OrganizationInput = z.infer<typeof organizationSchema>;
+
+// ───────────── Marché : charges internes & versement en caisse ─────────────
+// Charge d'un marché : la RAISON est obligatoire — une dépense sans motif
+// rendrait le récapitulatif du chantier illisible quelques semaines plus tard.
+export const marketExpenseSchema = z.object({
+  reason: z.string().trim().min(2, "Raison requise").max(200),
+  phase: z.enum(["travaux", "panne"]),
+  amount: z
+    .number({ message: "Montant invalide" })
+    .positive("Montant requis")
+    .max(1_000_000_000),
+  occurred_at: z.string().trim().min(1, "Date requise"),
+});
+
+export type MarketExpenseInput = z.infer<typeof marketExpenseSchema>;
+
+// Versement du net d'un marché vers la caisse. `confirmed` autorise le
+// dépassement du disponible après avertissement explicite, sur le modèle du
+// franchissement de la ligne rouge.
+export const marketPayoutSchema = z.object({
+  amount: z
+    .number({ message: "Montant invalide" })
+    .positive("Montant requis")
+    .max(1_000_000_000),
+  occurred_at: z.string().trim().min(1, "Date requise"),
+  method: methodOptional,
+  reference: z.string().trim().max(120).optional().or(z.literal("")),
+  confirmed: z.boolean().optional(),
+});
+
+export type MarketPayoutInput = z.infer<typeof marketPayoutSchema>;
+
+// Contrat de maintenance d'un chantier. Les dates et le montant ne sont exigés
+// que si le contrat est actif : désactiver un contrat ne doit jamais forcer à
+// remplir des champs devenus sans objet.
+export const maintenanceContractSchema = z
+  .object({
+    active: z.boolean(),
+    start_date: z.string().trim().optional().or(z.literal("")),
+    end_date: z.string().trim().optional().or(z.literal("")),
+    amount: z
+      .number({ message: "Montant invalide" })
+      .min(0, "Montant invalide")
+      .max(1_000_000_000),
+    periodicity: z.enum(["mensuel", "trimestriel", "semestriel", "annuel"]),
+    notes: z.string().trim().max(1000).optional().or(z.literal("")),
+  })
+  .refine(
+    (v) =>
+      !v.active || !v.start_date || !v.end_date || v.end_date >= v.start_date,
+    { message: "L'échéance précède le début du contrat.", path: ["end_date"] },
+  );
+
+export type MaintenanceContractInput = z.infer<typeof maintenanceContractSchema>;

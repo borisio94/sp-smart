@@ -63,6 +63,7 @@ function buildFactureDefaults(props: Props): DocumentInput {
     client_id: d?.client_id ?? props.defaultClientId ?? "",
     category_id: d?.category_id ?? "",
     linked_document_id: d?.linked_document_id ?? "",
+    market_phase: d?.market_phase ?? "travaux",
     issue_date: d?.issue_date ?? props.defaultIssueDate,
     validity_date: "",
     title: d?.title ?? "",
@@ -422,6 +423,16 @@ export function FactureForm(props: Props) {
             </Select>
             <p className="mt-1 text-xs text-muted-foreground">
               {t("documents.linkedQuotationHint")}
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="f-phase">{t("documents.marketPhase")}</Label>
+            <Select id="f-phase" className="mt-1" {...register("market_phase")}>
+              <option value="travaux">{t("documents.marketPhaseWorks")}</option>
+              <option value="panne">{t("documents.marketPhaseBreakdown")}</option>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("documents.marketPhaseHint")}
             </p>
           </div>
         </div>

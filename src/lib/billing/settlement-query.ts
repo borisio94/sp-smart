@@ -36,10 +36,15 @@ export async function getSettlement(
 
   const { data: doc } = await admin
     .from("documents")
-    .select("id, type, linked_document_id")
+    .select("id, type, linked_document_id, market_phase")
     .eq("id", documentId)
     .maybeSingle();
   if (!doc) return null;
+
+  // Une facture d'après-vente est rattachée au marché pour le suivi interne,
+  // mais ne participe pas à son règlement : lui afficher le reste à payer du
+  // marché laisserait croire au client qu'il doit encore la totalité.
+  if (doc.market_phase === "panne") return null;
 
   // Un reçu pointe vers sa facture : on remonte d'un cran pour trouver la
   // cotation, sinon le reçu n'aurait aucun suivi de marché.
@@ -68,6 +73,8 @@ export async function getSettlement(
     .eq("linked_document_id", quotationId)
     .eq("type", "facture")
     .neq("status", "annule")
+    // Hors après-vente : même règle que `get_document_by_token` (migration 0021).
+    .neq("market_phase", "panne")
     .order("issue_date", { ascending: true })
     .order("created_at", { ascending: true });
 

@@ -14,7 +14,7 @@ export function canReceivePayment(
 ): boolean {
   if (type === "recu" || type === "rapport_maintenance") return false;
   if (type === "facture") return true;
-  return status === "confirme" || status === "termine";
+  return status === "confirme" || status === "en_cours" || status === "termine";
 }
 
 /**

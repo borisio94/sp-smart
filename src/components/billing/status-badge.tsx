@@ -12,6 +12,7 @@ const STATUS_TONE: Record<
   brouillon: "neutral",
   envoye: "info",
   confirme: "warning",
+  en_cours: "info", // chantier en pleine réalisation
   termine: "success",
   annule: "danger",
 };
