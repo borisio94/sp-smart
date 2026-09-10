@@ -115,3 +115,50 @@ export function timestampField(
       return null;
   }
 }
+
+/**
+ * Ordre du cycle de vie, hors « annule » qui en sort. Sert à reconnaître un
+ * RETOUR EN ARRIÈRE, pour lequel les jalons déjà posés n'ont plus lieu d'être.
+ */
+const STATUS_ORDER: DocumentStatus[] = [
+  "brouillon",
+  "envoye",
+  "confirme",
+  "en_cours",
+  "termine",
+];
+
+/** Position dans le cycle. « annule » se place au-delà de tout : on n'en revient qu'en arrière. */
+function cycleIndex(status: DocumentStatus): number {
+  return status === "annule" ? STATUS_ORDER.length : STATUS_ORDER.indexOf(status);
+}
+
+/**
+ * Colonnes d'horodatage à EFFACER lors d'une transition.
+ *
+ * Reculer dans le cycle — annuler un démarrage de chantier, rouvrir un
+ * document terminé — doit remettre le compteur à zéro : garder un
+ * `started_at` sur un document repassé en « confirmé » laisserait une trace
+ * fausse dans le suivi, et le prochain démarrage ne se daterait pas
+ * correctement. On efface donc les jalons de tous les statuts postérieurs à
+ * la cible.
+ *
+ * Avancer n'efface jamais rien.
+ */
+export function clearedTimestamps(
+  from: DocumentStatus,
+  to: DocumentStatus,
+): string[] {
+  const fromIdx = cycleIndex(from);
+  const toIdx = cycleIndex(to);
+  if (toIdx < 0 || fromIdx < 0 || toIdx >= fromIdx) return [];
+
+  const cleared = STATUS_ORDER.slice(toIdx + 1)
+    .map((s) => timestampField(s))
+    .filter((f): f is Exclude<ReturnType<typeof timestampField>, null> => f !== null);
+
+  // Rouvrir un document annulé lève aussi la date d'annulation.
+  if (from === "annule") cleared.push("cancelled_at");
+
+  return cleared;
+}

@@ -88,6 +88,16 @@ export async function MarketSection({ documentId }: { documentId: string }) {
               <dl className="mt-3 space-y-1.5 text-sm">
                 <Row label={t("market.marketTotal")} value={overview.marketTotal} tone="muted" />
                 <Row
+                  label={t("market.worksCollected")}
+                  value={overview.worksCollected}
+                  tone="muted"
+                />
+                <Row
+                  label={t("market.clientRemaining")}
+                  value={overview.clientRemaining}
+                  tone={overview.clientRemaining > 0 ? "negative" : "muted"}
+                />
+                <Row
                   label={t("market.expenses")}
                   value={overview.worksExpenses}
                   tone="negative"

@@ -431,6 +431,7 @@ export interface MarketOverview {
   worksCollected: number; // encaissé sur le marché (hors après-vente)
   worksExpenses: number; // charges de phase « travaux »
   worksMargin: number; // marketTotal − worksExpenses (peut être négatif)
+  clientRemaining: number; // ce que le client doit ENCORE sur le marché (jamais négatif)
 
   // ── 2. Après-vente ──
   afterSalesCollected: number; // encaissé sur les factures de panne

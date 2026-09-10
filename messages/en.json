@@ -353,7 +353,7 @@
       "ts_completed": "Completed on",
       "ts_cancelled": "Cancelled on",
       "action_start": "Start the works",
-      "action_back_to_confirmed": "Back to confirmed",
+      "action_back_to_confirmed": "Cancel job start",
       "ts_started": "Started on"
     },
     "caisse": {
@@ -542,7 +542,7 @@
       "marketTotal": "Contract total",
       "expenses": "Costs",
       "paidOut": "Already deposited",
-      "remainingToPayOut": "Left to deposit",
+      "remainingToPayOut": "To deposit in cash",
       "advancedFunds": "Costs exceed the money received: the company is funding this job.",
       "expensesTitle": "Contract costs",
       "noExpense": "No cost recorded.",
@@ -560,7 +560,7 @@
       "noPayout": "No deposit yet.",
       "payToCash": "Deposit to cash",
       "payoutDone": "Deposit recorded in cash.",
-      "payoutWarn": "This deposit of {amount} exceeds the contract available ({remaining}). Confirm anyway?",
+      "payoutWarn": "This deposit of {amount} exceeds what you actually hold for this contract ({remaining}). Confirm anyway?",
       "worksTitle": "Works",
       "worksMargin": "Job margin",
       "afterSalesTitle": "After-sales",
@@ -569,9 +569,11 @@
       "afterSalesExpensesTitle": "After-sales costs",
       "afterSalesHint": "{count, plural, =0 {No service invoice issued on this contract.} one {# service invoice issued on this contract.} other {# service invoices issued on this contract.}}",
       "noAfterSalesExpense": "No after-sales cost.",
-      "cashTitle": "Total & cash",
+      "cashTitle": "Contract cash",
       "totalMargin": "Contract total result",
-      "reasonHintBreakdown": "Replaced part, technician call-out…"
+      "reasonHintBreakdown": "Replaced part, technician call-out…",
+      "worksCollected": "Collected from client",
+      "clientRemaining": "Still owed by client"
     },
     "maintenance": {
       "title": "Maintenance contract",

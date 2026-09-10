@@ -12,7 +12,11 @@ import {
 import { computeTotals, resolveLineTotal } from "@/lib/billing/compute";
 import { formatDate, PAYMENT_METHOD_LABELS } from "@/lib/billing/format";
 import { getSettlement } from "@/lib/billing/settlement-query";
-import { canTransition, timestampField } from "@/lib/billing/status-machine";
+import {
+  canTransition,
+  timestampField,
+  clearedTimestamps,
+} from "@/lib/billing/status-machine";
 import type {
   DocumentStatus,
   CustomDocumentType,
@@ -666,6 +670,12 @@ export async function changeDocumentStatus(
   const field = timestampField(to);
   if (field) {
     patch[field] = new Date().toISOString();
+  }
+  // Reculer dans le cycle efface les jalons devenus faux : un chantier dont on
+  // annule le démarrage ne doit plus porter de date de démarrage, sans quoi le
+  // suivi mentirait et le prochain lancement ne se daterait pas.
+  for (const column of clearedTimestamps(from, to)) {
+    patch[column] = null;
   }
 
   const { error } = await supabase.from("documents").update(patch).eq("id", id);

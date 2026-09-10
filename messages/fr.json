@@ -353,7 +353,7 @@
       "ts_completed": "Terminé le",
       "ts_cancelled": "Annulé le",
       "action_start": "Démarrer le chantier",
-      "action_back_to_confirmed": "Repasser en confirmé",
+      "action_back_to_confirmed": "Annuler le démarrage du chantier",
       "ts_started": "Démarré le"
     },
     "caisse": {
@@ -541,8 +541,8 @@
       "subtitle": "Charges du chantier et versement en caisse. Informations internes, jamais visibles du client.",
       "marketTotal": "Total du marché",
       "expenses": "Charges",
-      "paidOut": "Déjà versé en caisse",
-      "remainingToPayOut": "Reste à verser",
+      "paidOut": "Déjà déposé en caisse",
+      "remainingToPayOut": "À déposer en caisse",
       "advancedFunds": "Les charges dépassent l'argent reçu : la trésorerie de l'entreprise avance ce chantier.",
       "expensesTitle": "Charges du marché",
       "noExpense": "Aucune charge enregistrée.",
@@ -558,9 +558,9 @@
       "confirmDeleteExpense": "Supprimer cette charge ?",
       "payoutsTitle": "Versements en caisse",
       "noPayout": "Aucun versement effectué.",
-      "payToCash": "Verser en caisse",
-      "payoutDone": "Versement enregistré en caisse.",
-      "payoutWarn": "Ce versement de {amount} dépasse le disponible du marché ({remaining}). Confirmer quand même ?",
+      "payToCash": "Déposer en caisse",
+      "payoutDone": "Dépôt enregistré en caisse.",
+      "payoutWarn": "Ce dépôt de {amount} dépasse ce que vous avez réellement en main pour ce marché ({remaining}). Confirmer quand même ?",
       "worksTitle": "Chantier",
       "worksMargin": "Marge du chantier",
       "afterSalesTitle": "Après-vente",
@@ -569,9 +569,11 @@
       "afterSalesExpensesTitle": "Charges après-vente",
       "afterSalesHint": "{count, plural, =0 {Aucune facture d'intervention émise sur ce marché.} one {# facture d'intervention émise sur ce marché.} other {# factures d'intervention émises sur ce marché.}}",
       "noAfterSalesExpense": "Aucune charge après-vente.",
-      "cashTitle": "Cumul & trésorerie",
+      "cashTitle": "Trésorerie du marché",
       "totalMargin": "Cumul du marché",
-      "reasonHintBreakdown": "Pièce remplacée, déplacement technicien…"
+      "reasonHintBreakdown": "Pièce remplacée, déplacement technicien…",
+      "worksCollected": "Encaissé du client",
+      "clientRemaining": "Reste dû par le client"
     },
     "maintenance": {
       "title": "Contrat de maintenance",

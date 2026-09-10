@@ -94,6 +94,9 @@ export function buildMarketOverview({
   const paidOut = sum(payouts.map((p) => p.amount));
 
   const worksMargin = total - worksExpenses;
+  // Ce que le client doit encore : à ne jamais confondre avec le disponible à
+  // déposer en caisse — deux notions que le mot « reste » rendait ambiguës.
+  const clientRemaining = Math.max(0, total - collectedWorks);
   const afterSalesResult = collectedAfterSales - afterSalesExpenses;
 
   // `available` garde son signe : négatif, il signale que les charges ont
@@ -105,6 +108,7 @@ export function buildMarketOverview({
     worksCollected: collectedWorks,
     worksExpenses,
     worksMargin,
+    clientRemaining,
 
     afterSalesCollected: collectedAfterSales,
     afterSalesExpenses,
